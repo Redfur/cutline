@@ -1,6 +1,6 @@
-// «Ничего не выделено» → свойства холста. Выделен rect/ellipse/line → ShapeInspector.
-// Выделен text/image — эти типы этот срез не трогает (ещё не добавляются через тулбар,
-// но уже могут прийти из открытого файла), честная заглушка вместо неверных полей.
+// «Ничего не выделено» → свойства холста. Выделен rect/ellipse/line → ShapeInspector,
+// text → TextInspector. Выделен image — этот тип ещё не добавляется через тулбар, но
+// уже может прийти из открытого файла — честная заглушка вместо неверных полей.
 import type { Canvas as CanvasModel, CutlineElement } from "../model/document";
 import { PanelSection } from "../ui/editor/PanelSection";
 import { PropertyRow } from "../ui/editor/PropertyRow";
@@ -8,6 +8,7 @@ import { ColorField } from "../ui/forms/ColorField";
 import { Select } from "../ui/forms/Select";
 import { TextField } from "../ui/forms/TextField";
 import { ShapeInspector } from "./ShapeInspector";
+import { TextInspector } from "./TextInspector";
 
 interface Preset {
 	key: string;
@@ -128,23 +129,23 @@ export function Inspector({
 						onChange={onElementChange}
 					/>
 				)}
-			{selectedElement &&
-				selectedElement.type !== "rect" &&
-				selectedElement.type !== "ellipse" &&
-				selectedElement.type !== "line" && (
-					<PanelSection title={selectedElement.name}>
-						<div
-							style={{
-								padding: "0 0 12px",
-								font: "var(--type-label)",
-								color: "var(--fg-3)",
-							}}
-						>
-							Свойства для этого типа элемента пока не поддерживаются в
-							инспекторе — отдельный будущий срез.
-						</div>
-					</PanelSection>
-				)}
+			{selectedElement && selectedElement.type === "text" && (
+				<TextInspector element={selectedElement} onChange={onElementChange} />
+			)}
+			{selectedElement && selectedElement.type === "image" && (
+				<PanelSection title={selectedElement.name}>
+					<div
+						style={{
+							padding: "0 0 12px",
+							font: "var(--type-label)",
+							color: "var(--fg-3)",
+						}}
+					>
+						Свойства для этого типа элемента пока не поддерживаются в инспекторе
+						— отдельный будущий срез.
+					</div>
+				</PanelSection>
+			)}
 		</div>
 	);
 }
