@@ -1,0 +1,703 @@
+<meta charset="utf-8">
+<title>Badge Editor — Gennadiy v30.0</title>
+<style>
+  :root {
+    --ink: #111111;
+    --muted: #8A8983;
+    --line: #DDDCD6;
+    --hair: #EFEEE9;
+    --paper: #F5F4EF;
+    --accent: #FFD400;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--mono);
+    color: var(--ink);
+    background: #fff;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+  }
+  header .brand { font-size: 14px; letter-spacing: 1px; }
+  header .brand b { background: var(--accent); padding: 2px 6px; }
+  header .spacer { flex: 1; }
+  #saveState { color: var(--muted); font-size: 11px; letter-spacing: 1px; }
+  button {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 12px;
+    border: 1px solid var(--ink);
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button:hover { background: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  button.ghost { border-color: var(--line); color: var(--muted); }
+  button.ghost:hover { background: var(--hair); color: var(--ink); }
+  button.solid { background: var(--ink); color: var(--accent); }
+  button.solid:hover { background: #000; }
+  main {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr) 440px;
+    align-items: start;
+    min-height: calc(100vh - 55px);
+  }
+  .col { padding: 20px; }
+  .col + .col { border-left: 1px solid var(--line); }
+  .col.preview { position: sticky; top: 55px; }
+  h2 {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    font-weight: normal;
+    margin: 0 0 12px;
+    text-transform: uppercase;
+  }
+  .guest {
+    border: 1px solid var(--hair);
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .guest:hover { border-color: var(--line); }
+  .guest.on { border-color: var(--ink); border-left: 4px solid var(--accent); }
+  .guest .n { flex: 1; min-width: 0; }
+  .guest .n div:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .guest .n small { color: var(--muted); font-size: 10px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .guest .num { color: var(--muted); font-size: 10px; }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  input[type=text], textarea, select {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--ink); }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; min-width: 0; }
+  .skill { display: grid; grid-template-columns: 1fr 74px 46px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .pct { text-align: right; color: var(--muted); font-size: 11px; }
+  .hint { color: var(--muted); font-size: 11px; margin: 4px 0 0; }
+  .over { color: #B3261E; }
+  .stage { background: var(--paper); padding: 24px; display: flex; justify-content: center; }
+  .stage svg { box-shadow: 0 1px 3px rgba(0,0,0,.12); width: 340px; height: auto; }
+  .exports { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+  @media (max-width: 1100px) {
+    main { grid-template-columns: 1fr; }
+    .col + .col { border-left: none; border-top: 1px solid var(--line); }
+    .col.preview { position: static; }
+  }
+</style>
+
+<header>
+  <span class="brand">BADGE EDITOR — <b>v30.0</b></span>
+  <span id="saveState">—</span>
+  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)">
+    <input type="checkbox" id="curves" disabled> текст в кривых
+  </label>
+  <button class="ghost" id="btnFontFile">Файл шрифта…</button>
+  <input type="file" id="fontFile" accept=".ttf,.otf" hidden>
+  <span class="spacer"></span>
+  <button class="ghost" id="btnImport">Загрузить JSON</button>
+  <button class="ghost" id="btnExport">Сохранить JSON</button>
+  <button class="ghost" id="btnAllPng">Все PNG ×2</button>
+  <button class="ghost" id="btnAllSvg">Все SVG</button>
+  <button id="btnSheetSvg">Листы A4 — SVG</button>
+  <button id="btnSheetPng">Листы A4 — PNG 300dpi</button>
+  <input type="file" id="fileIn" accept="application/json" hidden>
+</header>
+
+<main>
+  <section class="col">
+    <h2>Гости</h2>
+    <div id="list"></div>
+    <button class="solid" id="btnAdd" style="width:100%;margin-top:8px">+ Добавить гостя</button>
+    <h2 style="margin-top:24px">Общее</h2>
+    <div class="field">
+      <label>ШАПКА БЕЙДЖА</label>
+      <input type="text" id="hdr">
+    </div>
+    <div class="field">
+      <label>ШРИФТ</label>
+      <select id="fnt"></select>
+      <p class="hint" id="fntHint"></p>
+    </div>
+    <div class="field" id="fntCustomWrap" style="display:none">
+      <label>СВОЙ ШРИФТ — ТОЧНОЕ НАЗВАНИЕ</label>
+      <input type="text" id="fntCustom" placeholder="напр. JetBrains Mono">
+    </div>
+    <div class="field">
+      <label>АКЦЕНТНЫЙ ЦВЕТ</label>
+      <input type="text" id="acc">
+    </div>
+  </section>
+
+  <section class="col" id="form"></section>
+
+  <section class="col preview">
+    <h2>Превью — A6, 105 × 148 мм</h2>
+    <div class="stage" id="stage"></div>
+    <div class="exports">
+      <button id="btnSvg">Скачать SVG</button>
+      <button id="btnPng">PNG ×2</button>
+      <button id="btnPrint">PNG 300 dpi</button>
+      <button class="ghost" id="btnDup">Дублировать</button>
+      <button class="ghost" id="btnDel">Удалить</button>
+    </div>
+    <p class="hint">Длинный текст автоматически ужимается по ширине — высота карточки не меняется никогда.
+    Лист A4 вмещает четыре бейджа, печатать в масштабе 100% и резать по рамкам.<br>«Текст в кривых» включается после загрузки файла шрифта — тогда SVG не зависит от шрифтов на чужой машине.</p>
+  </section>
+</main>
+
+<script>
+/* Единица = 0.25 мм, то есть 4 юнита на миллиметр.
+   Карточка A6: 105 × 148 мм = 420 × 592 юнита. Четыре штуки ровно закрывают A4. */
+const MM = 4;
+/* Конкретные шрифты вместо стека: в экспортированном SVG остаётся ровно одно
+   имя, поэтому макет одинаково открывается в Illustrator, Figma и у печатника.
+   where — где шрифт есть из коробки. */
+const FONTS = [
+  { id: 'Courier New', where: 'есть и в Windows, и в macOS — самый безопасный выбор' },
+  { id: 'Consolas',    where: 'Windows: есть везде. macOS: только с MS Office' },
+  { id: 'Menlo',       where: 'macOS: есть везде. Windows: нет' },
+  { id: 'Monaco',      where: 'macOS: есть везде. Windows: нет' },
+  { id: 'Andale Mono', where: 'macOS: есть. Windows: с MS Office' },
+  { id: 'Lucida Console', where: 'Windows: есть везде. macOS: нет' },
+  { id: '__custom__',  where: 'укажите точное имя установленного шрифта' }
+];
+
+const W = 105 * MM, H = 148 * MM, PAD = 7 * MM, CW = W - PAD * 2;
+const SHEET_W = 210 * MM, SHEET_H = 297 * MM;
+const KEY = 'gennadiy-badges:v1';
+
+let state = null, sel = null, saveTimer = null, storageOk = true;
+
+/* --- текст в кривых -------------------------------------------------------
+   Браузер не даёт доступ к контурам системного шрифта, поэтому для перевода
+   в кривые нужен сам файл .ttf/.otf. Один раз подгружаем — дальше весь текст
+   в превью и в экспорте рисуется путями и не зависит от машины. */
+let OTF = null, otLibReady = false;
+
+(function loadOpentype() {
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js';
+  s.onload = () => { otLibReady = true; curvesUI(); };
+  s.onerror = () => { otLibReady = false; curvesUI(); };
+  document.head.appendChild(s);
+})();
+
+function curvesUI() {
+  const cb = document.getElementById('curves');
+  const ok = otLibReady && OTF;
+  cb.disabled = !ok;
+  if (!ok && state) state.curves = false;
+  cb.checked = !!(state && state.curves);
+  const btn = document.getElementById('btnFontFile');
+  btn.textContent = OTF ? '✓ ' + OTF.__label : 'Файл шрифта…';
+  btn.title = otLibReady
+    ? 'Windows: C:\\Windows\\Fonts (cour.ttf). macOS: /System/Library/Fonts/Supplemental'
+    : 'Библиотека контуров не загрузилась — нужен интернет';
+}
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+function blankGuest(n) {
+  return {
+    id: uid(),
+    name: 'Имя Фамилия',
+    nick: '@nickname',
+    dept: 'BACKEND',
+    grade: 'SENIOR',
+    position: 'Software Engineer',
+    desc1: 'Короткое описание в две строки.',
+    desc2: '',
+    m1l: 'SINCE', m1v: '2020',
+    m2l: '', m2v: '',
+    s1l: '', s1p: 90,
+    s2l: '', s2p: 20,
+    s3l: '', s3p: 70,
+    badgeId: 'GEN-' + String(n).padStart(4, '0'),
+    access: 'ALL AREAS'
+  };
+}
+
+function defaults() {
+  const g = blankGuest(1);
+  Object.assign(g, {
+    name: 'Тима Фахме', nick: '@timaivanova',
+    dept: 'CORE TEAM', grade: 'PRINCIPAL',
+    position: 'Head of Delivery',
+    desc1: 'Выкатывает новые версии людей в production.',
+    desc2: 'Дежурства 24/7, rollback не предусмотрен.',
+    m1l: 'SINCE', m1v: '27.04.2022',
+    m2l: 'MERGED TO MAIN', m2v: '24.07.2024',
+    s1l: 'Истории с дежурства', s1p: 98,
+    s2l: 'Сон по расписанию', s2p: 15,
+    s3l: 'Хладнокровие в проде', s3p: 100,
+    badgeId: 'GEN-0001', access: 'ROOT'
+  });
+  return { header: 'GENNADIY v30.0 — RELEASE PARTY', accent: '#FFD400', font: 'Courier New', guests: [g] };
+}
+
+/* ---------- измерение текста, чтобы высота карточки была фиксированной ---------- */
+const mctx = document.createElement('canvas').getContext('2d');
+const fontName = () => (state && state.font) ? state.font : 'Courier New';
+const curvesOn = () => !!(state && state.curves && OTF);
+
+function measure(text, size, ls) {
+  if (curvesOn()) return OTF.getAdvanceWidth(text, size) + ls * Math.max(text.length - 1, 0);
+  mctx.font = size + 'px "' + fontName() + '", monospace';
+  return mctx.measureText(text).width + (text.length - 1) * ls;
+}
+function fits(text, size, ls, max) {
+  return measure(text, size, ls) <= max;
+}
+function fit(text, size, min, ls, max) {
+  let s = size;
+  while (s > min && !fits(text, s, ls, max)) s -= 0.5;
+  return s;
+}
+function clip(text, size, ls, max) {
+  if (fits(text, size, ls, max)) return text;
+  let t = text;
+  while (t.length > 1 && !fits(t + '…', size, ls, max)) t = t.slice(0, -1);
+  return t + '…';
+}
+const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function T(x, y, str, o) {
+  o = o || {};
+  if (!str) return '';
+  const size = o.size || 12, ls = o.ls || 0, min = o.min || size;
+  let s = fit(str, size, min, ls, o.max || CW);
+  const txt = clip(str, s, ls, o.max || CW);
+  const fill = o.fill || '#111111';
+
+  if (curvesOn()) {
+    let px = x;
+    if (o.anchor === 'end') px = x - measure(txt, s, ls);
+    if (ls) {
+      // межбуквенный интервал: ставим глифы по одному
+      let d = '';
+      for (const ch of txt) {
+        d += OTF.getPath(ch, px, y, s).toPathData(2);
+        px += OTF.getAdvanceWidth(ch, s) + ls;
+      }
+      return `<path d="${d}" fill="${fill}"/>`;
+    }
+    return `<path d="${OTF.getPath(txt, px, y, s).toPathData(2)}" fill="${fill}"/>`;
+  }
+
+  return `<text x="${x}" y="${y}" font-family="${esc(fontName())}" font-size="${s}"`
+    + ` fill="${fill}"${ls ? ` letter-spacing="${ls}"` : ''}`
+    + `${o.anchor ? ` text-anchor="${o.anchor}"` : ''}>${esc(txt)}</text>`;
+}
+
+function bar(y, label, pct, accent) {
+  if (!label) return '';
+  const p = Math.max(0, Math.min(100, Number(pct) || 0));
+  return T(PAD, y, label, { size: 12, min: 9, max: CW - 44 })
+    + T(W - PAD, y, p + '%', { size: 11, fill: '#8A8983', anchor: 'end' })
+    + `<rect x="${PAD}" y="${y + 9}" width="${CW}" height="7" fill="#EFEEE9"/>`
+    + `<rect x="${PAD}" y="${y + 9}" width="${(CW * p / 100).toFixed(1)}" height="7" fill="${accent}"/>`;
+}
+
+function metaRow(y, label, value) {
+  if (!label && !value) return '';
+  return T(PAD, y, label, { size: 12, fill: '#8A8983', ls: 1.5, max: 210 })
+    + T(W - PAD, y, value, { size: 14, anchor: 'end', min: 10, max: 165 });
+}
+
+function cardBody(g, st) {
+  const a = st.accent || '#FFD400';
+  const rule = y => `<line x1="${PAD}" y1="${y}" x2="${W - PAD}" y2="${y}" stroke="#EFEEE9" stroke-width="0.6"/>`;
+  return `<rect width="${W}" height="${H}" fill="#FFFFFF"/>
+<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="none" stroke="#DDDCD6" stroke-width="0.6"/>
+<rect x="${W / 2 - 32}" y="24" width="64" height="13" rx="6.5" fill="#F5F4EF" stroke="#DDDCD6" stroke-width="0.6"/>
+<rect x="0" y="60" width="${W}" height="36" fill="${a}"/>
+${T(PAD, 84, st.header, { size: 13, min: 8, ls: 1 })}
+${T(PAD, 126, [g.dept, g.grade].filter(Boolean).join(' · ').toUpperCase(), { size: 12, fill: '#8A8983', ls: 2, min: 8 })}
+${T(PAD, 166, g.name, { size: 28, min: 15 })}
+${T(PAD, 190, g.nick, { size: 15, fill: '#8A8983', min: 10 })}
+${rule(212)}
+${T(PAD, 236, 'POSITION', { size: 10.5, fill: '#8A8983', ls: 1.5 })}
+${T(PAD, 260, g.position, { size: 17, min: 10 })}
+${T(PAD, 286, g.desc1, { size: 13, fill: '#8A8983', min: 9 })}
+${T(PAD, 306, g.desc2, { size: 13, fill: '#8A8983', min: 9 })}
+${rule(328)}
+${metaRow(352, g.m1l, g.m1v)}
+${metaRow(376, g.m2l, g.m2v)}
+${bar(414, g.s1l, g.s1p, a)}
+${bar(452, g.s2l, g.s2p, a)}
+${bar(490, g.s3l, g.s3p, a)}
+${rule(534)}
+${T(PAD, 558, g.badgeId ? 'ID: ' + g.badgeId : '', { size: 12, fill: '#8A8983', max: 175 })}
+${T(W - PAD, 558, g.access ? 'ACCESS: ' + g.access : '', { size: 12, fill: '#8A8983', anchor: 'end', max: 185 })}`;
+}
+
+function buildSVG(g, st) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="105mm" height="148mm" viewBox="0 0 ${W} ${H}">
+${cardBody(g, st)}
+</svg>`;
+}
+
+/* Лист A4 — четыре карточки без зазоров, режется по рамкам */
+function buildSheet(four, st) {
+  const ox = [0, W, 0, W], oy = [0, 0, H, H];
+  const top = (SHEET_H - H * 2) / 2, left = (SHEET_W - W * 2) / 2;
+  const cards = four.map((g, i) =>
+    `<g transform="translate(${left + ox[i]},${top + oy[i]})">${cardBody(g, st)}</g>`).join('\n');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 ${SHEET_W} ${SHEET_H}">
+<rect width="${SHEET_W}" height="${SHEET_H}" fill="#FFFFFF"/>
+${cards}
+</svg>`;
+}
+
+/* ---------- хранилище ---------- */
+/* Две независимые копии: window.storage работает в чате,
+   localStorage — когда файл открыт локально в браузере.
+   Каждая обёрнута в try, поэтому отсутствие любой из них ничего не ломает. */
+function localSave(json) {
+  try { window.localStorage.setItem(KEY, json); return true; } catch (e) { return false; }
+}
+function localLoad() {
+  try { return window.localStorage.getItem(KEY); } catch (e) { return null; }
+}
+
+async function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const json = JSON.stringify(state);
+    const local = localSave(json);
+    let cloud = false;
+    try {
+      await window.storage.set(KEY, json, false);
+      cloud = true;
+    } catch (e) { /* хранилище чата недоступно — остаётся localStorage */ }
+    storageOk = local || cloud;
+    flag(storageOk ? 'Сохранено' : 'Не сохраняется — выгрузите JSON');
+  }, 400);
+}
+function flag(t) {
+  const el = document.getElementById('saveState');
+  el.textContent = t.toUpperCase();
+  el.style.color = storageOk ? 'var(--muted)' : '#B3261E';
+}
+async function load() {
+  try {
+    const r = await window.storage.get(KEY, false);
+    if (r && r.value) return JSON.parse(r.value);
+  } catch (e) { /* ключа ещё нет или хранилище чата недоступно */ }
+  try {
+    const raw = localLoad();
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* повреждённая копия — начинаем с нуля */ }
+  return null;
+}
+
+/* ---------- отрисовка ---------- */
+function render() {
+  const list = document.getElementById('list');
+  list.innerHTML = state.guests.length ? '' : '<p class="empty">Пока пусто</p>';
+  state.guests.forEach((g, i) => {
+    const d = document.createElement('div');
+    d.className = 'guest' + (g.id === sel ? ' on' : '');
+    d.innerHTML = `<span class="num">${String(i + 1).padStart(2, '0')}</span>
+      <span class="n"><div>${esc(g.name)}</div><small>${esc(g.position)}</small></span>`;
+    d.onclick = () => { sel = g.id; render(); };
+    list.appendChild(d);
+  });
+  document.getElementById('hdr').value = state.header;
+  document.getElementById('acc').value = state.accent;
+  syncFont();
+  renderForm();
+  renderPreview();
+}
+
+function syncFont() {
+  const sel = document.getElementById('fnt');
+  const known = FONTS.some(f => f.id === state.font);
+  if (!sel.options.length) {
+    FONTS.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.id;
+      o.textContent = f.id === '__custom__' ? 'Свой вариант…' : f.id;
+      sel.appendChild(o);
+    });
+  }
+  sel.value = known ? state.font : '__custom__';
+  const meta = FONTS.find(f => f.id === sel.value);
+  document.getElementById('fntHint').textContent = meta ? meta.where : '';
+  const wrap = document.getElementById('fntCustomWrap');
+  wrap.style.display = sel.value === '__custom__' ? 'block' : 'none';
+  if (sel.value === '__custom__') document.getElementById('fntCustom').value = known ? '' : state.font;
+  document.getElementById('stage').style.fontFamily = '"' + fontName() + '", monospace';
+}
+
+function input(g, key, label, opts) {
+  opts = opts || {};
+  const w = document.createElement('div');
+  w.className = 'field';
+  w.innerHTML = `<label>${label}</label>`;
+  const el = document.createElement('input');
+  el.type = 'text';
+  el.value = g[key] || '';
+  el.oninput = () => {
+    g[key] = el.value;
+    renderPreview();
+    save();
+    if (opts.relist) document.querySelectorAll('.guest.on .n div')[0] &&
+      (document.querySelector('.guest.on .n div').textContent = g.name);
+  };
+  w.appendChild(el);
+  return w;
+}
+
+function renderForm() {
+  const box = document.getElementById('form');
+  const g = state.guests.find(x => x.id === sel);
+  box.innerHTML = '<h2>Карточка</h2>';
+  if (!g) { box.innerHTML += '<p class="empty">Выберите гостя слева</p>'; return; }
+
+  const two = (a, b) => {
+    const r = document.createElement('div');
+    r.className = 'row';
+    r.append(a, b);
+    return r;
+  };
+
+  box.append(
+    input(g, 'name', 'ИМЯ', { relist: true }),
+    input(g, 'nick', 'НИКНЕЙМ'),
+    two(input(g, 'dept', 'ОТДЕЛ'), input(g, 'grade', 'ГРЕЙД')),
+    input(g, 'position', 'ДОЛЖНОСТЬ'),
+    input(g, 'desc1', 'ОПИСАНИЕ — СТРОКА 1'),
+    input(g, 'desc2', 'ОПИСАНИЕ — СТРОКА 2')
+  );
+
+  const h = document.createElement('h2');
+  h.textContent = 'Строки с датами';
+  box.appendChild(h);
+  box.append(
+    two(input(g, 'm1l', 'ПОДПИСЬ 1'), input(g, 'm1v', 'ЗНАЧЕНИЕ 1')),
+    two(input(g, 'm2l', 'ПОДПИСЬ 2'), input(g, 'm2v', 'ЗНАЧЕНИЕ 2'))
+  );
+
+  const h2 = document.createElement('h2');
+  h2.textContent = 'Шкалы (пустая строка — шкала скрыта)';
+  box.appendChild(h2);
+  [1, 2, 3].forEach(i => {
+    const row = document.createElement('div');
+    row.className = 'skill';
+    const t = document.createElement('input');
+    t.type = 'text'; t.value = g['s' + i + 'l'] || ''; t.placeholder = 'Навык ' + i;
+    const r = document.createElement('input');
+    r.type = 'range'; r.min = 0; r.max = 100; r.value = g['s' + i + 'p'];
+    const p = document.createElement('span');
+    p.className = 'pct'; p.textContent = g['s' + i + 'p'] + '%';
+    t.oninput = () => { g['s' + i + 'l'] = t.value; renderPreview(); save(); };
+    r.oninput = () => { g['s' + i + 'p'] = +r.value; p.textContent = r.value + '%'; renderPreview(); save(); };
+    row.append(t, r, p);
+    box.appendChild(row);
+  });
+
+  const h3 = document.createElement('h2');
+  h3.textContent = 'Подвал';
+  box.appendChild(h3);
+  box.append(two(input(g, 'badgeId', 'ID'), input(g, 'access', 'ДОСТУП')));
+}
+
+function renderPreview() {
+  const g = state.guests.find(x => x.id === sel);
+  document.getElementById('stage').innerHTML = g ? buildSVG(g, state) : '<p class="empty">Нет карточки</p>';
+}
+
+/* ---------- экспорт ---------- */
+function grab(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+const slug = s => String(s || 'badge').trim().replace(/\s+/g, '-').replace(/[^\wа-яА-ЯёЁ-]/g, '').toLowerCase();
+
+function svgOf(g) { return buildSVG(g, state); }
+
+function dlSvg(g) {
+  grab(new Blob([svgOf(g)], { type: 'image/svg+xml' }), slug(g.name) + '.svg');
+}
+
+/* Сколько пикселей на юнит, чтобы получить нужное разрешение на бумаге */
+const dpiScale = dpi => (dpi / 25.4) / MM;
+
+function rasterize(svg, w, h, scale, filename) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => { grab(b, filename); res(); }, 'image/png');
+    };
+    img.onerror = () => res();
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+
+function dlPng(g, scale) {
+  return rasterize(svgOf(g), W, H, scale, slug(g.name) + '@' + (Math.round(scale * 100) / 100) + 'x.png');
+}
+function dlPrint(g) {
+  return rasterize(svgOf(g), W, H, dpiScale(300), slug(g.name) + '-300dpi.png');
+}
+
+function sheets() {
+  const out = [];
+  for (let i = 0; i < state.guests.length; i += 4) out.push(state.guests.slice(i, i + 4));
+  return out;
+}
+async function dlSheets(asPng) {
+  const pages = sheets();
+  if (!pages.length) return;
+  for (let i = 0; i < pages.length; i++) {
+    const svg = buildSheet(pages[i], state);
+    const nm = 'sheet-a4-' + (i + 1);
+    if (asPng) await rasterize(svg, SHEET_W, SHEET_H, dpiScale(300), nm + '.png');
+    else grab(new Blob([svg], { type: 'image/svg+xml' }), nm + '.svg');
+    await new Promise(r => setTimeout(r, 400));
+  }
+}
+
+async function each(fn) {
+  for (const g of state.guests) { await fn(g); await new Promise(r => setTimeout(r, 350)); }
+}
+
+/* ---------- события ---------- */
+document.getElementById('btnAdd').onclick = () => {
+  const g = blankGuest(state.guests.length + 1);
+  state.guests.push(g); sel = g.id; render(); save();
+};
+document.getElementById('btnDel').onclick = () => {
+  const i = state.guests.findIndex(x => x.id === sel);
+  if (i < 0) return;
+  if (!confirm('Удалить ' + state.guests[i].name + '?')) return;
+  state.guests.splice(i, 1);
+  sel = state.guests.length ? state.guests[Math.max(0, i - 1)].id : null;
+  render(); save();
+};
+document.getElementById('btnDup').onclick = () => {
+  const g = state.guests.find(x => x.id === sel);
+  if (!g) return;
+  const c = Object.assign({}, g, { id: uid(), name: g.name + ' (копия)' });
+  state.guests.push(c); sel = c.id; render(); save();
+};
+document.getElementById('hdr').oninput = e => { state.header = e.target.value; renderPreview(); save(); };
+document.getElementById('acc').oninput = e => { state.accent = e.target.value; renderPreview(); save(); };
+document.getElementById('fnt').onchange = e => {
+  state.font = e.target.value === '__custom__'
+    ? (document.getElementById('fntCustom').value || 'Courier New')
+    : e.target.value;
+  syncFont(); renderPreview(); save();
+};
+document.getElementById('fntCustom').oninput = e => {
+  state.font = e.target.value.trim() || 'Courier New';
+  document.getElementById('stage').style.fontFamily = '"' + fontName() + '", monospace';
+  renderPreview(); save();
+};
+document.getElementById('btnSvg').onclick = () => { const g = state.guests.find(x => x.id === sel); if (g) dlSvg(g); };
+document.getElementById('btnPng').onclick = () => { const g = state.guests.find(x => x.id === sel); if (g) dlPng(g, 2); };
+document.getElementById('btnPrint').onclick = () => { const g = state.guests.find(x => x.id === sel); if (g) dlPrint(g); };
+document.getElementById('btnSheetSvg').onclick = () => dlSheets(false);
+document.getElementById('btnSheetPng').onclick = () => dlSheets(true);
+document.getElementById('btnAllSvg').onclick = () => each(g => dlSvg(g));
+document.getElementById('btnAllPng').onclick = () => each(g => dlPng(g, 2));
+document.getElementById('btnExport').onclick = () => {
+  grab(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), 'badges.json');
+};
+document.getElementById('btnImport').onclick = () => document.getElementById('fileIn').click();
+document.getElementById('btnFontFile').onclick = () => document.getElementById('fontFile').click();
+document.getElementById('fontFile').onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      OTF = opentype.parse(r.result);
+      OTF.__label = f.name;
+      const nm = OTF.names && OTF.names.fullName;
+      if (nm) state.font = nm.ru || nm.en || state.font;
+      curvesUI(); syncFont(); renderPreview(); save();
+    } catch (err) {
+      OTF = null;
+      alert('Не удалось прочитать шрифт. Нужен .ttf или .otf — файлы .ttc не подходят.');
+      curvesUI();
+    }
+  };
+  r.readAsArrayBuffer(f);
+  e.target.value = '';
+};
+document.getElementById('curves').onchange = e => {
+  state.curves = e.target.checked;
+  renderPreview(); save();
+};
+document.getElementById('fileIn').onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d.guests) throw 0;
+      state = d;
+      state.guests.forEach(g => { if (!g.id) g.id = uid(); });
+      sel = state.guests[0] ? state.guests[0].id : null;
+      render(); save();
+    } catch (err) { alert('Не похоже на файл с бейджами. Нужен JSON, сохранённый этой же кнопкой.'); }
+  };
+  r.readAsText(f);
+  e.target.value = '';
+};
+
+(async function init() {
+  state = await load() || defaults();
+  if (!state.font) state.font = 'Courier New';
+  if (state.curves === undefined) state.curves = false;
+  sel = state.guests[0] ? state.guests[0].id : null;
+  render();
+  curvesUI();
+  flag(storageOk ? 'Автосохранение включено' : 'Автосохранение недоступно');
+})();
+</script>
