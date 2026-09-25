@@ -1,12 +1,13 @@
-// Пока в редакторе нельзя ничего выделить (нет ни выделения, ни элементов),
-// инспектор всегда в состоянии «ничего не выделено» — показывает свойства холста.
-// Состояние «выделен элемент» появится вместе с выделением, отдельным будущим шагом.
-import type { Canvas as CanvasModel } from "../model/document";
+// «Ничего не выделено» → свойства холста. Выделен rect/ellipse/line → ShapeInspector.
+// Выделен text/image — эти типы этот срез не трогает (ещё не добавляются через тулбар,
+// но уже могут прийти из открытого файла), честная заглушка вместо неверных полей.
+import type { Canvas as CanvasModel, CutlineElement } from "../model/document";
 import { PanelSection } from "../ui/editor/PanelSection";
 import { PropertyRow } from "../ui/editor/PropertyRow";
 import { ColorField } from "../ui/forms/ColorField";
 import { Select } from "../ui/forms/Select";
 import { TextField } from "../ui/forms/TextField";
+import { ShapeInspector } from "./ShapeInspector";
 
 interface Preset {
 	key: string;
@@ -27,12 +28,84 @@ function presetKeyFor(w: number, h: number): string {
 
 export interface InspectorProps {
 	canvas: CanvasModel;
-	onChange: (canvas: CanvasModel) => void;
+	onCanvasChange: (canvas: CanvasModel) => void;
+	selectedElement: CutlineElement | null;
+	onElementChange: (element: CutlineElement) => void;
 }
 
-export function Inspector({ canvas, onChange }: InspectorProps) {
+function CanvasInspector({
+	canvas,
+	onChange,
+}: {
+	canvas: CanvasModel;
+	onChange: (canvas: CanvasModel) => void;
+}) {
 	const presetKey = presetKeyFor(canvas.w, canvas.h);
 
+	return (
+		<PanelSection title="Холст">
+			<PropertyRow label="Формат">
+				<Select
+					value={presetKey}
+					options={[
+						...PRESETS.map((p) => ({ value: p.key, label: p.label })),
+						{ value: "custom", label: "Произвольный" },
+					]}
+					onChange={(key) => {
+						const preset = PRESETS.find((p) => p.key === key);
+						if (preset) {
+							onChange({ ...canvas, w: preset.w, h: preset.h });
+						}
+					}}
+				/>
+			</PropertyRow>
+			<PropertyRow label="Размер" columns={2}>
+				<TextField
+					value={canvas.w}
+					unit="мм"
+					onChange={(v) => onChange({ ...canvas, w: Number(v) || 0 })}
+				/>
+				<TextField
+					value={canvas.h}
+					unit="мм"
+					onChange={(v) => onChange({ ...canvas, h: Number(v) || 0 })}
+				/>
+			</PropertyRow>
+			<PropertyRow label="Вылет">
+				<TextField
+					value={canvas.bleed}
+					unit="мм"
+					onChange={(v) => onChange({ ...canvas, bleed: Number(v) || 0 })}
+				/>
+			</PropertyRow>
+			<PropertyRow label="Безопасное поле">
+				<TextField
+					value={canvas.safe}
+					unit="мм"
+					onChange={(v) => onChange({ ...canvas, safe: Number(v) || 0 })}
+				/>
+			</PropertyRow>
+			<PropertyRow label="Фон">
+				{/* прозрачный фон (canvas.background: "transparent") пока не редактируется отсюда —
+				    UI для этого отдельная маленькая задача, не блокирует остальные свойства холста */}
+				<ColorField
+					value={
+						canvas.background === "transparent" ? "#FFFFFF" : canvas.background
+					}
+					showOpacity={false}
+					onChange={(hex) => onChange({ ...canvas, background: hex })}
+				/>
+			</PropertyRow>
+		</PanelSection>
+	);
+}
+
+export function Inspector({
+	canvas,
+	onCanvasChange,
+	selectedElement,
+	onElementChange,
+}: InspectorProps) {
 	return (
 		<div
 			style={{
@@ -43,62 +116,35 @@ export function Inspector({ canvas, onChange }: InspectorProps) {
 				overflowY: "auto",
 			}}
 		>
-			<PanelSection title="Холст">
-				<PropertyRow label="Формат">
-					<Select
-						value={presetKey}
-						options={[
-							...PRESETS.map((p) => ({ value: p.key, label: p.label })),
-							{ value: "custom", label: "Произвольный" },
-						]}
-						onChange={(key) => {
-							const preset = PRESETS.find((p) => p.key === key);
-							if (preset) {
-								onChange({ ...canvas, w: preset.w, h: preset.h });
-							}
-						}}
+			{!selectedElement && (
+				<CanvasInspector canvas={canvas} onChange={onCanvasChange} />
+			)}
+			{selectedElement &&
+				(selectedElement.type === "rect" ||
+					selectedElement.type === "ellipse" ||
+					selectedElement.type === "line") && (
+					<ShapeInspector
+						element={selectedElement}
+						onChange={onElementChange}
 					/>
-				</PropertyRow>
-				<PropertyRow label="Размер" columns={2}>
-					<TextField
-						value={canvas.w}
-						unit="мм"
-						onChange={(v) => onChange({ ...canvas, w: Number(v) || 0 })}
-					/>
-					<TextField
-						value={canvas.h}
-						unit="мм"
-						onChange={(v) => onChange({ ...canvas, h: Number(v) || 0 })}
-					/>
-				</PropertyRow>
-				<PropertyRow label="Вылет">
-					<TextField
-						value={canvas.bleed}
-						unit="мм"
-						onChange={(v) => onChange({ ...canvas, bleed: Number(v) || 0 })}
-					/>
-				</PropertyRow>
-				<PropertyRow label="Безопасное поле">
-					<TextField
-						value={canvas.safe}
-						unit="мм"
-						onChange={(v) => onChange({ ...canvas, safe: Number(v) || 0 })}
-					/>
-				</PropertyRow>
-				<PropertyRow label="Фон">
-					{/* прозрачный фон (canvas.background: "transparent") пока не редактируется отсюда —
-					    UI для этого отдельная маленькая задача, не блокирует остальные свойства холста */}
-					<ColorField
-						value={
-							canvas.background === "transparent"
-								? "#FFFFFF"
-								: canvas.background
-						}
-						showOpacity={false}
-						onChange={(hex) => onChange({ ...canvas, background: hex })}
-					/>
-				</PropertyRow>
-			</PanelSection>
+				)}
+			{selectedElement &&
+				selectedElement.type !== "rect" &&
+				selectedElement.type !== "ellipse" &&
+				selectedElement.type !== "line" && (
+					<PanelSection title={selectedElement.name}>
+						<div
+							style={{
+								padding: "0 0 12px",
+								font: "var(--type-label)",
+								color: "var(--fg-3)",
+							}}
+						>
+							Свойства для этого типа элемента пока не поддерживаются в
+							инспекторе — отдельный будущий срез.
+						</div>
+					</PanelSection>
+				)}
 		</div>
 	);
 }
