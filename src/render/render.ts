@@ -260,6 +260,21 @@ function renderCropMarks(canvas: Canvas, bleed: number): string {
 	return marks.join("");
 }
 
+export interface RenderedSize {
+	widthMm: number;
+	heightMm: number;
+}
+
+// Итоговый размер SVG с учётом вылета — экспорту в PNG нужно то же самое число,
+// без него пришлось бы дублировать этот расчёт на стороне вызывающего кода.
+export function renderedSize(
+	canvas: Canvas,
+	opts: RenderOptions,
+): RenderedSize {
+	const bleed = opts.bleed ? canvas.bleed : 0;
+	return { widthMm: canvas.w + bleed * 2, heightMm: canvas.h + bleed * 2 };
+}
+
 export function render(
 	doc: CutlineDocument,
 	record: DataRecord,
@@ -269,8 +284,7 @@ export function render(
 	const bleed = opts.bleed ? canvas.bleed : 0;
 	const originX = -bleed;
 	const originY = -bleed;
-	const width = canvas.w + bleed * 2;
-	const height = canvas.h + bleed * 2;
+	const { widthMm: width, heightMm: height } = renderedSize(canvas, opts);
 
 	const background = renderBackground(canvas, originX, originY, width, height);
 	const elements = doc.elements
