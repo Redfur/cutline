@@ -3,8 +3,9 @@
 // не может разойтись с тем, что попадёт в файл. Линейки, обрез/вылет/безопасное поле —
 // поверх, отдельными слоями; render() как был, так и остаётся не в курсе редактора.
 import { useEffect, useRef, useState } from "react";
-import type { CutlineDocument } from "../model/document";
+import type { CutlineDocument, CutlineElement } from "../model/document";
 import { render } from "../render/render";
+import type { Tool } from "./Toolbar";
 
 const BASE_PX_PER_MM = 96 / 25.4; // 100% зума = «настоящий» CSS-пиксель при 96dpi
 const RULER_SIZE = 20; // px, совпадает с --ruler-size
@@ -17,11 +18,37 @@ export interface ViewportSize {
 	height: number;
 }
 
+export interface PointMm {
+	x: number;
+	y: number;
+}
+
 export interface CanvasProps {
 	doc: CutlineDocument;
 	zoom: number;
+	tool: Tool;
+	selectedId: string | null;
+	onSelect: (id: string | null) => void;
+	onPlace: (at: PointMm) => void;
 	onViewportResize?: (size: ViewportSize) => void;
 }
+
+const PLACEABLE_TOOLS = new Set<Tool>(["rect", "ellipse", "line"]);
+
+const HANDLE_POSITIONS: { x: 0 | 0.5 | 1; y: 0 | 0.5 | 1 }[] = [
+	{ x: 0, y: 0 },
+	{ x: 0.5, y: 0 },
+	{ x: 1, y: 0 },
+	{ x: 0, y: 0.5 },
+	{ x: 1, y: 0.5 },
+	{ x: 0, y: 1 },
+	{ x: 0.5, y: 1 },
+	{ x: 1, y: 1 },
+];
+
+const HANDLE_SIZE = 7;
+// у линии нулевая высота в модели — даём оверлею минимальную толщину хитбокса, иначе некликабельна
+const MIN_HIT_HEIGHT_PX = 8;
 
 function ticksInRange(fromMm: number, toMm: number, stepMm: number): number[] {
 	const start = Math.ceil(fromMm / stepMm) * stepMm;
@@ -106,7 +133,108 @@ function Ruler({
 	);
 }
 
-export function Canvas({ doc, zoom, onViewportResize }: CanvasProps) {
+// Один div-оверлей на элемент документа — по нему кликают для выделения. render() рисует
+// карточку одним непрозрачным SVG-блобом (архитектурное правило CLAUDE.md: он не в курсе
+// редактора), поэтому клик по конкретной фигуре нельзя повесить на её же SVG-узел.
+// Тот же приём понадобится перетаскиванию/resize в следующем срезе — не костыль, задел.
+function ElementOverlay({
+	el,
+	pxPerMm,
+	selected,
+	onSelect,
+}: {
+	el: CutlineElement;
+	pxPerMm: number;
+	selected: boolean;
+	onSelect: () => void;
+}) {
+	if (!el.visible) {
+		return null;
+	}
+	const widthPx = el.w * pxPerMm;
+	const naturalHeightPx = el.h * pxPerMm;
+	// у линии нулевая высота в модели — даём оверлею минимальную толщину хитбокса
+	const heightPx = Math.max(
+		naturalHeightPx,
+		el.h === 0 ? MIN_HIT_HEIGHT_PX : 0,
+	);
+	const hitBoxTopAdjust = (heightPx - naturalHeightPx) / 2;
+
+	return (
+		// Хит-таргет элемента на холсте, не отдельный фокусируемый контрол — как и в LayerRow,
+		// клавиатурная навигация по элементам принадлежит списку слоёв (там уже есть role="option").
+		// biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше
+		// biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше
+		<div
+			onClick={(e) => {
+				e.stopPropagation();
+				onSelect();
+			}}
+			style={{
+				position: "absolute",
+				left: el.x * pxPerMm,
+				top: el.y * pxPerMm - hitBoxTopAdjust,
+				width: widthPx,
+				height: heightPx,
+				cursor: "pointer",
+				transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+				transformOrigin: "center",
+			}}
+		>
+			{selected && !el.locked && (
+				<>
+					<div
+						style={{
+							position: "absolute",
+							inset: 0,
+							outline: "1px solid var(--border-focus)",
+							pointerEvents: "none",
+						}}
+					/>
+					{HANDLE_POSITIONS.map(({ x, y }) => (
+						<div
+							key={`${x}-${y}`}
+							style={{
+								position: "absolute",
+								left: x * widthPx - HANDLE_SIZE / 2,
+								top: y * heightPx - HANDLE_SIZE / 2,
+								width: HANDLE_SIZE,
+								height: HANDLE_SIZE,
+								background: "#FFFFFF",
+								border: "1px solid var(--border-focus)",
+								pointerEvents: "none",
+							}}
+						/>
+					))}
+					<div
+						style={{
+							position: "absolute",
+							top: heightPx + 4,
+							left: "50%",
+							transform: "translateX(-50%)",
+							whiteSpace: "nowrap",
+							font: "var(--type-label)",
+							color: "var(--fg-accent)",
+							pointerEvents: "none",
+						}}
+					>
+						{Math.round(el.w)}×{Math.round(el.h)} мм
+					</div>
+				</>
+			)}
+		</div>
+	);
+}
+
+export function Canvas({
+	doc,
+	zoom,
+	tool,
+	selectedId,
+	onSelect,
+	onPlace,
+	onViewportResize,
+}: CanvasProps) {
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const [scroll, setScroll] = useState({ left: 0, top: 0 });
 	const [viewport, setViewport] = useState<ViewportSize | null>(null);
@@ -232,8 +360,24 @@ export function Canvas({ doc, zoom, onViewportResize }: CanvasProps) {
 							position: "relative",
 						}}
 					>
+						{/* Кликабельная поверхность холста — размещение/снятие выделения по координате клика,
+						    не семантический контрол; клавиатурного эквивалента здесь нет, как и у canvas */}
+						{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
+						{/* biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше */}
 						<div
 							className="canvas-card"
+							onClick={(e) => {
+								const rect = e.currentTarget.getBoundingClientRect();
+								const atMm = {
+									x: (e.clientX - rect.left) / pxPerMm,
+									y: (e.clientY - rect.top) / pxPerMm,
+								};
+								if (PLACEABLE_TOOLS.has(tool)) {
+									onPlace(atMm);
+								} else {
+									onSelect(null);
+								}
+							}}
 							style={{
 								position: "absolute",
 								left: originXPx,
@@ -241,6 +385,7 @@ export function Canvas({ doc, zoom, onViewportResize }: CanvasProps) {
 								width: cardWidthPx,
 								height: cardHeightPx,
 								boxShadow: "var(--shadow-card)",
+								cursor: PLACEABLE_TOOLS.has(tool) ? "crosshair" : "default",
 							}}
 						>
 							<div
@@ -278,6 +423,15 @@ export function Canvas({ doc, zoom, onViewportResize }: CanvasProps) {
 									pointerEvents: "none",
 								}}
 							/>
+							{doc.elements.map((el) => (
+								<ElementOverlay
+									key={el.id}
+									el={el}
+									pxPerMm={pxPerMm}
+									selected={el.id === selectedId}
+									onSelect={() => onSelect(el.id)}
+								/>
+							))}
 						</div>
 					</div>
 				</div>
