@@ -10,7 +10,12 @@ import {
 	type PointMm,
 	type ViewportSize,
 } from "./Canvas";
-import { createEllipse, createLine, createRect } from "./createElement";
+import {
+	createEllipse,
+	createLine,
+	createRect,
+	createText,
+} from "./createElement";
 import { Inspector } from "./Inspector";
 import { LayersPanel } from "./LayersPanel";
 import { type Tool, Toolbar } from "./Toolbar";
@@ -57,7 +62,8 @@ export function EditorShell() {
 			rect: createRect,
 			ellipse: createEllipse,
 			line: createLine,
-		}[tool as "rect" | "ellipse" | "line"];
+			text: createText,
+		}[tool as "rect" | "ellipse" | "line" | "text"];
 		if (!factory) return;
 		const element = factory(at);
 		history.set((doc) => ({ ...doc, elements: [...doc.elements, element] }));
