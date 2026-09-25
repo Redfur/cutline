@@ -1,0 +1,21 @@
+:root {
+	--radius-0: 0;
+	--radius-1: 2px;
+	--radius-2: 3px;
+	--radius-3: 4px;
+	--radius-control: var(--radius-2);
+	--radius-popover: var(--radius-3);
+	--border-w: 1px;
+	--shadow-card:
+		0 0 0 1px rgba(27, 29, 32, 0.06), 0 1px 3px rgba(27, 29, 32, 0.12);
+	--shadow-popover:
+		0 0 0 1px rgba(27, 29, 32, 0.1), 0 4px 12px rgba(27, 29, 32, 0.12);
+	--shadow-dialog:
+		0 0 0 1px rgba(27, 29, 32, 0.1), 0 12px 32px rgba(27, 29, 32, 0.18);
+	--focus-ring: 0 0 0 2px var(--blue-200);
+	--duration-fast: 80ms;
+	--duration-base: 140ms;
+	--ease-out: cubic-bezier(0.2, 0, 0, 1);
+	--z-popover: 100;
+	--z-dialog: 200;
+}

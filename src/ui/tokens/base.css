@@ -1,0 +1,34 @@
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+html,
+body {
+	margin: 0;
+}
+body {
+	font: var(--type-body);
+	color: var(--fg-1);
+	background: var(--bg-app);
+	-webkit-font-smoothing: antialiased;
+	font-variant-numeric: tabular-nums;
+}
+a {
+	color: var(--fg-accent);
+	text-decoration: none;
+}
+a:hover {
+	color: var(--blue-700);
+	text-decoration: underline;
+}
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+::selection {
+	background: var(--blue-100);
+}

@@ -1,0 +1,77 @@
+:root {
+	/* Neutral ramp — cool grey, the whole UI lives here */
+	--gray-0: #ffffff;
+	--gray-25: #fafafb;
+	--gray-50: #f5f6f7;
+	--gray-100: #eeeff1;
+	--gray-150: #e6e7ea;
+	--gray-200: #dcdee2;
+	--gray-300: #c7cad0;
+	--gray-400: #a3a7af;
+	--gray-500: #7f848d;
+	--gray-600: #5f646c;
+	--gray-700: #44484f;
+	--gray-800: #2c2f34;
+	--gray-900: #1b1d20;
+	/* Accent — one blue, for selection, focus, primary action */
+	--blue-50: #eef3ff;
+	--blue-100: #dce6ff;
+	--blue-200: #b6caff;
+	--blue-500: #2f62e8;
+	--blue-600: #2553cf;
+	--blue-700: #1d44ad;
+	/* Warning — amber, for overflow / fit problems */
+	--amber-50: #fff6e5;
+	--amber-100: #ffe9bf;
+	--amber-300: #f7c05a;
+	--amber-500: #e08a00;
+	--amber-600: #b86f00;
+	--amber-700: #8a5300;
+	/* Danger — red, destructive + errors */
+	--red-50: #fdeeee;
+	--red-500: #d93a3a;
+	--red-600: #b82e2e;
+	/* Success — green, only for "saved" */
+	--green-500: #2f9e5b;
+	--green-600: #25824a;
+	/* Print guide colours (canvas only) */
+	--guide-trim: #1b1d20;
+	--guide-bleed: #e0348a;
+	--guide-safe: #14a3b8;
+
+	/* Semantic */
+	--bg-app: var(--gray-50);
+	--bg-panel: var(--gray-0);
+	--bg-canvas: var(--gray-150);
+	--bg-subtle: var(--gray-50);
+	--bg-hover: var(--gray-100);
+	--bg-pressed: var(--gray-150);
+	--bg-input: var(--gray-0);
+	--bg-selected: var(--blue-50);
+	--bg-accent: var(--blue-500);
+	--bg-accent-hover: var(--blue-600);
+	--bg-warning: var(--amber-50);
+	--bg-danger: var(--red-50);
+
+	--fg-1: var(--gray-900);
+	--fg-2: var(--gray-600);
+	--fg-3: var(--gray-500);
+	--fg-disabled: var(--gray-400);
+	--fg-on-accent: #ffffff;
+	--fg-accent: var(--blue-600);
+	--fg-warning: var(--amber-700);
+	--fg-danger: var(--red-600);
+	--fg-success: var(--green-600);
+
+	--border-1: var(--gray-200);
+	--border-2: var(--gray-300);
+	--border-strong: var(--gray-400);
+	--border-focus: var(--blue-500);
+	--border-warning: var(--amber-500);
+	--border-danger: var(--red-500);
+
+	--selection: var(--blue-500);
+	--selection-fill: rgba(47, 98, 232, 0.08);
+	--overflow: var(--amber-500);
+	--overflow-fill: rgba(224, 138, 0, 0.1);
+}

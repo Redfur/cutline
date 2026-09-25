@@ -1,9 +1,7 @@
+@import url("./ui/tokens.css");
+
 :root {
 	color-scheme: light;
-}
-
-body {
-	margin: 0;
 }
 
 /* Стенд из App.tsx: у <svg> из render() свой intrinsic-размер в мм — без этого

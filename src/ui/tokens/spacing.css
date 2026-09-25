@@ -1,0 +1,24 @@
+:root {
+	--space-0: 0;
+	--space-1: 2px;
+	--space-2: 4px;
+	--space-3: 6px;
+	--space-4: 8px;
+	--space-5: 12px;
+	--space-6: 16px;
+	--space-7: 20px;
+	--space-8: 24px;
+	/* Control heights */
+	--control-sm: 22px;
+	--control-md: 26px;
+	--control-lg: 32px;
+	/* Shell layout */
+	--topbar-h: 48px;
+	--toolbar-w: 48px;
+	--layers-w: 220px;
+	--inspector-w: 280px;
+	--ruler-size: 20px;
+	--row-h: 28px;
+	--icon-sm: 14px;
+	--icon-md: 16px;
+}

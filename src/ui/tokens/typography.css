@@ -1,0 +1,33 @@
+:root {
+	--font-ui: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+	/* Dense desktop scale, px */
+	--text-2xs: 10px;
+	--text-xs: 11px;
+	--text-sm: 12px;
+	--text-md: 13px;
+	--text-lg: 15px;
+	--text-xl: 18px;
+	--lh-tight: 14px;
+	--lh-sm: 16px;
+	--lh-md: 18px;
+	--lh-lg: 22px;
+	--weight-regular: 400;
+	--weight-medium: 500;
+	--weight-semibold: 600;
+	--weight-bold: 700;
+	--tracking-caps: 0.04em;
+	/* Semantic */
+	--type-body:
+		var(--weight-regular) var(--text-sm) / var(--lh-sm) var(--font-ui);
+	--type-label:
+		var(--weight-regular) var(--text-xs) / var(--lh-tight) var(--font-ui);
+	--type-section:
+		var(--weight-semibold) var(--text-xs) / var(--lh-tight) var(--font-ui);
+	--type-title:
+		var(--weight-medium) var(--text-md) / var(--lh-md) var(--font-ui);
+	--type-heading:
+		var(--weight-semibold) var(--text-lg) / var(--lh-lg) var(--font-ui);
+	--type-mono:
+		var(--weight-regular) var(--text-xs) / var(--lh-tight) var(--font-mono);
+}
