@@ -10,6 +10,7 @@ import { PropertyRow } from "../ui/editor/PropertyRow";
 import { Checkbox } from "../ui/forms/Checkbox";
 import { ColorField } from "../ui/forms/ColorField";
 import { TextField } from "../ui/forms/TextField";
+import { PositionSizeFields } from "./PositionSizeFields";
 
 type ShapeElement = RectElement | EllipseElement | LineElement;
 
@@ -25,30 +26,13 @@ export function ShapeInspector({ element, onChange }: ShapeInspectorProps) {
 
 	return (
 		<PanelSection title={element.name}>
-			<PropertyRow label="Позиция" columns={2}>
-				<TextField
-					value={element.x}
-					unit="мм"
-					onChange={(v) => onChange({ ...element, x: num(v) })}
-				/>
-				<TextField
-					value={element.y}
-					unit="мм"
-					onChange={(v) => onChange({ ...element, y: num(v) })}
-				/>
-			</PropertyRow>
-			<PropertyRow label="Размер" columns={2}>
-				<TextField
-					value={element.w}
-					unit="мм"
-					onChange={(v) => onChange({ ...element, w: num(v) })}
-				/>
-				<TextField
-					value={element.h}
-					unit="мм"
-					onChange={(v) => onChange({ ...element, h: num(v) })}
-				/>
-			</PropertyRow>
+			<PositionSizeFields
+				x={element.x}
+				y={element.y}
+				w={element.w}
+				h={element.h}
+				onChange={(patch) => onChange({ ...element, ...patch })}
+			/>
 
 			{element.type !== "line" && (
 				<PropertyRow label="Заливка">
