@@ -196,9 +196,11 @@ function UiKitDemo() {
 					<PropertyRow>
 						<Badge tone="accent">25 записей</Badge>
 						<Badge tone="warning" icon="triangle-alert">
-							Не влезает · запись 118
+							Не влезает · 118
 						</Badge>
 						<Badge tone="success">Сохранено</Badge>
+					</PropertyRow>
+					<PropertyRow>
 						<FieldToken name="badgeId" sample="GEN-0001" />
 						<FieldToken name="typo" missing />
 					</PropertyRow>
