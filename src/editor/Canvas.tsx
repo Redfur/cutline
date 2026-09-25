@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CutlineDocument, CutlineElement } from "../model/document";
 import { render } from "../render/render";
+import { type HandlePos, moveElement, resizeElement } from "./resizeElement";
 import type { Tool } from "./Toolbar";
 
 const BASE_PX_PER_MM = 96 / 25.4; // 100% зума = «настоящий» CSS-пиксель при 96dpi
@@ -30,12 +31,22 @@ export interface CanvasProps {
 	selectedId: string | null;
 	onSelect: (id: string | null) => void;
 	onPlace: (at: PointMm) => void;
+	onElementChange: (element: CutlineElement) => void;
 	onViewportResize?: (size: ViewportSize) => void;
 }
 
 const PLACEABLE_TOOLS = new Set<Tool>(["rect", "ellipse", "line"]);
 
-const HANDLE_POSITIONS: { x: 0 | 0.5 | 1; y: 0 | 0.5 | 1 }[] = [
+function cursorForHandle(handle: HandlePos): string {
+	if (handle.x !== 0.5 && handle.y !== 0.5) {
+		return (handle.x === 0) === (handle.y === 0)
+			? "nwse-resize"
+			: "nesw-resize";
+	}
+	return handle.x === 0.5 ? "ns-resize" : "ew-resize";
+}
+
+const HANDLE_POSITIONS: HandlePos[] = [
 	{ x: 0, y: 0 },
 	{ x: 0.5, y: 0 },
 	{ x: 1, y: 0 },
@@ -133,20 +144,25 @@ function Ruler({
 	);
 }
 
-// Один div-оверлей на элемент документа — по нему кликают для выделения. render() рисует
-// карточку одним непрозрачным SVG-блобом (архитектурное правило CLAUDE.md: он не в курсе
-// редактора), поэтому клик по конкретной фигуре нельзя повесить на её же SVG-узел.
-// Тот же приём понадобится перетаскиванию/resize в следующем срезе — не костыль, задел.
+// Один div-оверлей на элемент документа — по нему выделяют, двигают и ресайзят. render()
+// рисует карточку одним непрозрачным SVG-блобом (архитектурное правило CLAUDE.md: он не
+// в курсе редактора), поэтому все эти взаимодействия нельзя повесить на её же SVG-узел.
 function ElementOverlay({
 	el,
 	pxPerMm,
 	selected,
+	canDrag,
 	onSelect,
+	onStartMove,
+	onStartResize,
 }: {
 	el: CutlineElement;
 	pxPerMm: number;
 	selected: boolean;
+	canDrag: boolean;
 	onSelect: () => void;
+	onStartMove: (e: React.MouseEvent) => void;
+	onStartResize: (handle: HandlePos, e: React.MouseEvent) => void;
 }) {
 	if (!el.visible) {
 		return null;
@@ -166,17 +182,20 @@ function ElementOverlay({
 		// biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше
 		// biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше
 		<div
-			onClick={(e) => {
-				e.stopPropagation();
+			onMouseDown={(e) => {
 				onSelect();
+				if (canDrag) onStartMove(e);
 			}}
+			// клик тоже долетел бы до canvas-card (место/снять выделение) — гасим здесь,
+			// само выделение уже случилось на mousedown выше
+			onClick={(e) => e.stopPropagation()}
 			style={{
 				position: "absolute",
 				left: el.x * pxPerMm,
 				top: el.y * pxPerMm - hitBoxTopAdjust,
 				width: widthPx,
 				height: heightPx,
-				cursor: "pointer",
+				cursor: canDrag ? "move" : "pointer",
 				transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
 				transformOrigin: "center",
 			}}
@@ -191,18 +210,27 @@ function ElementOverlay({
 							pointerEvents: "none",
 						}}
 					/>
-					{HANDLE_POSITIONS.map(({ x, y }) => (
+					{HANDLE_POSITIONS.map((handle) => (
+						// Маркер ресайза, тот же случай, что и хит-таргет элемента выше — не контрол,
+						// клавиатурного пути к ресайзу пока нет нигде в редакторе (горячие клавиши — отдельный пункт роадмапа)
+						// biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше
 						<div
-							key={`${x}-${y}`}
+							key={`${handle.x}-${handle.y}`}
+							onMouseDown={(e) => {
+								if (!canDrag) return;
+								e.stopPropagation();
+								onStartResize(handle, e);
+							}}
 							style={{
 								position: "absolute",
-								left: x * widthPx - HANDLE_SIZE / 2,
-								top: y * heightPx - HANDLE_SIZE / 2,
+								left: handle.x * widthPx - HANDLE_SIZE / 2,
+								top: handle.y * heightPx - HANDLE_SIZE / 2,
 								width: HANDLE_SIZE,
 								height: HANDLE_SIZE,
 								background: "#FFFFFF",
 								border: "1px solid var(--border-focus)",
-								pointerEvents: "none",
+								cursor: canDrag ? cursorForHandle(handle) : "default",
+								pointerEvents: canDrag ? "auto" : "none",
 							}}
 						/>
 					))}
@@ -226,6 +254,14 @@ function ElementOverlay({
 	);
 }
 
+interface DragState {
+	kind: "move" | "resize";
+	handle?: HandlePos;
+	startClientX: number;
+	startClientY: number;
+	startElement: CutlineElement;
+}
+
 export function Canvas({
 	doc,
 	zoom,
@@ -233,11 +269,15 @@ export function Canvas({
 	selectedId,
 	onSelect,
 	onPlace,
+	onElementChange,
 	onViewportResize,
 }: CanvasProps) {
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const [scroll, setScroll] = useState({ left: 0, top: 0 });
 	const [viewport, setViewport] = useState<ViewportSize | null>(null);
+	const [drag, setDrag] = useState<DragState | null>(null);
+	const [liveElement, setLiveElement] = useState<CutlineElement | null>(null);
+	const liveElementRef = useRef<CutlineElement | null>(null);
 
 	useEffect(() => {
 		const el = viewportRef.current;
@@ -280,8 +320,50 @@ export function Canvas({
 		el.scrollTop = Math.max(0, (contentHeightPx - el.clientHeight) / 2);
 	}, [contentWidthPx, contentHeightPx]);
 
+	// Во время драга/resize документ в истории не трогаем (CLAUDE.md требует историю
+	// с первого дня, а не по шагу на каждый mousemove) — только локальное live-превью
+	// здесь, в Canvas; в историю уходит один onElementChange на mouseup с итогом.
+	useEffect(() => {
+		if (!drag) return;
+		function handleMouseMove(e: MouseEvent) {
+			if (!drag) return;
+			const dxMm = (e.clientX - drag.startClientX) / pxPerMm;
+			const dyMm = (e.clientY - drag.startClientY) / pxPerMm;
+			const updated =
+				drag.kind === "move"
+					? moveElement(drag.startElement, dxMm, dyMm)
+					: resizeElement(
+							drag.startElement,
+							drag.handle as HandlePos,
+							dxMm,
+							dyMm,
+						);
+			liveElementRef.current = updated;
+			setLiveElement(updated);
+		}
+		function handleMouseUp() {
+			if (liveElementRef.current) {
+				onElementChange(liveElementRef.current);
+			}
+			liveElementRef.current = null;
+			setLiveElement(null);
+			setDrag(null);
+		}
+		window.addEventListener("mousemove", handleMouseMove);
+		window.addEventListener("mouseup", handleMouseUp);
+		return () => {
+			window.removeEventListener("mousemove", handleMouseMove);
+			window.removeEventListener("mouseup", handleMouseUp);
+		};
+	}, [drag, pxPerMm, onElementChange]);
+
+	const elements = liveElement
+		? doc.elements.map((el) => (el.id === liveElement.id ? liveElement : el))
+		: doc.elements;
+	const effectiveDoc = liveElement ? { ...doc, elements } : doc;
+
 	const cardSvg = render(
-		doc,
+		effectiveDoc,
 		{},
 		{ outlines: false, bleed: false, marks: false },
 	);
@@ -423,13 +505,33 @@ export function Canvas({
 									pointerEvents: "none",
 								}}
 							/>
-							{doc.elements.map((el) => (
+							{elements.map((el) => (
 								<ElementOverlay
 									key={el.id}
 									el={el}
 									pxPerMm={pxPerMm}
 									selected={el.id === selectedId}
+									canDrag={tool === "select" && !el.locked}
 									onSelect={() => onSelect(el.id)}
+									onStartMove={(e) => {
+										e.preventDefault();
+										setDrag({
+											kind: "move",
+											startClientX: e.clientX,
+											startClientY: e.clientY,
+											startElement: el,
+										});
+									}}
+									onStartResize={(handle, e) => {
+										e.preventDefault();
+										setDrag({
+											kind: "resize",
+											handle,
+											startClientX: e.clientX,
+											startClientY: e.clientY,
+											startElement: el,
+										});
+									}}
 								/>
 							))}
 						</div>

@@ -132,6 +132,7 @@ export function EditorShell() {
 						selectedId={selectedId}
 						onSelect={setSelectedId}
 						onPlace={handlePlace}
+						onElementChange={handleElementChange}
 						onViewportResize={setViewportSize}
 					/>
 					<Inspector
