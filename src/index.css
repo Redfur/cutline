@@ -5,3 +5,11 @@
 body {
 	margin: 0;
 }
+
+/* Стенд из App.tsx: у <svg> из render() свой intrinsic-размер в мм — без этого
+   он выходит за пределы своего контейнера и рисуется поверх соседней карточки. */
+.badge-preview-card svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}

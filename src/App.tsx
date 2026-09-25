@@ -14,6 +14,7 @@ function App() {
 				<div
 					// biome-ignore lint/suspicious/noArrayIndexKey: фикстура статична, порядок не меняется
 					key={i}
+					className="badge-preview-card"
 					style={{ width: `${badgeDocument.canvas.w * 3}px` }}
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: render() выдаёт доверенный SVG из собственной фикстуры
 					dangerouslySetInnerHTML={{

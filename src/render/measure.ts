@@ -25,10 +25,28 @@ function cssWeight(weight: FontWeight): number {
 	return weight === "bold" ? 700 : 400;
 }
 
-// Единое место, где имя семейства превращается в CSS font-family — и для измерения,
-// и для отрисовки в render(), иначе они могут разойтись в трактовке одного и того же имени.
-export function cssFontFamily(family: string): string {
-	return `"${family}"`;
+// Родовые ключевые слова CSS нельзя брать в кавычки — в кавычках браузер ищет
+// шрифт с таким буквальным именем вместо общего fallback'а, и метрики расходятся
+// с тем, что фактически нарисует <text font-family="…"> в render.ts (там имя идёт
+// без кавычек). Список — то же самое, что фактически поддерживают браузеры.
+const GENERIC_FONT_FAMILIES = new Set([
+	"serif",
+	"sans-serif",
+	"monospace",
+	"cursive",
+	"fantasy",
+	"system-ui",
+	"ui-serif",
+	"ui-sans-serif",
+	"ui-monospace",
+	"ui-rounded",
+	"math",
+	"emoji",
+	"fangsong",
+]);
+
+function cssFontFamily(family: string): string {
+	return GENERIC_FONT_FAMILIES.has(family) ? family : `"${family}"`;
 }
 
 export interface TextMetricsMm {
