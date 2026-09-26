@@ -15,9 +15,8 @@ import type {
 	RectElement,
 	TextAlign,
 	TextElement,
-	TextValign,
 } from "../model/document";
-import { layoutText } from "./layout";
+import { firstBaselineY, layoutText } from "./layout";
 
 export interface RenderOptions {
 	outlines: boolean; // перевод текста в кривые — появится вместе с opentype.js на Этапе 4
@@ -48,26 +47,6 @@ function anchorXOf(el: TextElement): number {
 	return el.x;
 }
 
-// Базовая линия первой строки для каждого valign. Ascent/descent берём из измерения
-// самого текста — без реальных метрик шрифта точнее не получить, а для baseline (основной
-// случай — им пользуется и перенесённый макет бейджа) метрики вовсе не нужны: y и есть baseline.
-function firstBaselineY(
-	valign: TextValign,
-	y: number,
-	h: number,
-	ascentMm: number,
-	blockHeightMm: number,
-): number {
-	switch (valign) {
-		case "top":
-			return y + ascentMm;
-		case "middle":
-			return y + h / 2 - blockHeightMm / 2 + ascentMm;
-		case "baseline":
-			return y;
-	}
-}
-
 function renderText(
 	el: TextElement,
 	record: DataRecord,
@@ -77,9 +56,8 @@ function renderText(
 	if (!layout) {
 		return "";
 	}
-	const { sizeMm, lines, lineHeightMm, ascentMm } = layout;
-	const blockHeightMm = lineHeightMm * (lines.length - 1);
-	const baseY = firstBaselineY(el.valign, el.y, el.h, ascentMm, blockHeightMm);
+	const { sizeMm, lines, lineHeightMm } = layout;
+	const baseY = firstBaselineY(el.valign, el.y, el.h, layout);
 	const anchorX = anchorXOf(el);
 	const anchor = textAnchorOf(el.align);
 

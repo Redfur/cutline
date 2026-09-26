@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TextElement } from "../model/document";
-import { layoutText } from "./layout";
+import { firstBaselineY, layoutText } from "./layout";
 
 // та же моноширинная модель, что в fit.test.ts: символ = 0.5 кегля
 vi.mock("./measure", () => ({
@@ -94,5 +94,34 @@ describe("layoutText", () => {
 		expect(
 			layoutText(text({ fit: "wrap", w: 5 }), { name: "aaaaaaaa" })?.overflow,
 		).toBe(true);
+	});
+});
+
+// кегль 10: ascent 8, descent 2, межстрочный 12
+const metrics = { lineHeightMm: 12, ascentMm: 8, descentMm: 2 };
+const one = { ...metrics, lines: ["a"] };
+const three = { ...metrics, lines: ["a", "b", "c"] };
+
+describe("firstBaselineY", () => {
+	it("по верху — верх строки на верхнем крае рамки", () => {
+		expect(firstBaselineY("top", 0, 40, one)).toBe(8);
+	});
+
+	it("по центру — центр строки в центре рамки, а не верх", () => {
+		// строка 10 мм (8+2) в рамке 40: верх на 15, базовая на 23
+		const base = firstBaselineY("middle", 0, 40, one);
+		expect(base).toBe(23);
+		const top = base - metrics.ascentMm;
+		const bottom = base + metrics.descentMm;
+		expect((top + bottom) / 2).toBe(20);
+	});
+
+	it("по центру, три строки — центрируется весь блок", () => {
+		// блок 8 + 2 + 12·2 = 34 мм: верх на 3, первая базовая на 11
+		const base = firstBaselineY("middle", 0, 40, three);
+		expect(base).toBe(11);
+		const top = base - metrics.ascentMm;
+		const bottom = base + 24 + metrics.descentMm;
+		expect((top + bottom) / 2).toBe(20);
 	});
 });

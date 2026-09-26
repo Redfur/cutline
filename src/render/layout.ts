@@ -3,7 +3,7 @@
 // проблем в данных — иначе «не влезло» на экране и в сетке миниатюр считалось бы
 // не тем же измерением, что попадает в SVG (CLAUDE.md, «Измерение текста»).
 import { substitute } from "../data/placeholders";
-import type { DataRecord, TextElement } from "../model/document";
+import type { DataRecord, TextElement, TextValign } from "../model/document";
 import { applyFit } from "./fit";
 import { measureText } from "./measure";
 
@@ -12,6 +12,7 @@ export interface TextLayout {
 	lines: string[];
 	lineHeightMm: number;
 	ascentMm: number;
+	descentMm: number;
 	// true — текст не поместился в рамку так, как задумано: обрезан многоточием,
 	// вылез за ширину или перенос дал больше строк, чем вмещает высота
 	overflow: boolean;
@@ -52,7 +53,7 @@ export function layoutText(
 	const lineHeightMm = sizeMm * el.lineHeight;
 	const widthOf = (line: string) =>
 		measureText(line, sizeMm, el.tracking, el.font, el.weight).widthMm;
-	const { ascentMm } = measureText(
+	const { ascentMm, descentMm } = measureText(
 		lines[0] ?? "",
 		sizeMm,
 		el.tracking,
@@ -79,5 +80,29 @@ export function layoutText(
 			break;
 	}
 
-	return { sizeMm, lines, lineHeightMm, ascentMm, overflow };
+	return { sizeMm, lines, lineHeightMm, ascentMm, descentMm, overflow };
+}
+
+// Базовая линия первой строки. Высота блока — от верха первой строки (ascent) до низа
+// последней (descent), а не lineHeight·(n−1): с последним у однострочного текста блок
+// выходил нулевым, и «по центру» ставило верх текста на середину рамки — текст сидел в
+// нижней половине. Ascent/descent — метрики шрифта (fontBoundingBox), а не конкретных
+// букв, поэтому строка «ааа» и «ЁЙ» при одном кегле встают одинаково.
+export function firstBaselineY(
+	valign: TextValign,
+	y: number,
+	h: number,
+	layout: Pick<TextLayout, "lines" | "lineHeightMm" | "ascentMm" | "descentMm">,
+): number {
+	const { lines, lineHeightMm, ascentMm, descentMm } = layout;
+	const blockHeightMm =
+		ascentMm + descentMm + lineHeightMm * (lines.length - 1);
+	switch (valign) {
+		case "top":
+			return y + ascentMm;
+		case "middle":
+			return y + h / 2 - blockHeightMm / 2 + ascentMm;
+		case "baseline":
+			return y;
+	}
 }
