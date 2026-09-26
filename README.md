@@ -37,6 +37,7 @@ src/
   editor/      холст, инструменты, инспектор, слои
   data/        плейсхолдеры, проблемы записей, CSV — чистые функции без DOM
   export/      SVG, PNG, PDF, спуск на лист
+  storage/     автосохранение сессии в IndexedDB (idb-keyval)
 docs/
   document-model.md   схема документа
   roadmap.md          этапы и задачи
