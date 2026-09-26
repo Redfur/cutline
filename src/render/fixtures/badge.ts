@@ -531,4 +531,5 @@ export const badgeDocument: CutlineDocument = {
 			transform: "none",
 		},
 	],
+	guides: [],
 };

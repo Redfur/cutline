@@ -14,4 +14,5 @@ export const blankDocument: CutlineDocument = {
 	fields: [],
 	records: [],
 	elements: [],
+	guides: [],
 };

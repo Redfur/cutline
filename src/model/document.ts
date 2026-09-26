@@ -100,6 +100,17 @@ export interface FieldDef {
 
 export type DataRecord = Record<string, string>;
 
+// Пользовательские направляющие (тянутся с линейки) — цели примагничивания, которые
+// расставляет сам пользователь, в дополнение к обрезу/вылету/безопасному полю/другим
+// элементам. Не печатаются и не участвуют в render() — это чисто редакторская сущность,
+// но живёт в документе (не в состоянии редактора), чтобы попадать под undo/redo и
+// сохраняться вместе с макетом, как и было задумано в CLAUDE.md для модели документа.
+export interface Guide {
+	id: string;
+	axis: "x" | "y";
+	positionMm: number;
+}
+
 export interface CutlineDocument {
 	version: number;
 	canvas: Canvas;
@@ -107,4 +118,5 @@ export interface CutlineDocument {
 	elements: CutlineElement[];
 	records: DataRecord[];
 	fields: FieldDef[];
+	guides: Guide[];
 }

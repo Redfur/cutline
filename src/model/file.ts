@@ -38,5 +38,10 @@ export function parseDocument(json: string): CutlineDocument {
 			throw new Error(`Файл не похож на документ Cutline: нет поля "${field}"`);
 		}
 	}
+	// guides — не обязательное поле для проверки: документ, сохранённый до появления
+	// направляющих, не должен переставать открываться из-за их отсутствия
+	if (!Array.isArray(parsed.guides)) {
+		parsed.guides = [];
+	}
 	return parsed as unknown as CutlineDocument;
 }

@@ -12,6 +12,7 @@ interface Document {
   elements: Element[];
   records: Record<string, string>[];
   fields: FieldDef[];         // описания колонок данных
+  guides: Guide[];            // пользовательские направляющие (линейка), см. ниже
 }
 
 interface Canvas {
@@ -90,6 +91,18 @@ interface ImageElement extends Base {
   fit: "cover" | "contain" | "fill";
 }
 ```
+
+## Направляющие
+
+```ts
+interface Guide {
+  id: string;
+  axis: "x" | "y";
+  positionMm: number;
+}
+```
+
+Тянутся с линейки на холст (как в Фигме) — дополнительные цели примагничивания сверх обреза/вылета/безопасного поля/других элементов. Не печатаются и не попадают в `render()` — это редакторская сущность, но живёт в документе, а не в состоянии редактора: так она проходит через undo/redo и сохраняется вместе с макетом.
 
 ## Данные
 
