@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import { type ChangeEvent, useState } from "react";
 import { downloadDocument, openDocumentFile } from "../../export/document";
 import { downloadPng } from "../../export/png";
 import { downloadSvg } from "../../export/svg";
@@ -15,8 +15,8 @@ export type Mode = "design" | "data";
 
 export interface TopBarProps {
 	doc: CutlineDocument;
-	// SVG/PNG экспортируют ту карточку, что сейчас на холсте, — пакетный экспорт
-	// всех записей относится к Этапу 4
+	// SVG/PNG/PDF экспортируют ту карточку, что сейчас на холсте, — пакетный экспорт
+	// всех записей придёт вместе с панелью экспорта
 	record: DataRecord;
 	mode: Mode;
 	onModeChange: (mode: Mode) => void;
@@ -42,6 +42,19 @@ export function TopBar({
 	onUndo,
 	onRedo,
 }: TopBarProps) {
+	// PDF собирается заметное время (шрифты, картинки) — второй клик не запускает вторую сборку
+	const [pdfBusy, setPdfBusy] = useState(false);
+	const handlePdf = () => {
+		setPdfBusy(true);
+		// pdf-lib и opentype.js — лениво: основному бандлу они не нужны до первого PDF
+		import("../../export/pdfExport")
+			.then(({ downloadPdf }) => downloadPdf(doc, record, "cutline.pdf"))
+			.catch((err: unknown) => {
+				alert(err instanceof Error ? err.message : String(err));
+			})
+			.finally(() => setPdfBusy(false));
+	};
+
 	const handleOpen = (e: ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		e.target.value = "";
@@ -109,6 +122,9 @@ export function TopBar({
 				}}
 			>
 				Экспорт PNG
+			</Button>
+			<Button variant="ghost" disabled={pdfBusy} onClick={handlePdf}>
+				{pdfBusy ? "Собираю PDF…" : "Экспорт PDF"}
 			</Button>
 			<Button
 				variant="ghost"
