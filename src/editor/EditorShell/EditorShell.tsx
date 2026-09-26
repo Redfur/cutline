@@ -8,12 +8,8 @@ import type {
 	Guide,
 } from "../../model/document";
 import { blankDocument } from "../../render/fixtures/blank";
-import {
-	BASE_PX_PER_MM,
-	Canvas,
-	type PointMm,
-	type ViewportSize,
-} from "../Canvas/Canvas";
+import { Canvas, type PointMm, type ViewportSize } from "../Canvas/Canvas";
+import { BASE_PX_PER_MM } from "../Canvas/constants";
 import {
 	createEllipse,
 	createImage,

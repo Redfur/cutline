@@ -1,7 +1,9 @@
-// Единственное место перевода мм → px в проекте (архитектурное правило CLAUDE.md).
-// Сама карточка рисуется через render() — тот же путь, что и экспорт, поэтому холст
-// не может разойтись с тем, что попадёт в файл. Линейки, обрез/вылет/безопасное поле —
-// поверх, отдельными слоями; render() как был, так и остаётся не в курсе редактора.
+// Здесь — единственное место перевода мм → px в проекте (архитектурное правило CLAUDE.md):
+// pxPerMm считается только в этом компоненте из BASE_PX_PER_MM (constants.ts) и зума,
+// подкомпоненты папки Canvas/ получают его пропом. Сама карточка рисуется через
+// render() — тот же путь, что и экспорт, поэтому холст не может разойтись с тем, что
+// попадёт в файл. Линейки, обрез/вылет/безопасное поле — поверх, отдельными слоями;
+// render() как был, так и остаётся не в курсе редактора.
 import { useEffect, useRef, useState } from "react";
 import type {
 	CutlineDocument,
@@ -9,15 +11,13 @@ import type {
 	Guide,
 } from "../../model/document";
 import { render } from "../../render/render";
-import { type HandlePos, moveElement, resizeElement } from "../resizeElement";
-import { type SnapGuide, snapMove, snapResize } from "../snap";
 import type { Tool } from "../Toolbar/Toolbar";
-
-const BASE_PX_PER_MM = 96 / 25.4; // 100% зума = «настоящий» CSS-пиксель при 96dpi
-const RULER_SIZE = 20; // px, совпадает с --ruler-size
-const PAD_MM = 20; // запас вокруг карточки, чтобы вылет и линейки было видно при любом zoom
-const MAJOR_TICK_MM = 10;
-const MINOR_TICK_MM = 5;
+import { BASE_PX_PER_MM, PAD_MM, RULER_SIZE } from "./constants";
+import { ElementOverlay } from "./ElementOverlay";
+import { GuideLine } from "./GuideLine";
+import { Ruler } from "./Ruler";
+import { useElementDrag } from "./useElementDrag";
+import { useGuideDrag } from "./useGuideDrag";
 
 export interface ViewportSize {
 	width: number;
@@ -51,359 +51,6 @@ const PLACEABLE_TOOLS = new Set<Tool>([
 	"image",
 ]);
 
-function cursorForHandle(handle: HandlePos): string {
-	if (handle.x !== 0.5 && handle.y !== 0.5) {
-		return (handle.x === 0) === (handle.y === 0)
-			? "nwse-resize"
-			: "nesw-resize";
-	}
-	return handle.x === 0.5 ? "ns-resize" : "ew-resize";
-}
-
-const HANDLE_POSITIONS: HandlePos[] = [
-	{ x: 0, y: 0 },
-	{ x: 0.5, y: 0 },
-	{ x: 1, y: 0 },
-	{ x: 0, y: 0.5 },
-	{ x: 1, y: 0.5 },
-	{ x: 0, y: 1 },
-	{ x: 0.5, y: 1 },
-	{ x: 1, y: 1 },
-];
-
-const HANDLE_SIZE = 7;
-// у линии нулевая высота в модели — даём оверлею минимальную толщину хитбокса, иначе некликабельна
-const MIN_HIT_HEIGHT_PX = 8;
-// порог в экранных пикселях, не в мм — иначе на 400% zoom примагничивание срабатывало бы
-// от одного взгляда, а на 25% не срабатывало бы вовсе
-const SNAP_THRESHOLD_PX = 5;
-
-function ticksInRange(fromMm: number, toMm: number, stepMm: number): number[] {
-	const start = Math.ceil(fromMm / stepMm) * stepMm;
-	const out: number[] = [];
-	for (let mm = start; mm <= toMm; mm += stepMm) {
-		out.push(mm);
-	}
-	return out;
-}
-
-function Ruler({
-	axis,
-	lengthMm,
-	pxPerMm,
-	offsetPx,
-	originPx,
-	highlightRange,
-	guideMarks,
-}: {
-	axis: "x" | "y";
-	lengthMm: number;
-	pxPerMm: number;
-	offsetPx: number;
-	originPx: number;
-	highlightRange?: { fromMm: number; toMm: number } | null;
-	guideMarks?: number[];
-}) {
-	const from = -PAD_MM;
-	const to = lengthMm + PAD_MM;
-	const major = ticksInRange(from, to, MAJOR_TICK_MM);
-	const minor = ticksInRange(from, to, MINOR_TICK_MM).filter(
-		(mm) => mm % MAJOR_TICK_MM !== 0,
-	);
-
-	return (
-		<div
-			style={{
-				position: "absolute",
-				...(axis === "x"
-					? { left: -offsetPx, top: 0, height: "100%" }
-					: { top: -offsetPx, left: 0, width: "100%" }),
-			}}
-		>
-			{highlightRange && (
-				<div
-					style={{
-						position: "absolute",
-						background: "var(--bg-selected)",
-						...(axis === "x"
-							? {
-									left: originPx + highlightRange.fromMm * pxPerMm,
-									width:
-										(highlightRange.toMm - highlightRange.fromMm) * pxPerMm,
-									top: 0,
-									height: "100%",
-								}
-							: {
-									top: originPx + highlightRange.fromMm * pxPerMm,
-									height:
-										(highlightRange.toMm - highlightRange.fromMm) * pxPerMm,
-									left: 0,
-									width: "100%",
-								}),
-					}}
-				/>
-			)}
-			{minor.map((mm) => {
-				const posPx = originPx + mm * pxPerMm;
-				return (
-					<div
-						key={mm}
-						style={{
-							position: "absolute",
-							background: "var(--border-2)",
-							...(axis === "x"
-								? { left: posPx, top: RULER_SIZE - 5, width: 1, height: 5 }
-								: { top: posPx, left: RULER_SIZE - 5, height: 1, width: 5 }),
-						}}
-					/>
-				);
-			})}
-			{major.map((mm) => {
-				const posPx = originPx + mm * pxPerMm;
-				return (
-					<div
-						key={mm}
-						style={{
-							position: "absolute",
-							...(axis === "x"
-								? { left: posPx, top: 0, width: 1, height: RULER_SIZE }
-								: { top: posPx, left: 0, height: 1, width: RULER_SIZE }),
-							background: "var(--border-2)",
-						}}
-					>
-						<span
-							style={{
-								position: "absolute",
-								font: "var(--type-label)",
-								color: "var(--fg-3)",
-								...(axis === "x" ? { left: 3, top: 1 } : { top: 3, left: 2 }),
-							}}
-						>
-							{mm}
-						</span>
-					</div>
-				);
-			})}
-			{guideMarks?.map((mm) => {
-				const posPx = originPx + mm * pxPerMm;
-				// компактная метка — точная позиция редактируется в инспекторе, не тут
-				const label = Number.isInteger(mm) ? mm : Math.round(mm * 10) / 10;
-				return (
-					<div
-						key={`guide-${mm}`}
-						style={{
-							position: "absolute",
-							pointerEvents: "none",
-							...(axis === "x"
-								? { left: posPx - 1, top: 0, width: 2, height: RULER_SIZE }
-								: { top: posPx - 1, left: 0, height: 2, width: RULER_SIZE }),
-							background: "var(--selection)",
-						}}
-					>
-						<span
-							style={{
-								position: "absolute",
-								font: "var(--type-label)",
-								fontWeight: 600,
-								color: "var(--selection)",
-								whiteSpace: "nowrap",
-								...(axis === "x" ? { left: 3, top: 1 } : { top: 3, left: 4 }),
-							}}
-						>
-							{label}
-						</span>
-					</div>
-				);
-			})}
-		</div>
-	);
-}
-
-// Направляющая, вытянутая с линейки (как в Фигме) — тонкая видимая линия внутри более
-// широкого невидимого хитбокса (иначе за 1px мышью не попасть). Без onMouseDown — это
-// живое превью во время перетаскивания, не сама направляющая, тянуть его нельзя.
-function GuideLine({
-	axis,
-	positionMm,
-	pxPerMm,
-	originPx,
-	selected,
-	onMouseDown,
-}: {
-	axis: "x" | "y";
-	positionMm: number;
-	pxPerMm: number;
-	// направляющая рисуется во всю область редактора (не только карточку), поэтому
-	// нулевая точка мм — не (0,0) её родителя, а origin{X,Y}Px, как и у Ruler
-	originPx: number;
-	selected?: boolean;
-	onMouseDown?: (e: React.MouseEvent) => void;
-}) {
-	const posPx = originPx + positionMm * pxPerMm;
-	const interactive = Boolean(onMouseDown);
-	const thickness = selected ? 2 : 1;
-	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: перетаскивание мышью, как и остальные хит-таргеты холста рядом (ElementOverlay, маркеры ресайза) — клавиатурного пути нет
-		// biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше
-		<div
-			onMouseDown={onMouseDown}
-			// mousedown выше гасит только само перетаскивание; следующий за ним click иначе
-			// всплыл бы до contentRef и снял выделение элемента просто от клика по линии
-			onClick={interactive ? (e) => e.stopPropagation() : undefined}
-			style={{
-				position: "absolute",
-				pointerEvents: interactive ? "auto" : "none",
-				cursor: interactive
-					? axis === "x"
-						? "ew-resize"
-						: "ns-resize"
-					: undefined,
-				...(axis === "x"
-					? { left: posPx - 3, top: 0, width: 6, height: "100%" }
-					: { top: posPx - 3, left: 0, height: 6, width: "100%" }),
-			}}
-		>
-			<div
-				style={{
-					position: "absolute",
-					background: "var(--selection)",
-					...(axis === "x"
-						? {
-								left: 3 - (thickness - 1) / 2,
-								top: 0,
-								width: thickness,
-								height: "100%",
-							}
-						: {
-								top: 3 - (thickness - 1) / 2,
-								left: 0,
-								height: thickness,
-								width: "100%",
-							}),
-				}}
-			/>
-		</div>
-	);
-}
-
-// Один div-оверлей на элемент документа — по нему выделяют, двигают и ресайзят. render()
-// рисует карточку одним непрозрачным SVG-блобом (архитектурное правило CLAUDE.md: он не
-// в курсе редактора), поэтому все эти взаимодействия нельзя повесить на её же SVG-узел.
-function ElementOverlay({
-	el,
-	pxPerMm,
-	selected,
-	canDrag,
-	onSelect,
-	onStartMove,
-	onStartResize,
-}: {
-	el: CutlineElement;
-	pxPerMm: number;
-	selected: boolean;
-	canDrag: boolean;
-	onSelect: () => void;
-	onStartMove: (e: React.MouseEvent) => void;
-	onStartResize: (handle: HandlePos, e: React.MouseEvent) => void;
-}) {
-	if (!el.visible) {
-		return null;
-	}
-	const widthPx = el.w * pxPerMm;
-	const naturalHeightPx = el.h * pxPerMm;
-	// у линии нулевая высота в модели — даём оверлею минимальную толщину хитбокса
-	const heightPx = Math.max(
-		naturalHeightPx,
-		el.h === 0 ? MIN_HIT_HEIGHT_PX : 0,
-	);
-	const hitBoxTopAdjust = (heightPx - naturalHeightPx) / 2;
-
-	return (
-		// Хит-таргет элемента на холсте, не отдельный фокусируемый контрол — как и в LayerRow,
-		// клавиатурная навигация по элементам принадлежит списку слоёв (там уже есть role="option").
-		// biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше
-		// biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше
-		<div
-			onMouseDown={(e) => {
-				onSelect();
-				if (canDrag) onStartMove(e);
-			}}
-			// клик тоже долетел бы до canvas-card (место/снять выделение) — гасим здесь,
-			// само выделение уже случилось на mousedown выше
-			onClick={(e) => e.stopPropagation()}
-			style={{
-				position: "absolute",
-				left: el.x * pxPerMm,
-				top: el.y * pxPerMm - hitBoxTopAdjust,
-				width: widthPx,
-				height: heightPx,
-				cursor: canDrag ? "move" : "pointer",
-				transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
-				transformOrigin: "center",
-			}}
-		>
-			{selected && !el.locked && (
-				<>
-					<div
-						style={{
-							position: "absolute",
-							inset: 0,
-							outline: "1px solid var(--border-focus)",
-							pointerEvents: "none",
-						}}
-					/>
-					{HANDLE_POSITIONS.map((handle) => (
-						// Маркер ресайза, тот же случай, что и хит-таргет элемента выше — не контрол,
-						// клавиатурного пути к ресайзу пока нет нигде в редакторе (горячие клавиши — отдельный пункт роадмапа)
-						// biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше
-						<div
-							key={`${handle.x}-${handle.y}`}
-							onMouseDown={(e) => {
-								if (!canDrag) return;
-								e.stopPropagation();
-								onStartResize(handle, e);
-							}}
-							style={{
-								position: "absolute",
-								left: handle.x * widthPx - HANDLE_SIZE / 2,
-								top: handle.y * heightPx - HANDLE_SIZE / 2,
-								width: HANDLE_SIZE,
-								height: HANDLE_SIZE,
-								background: "#FFFFFF",
-								border: "1px solid var(--border-focus)",
-								cursor: canDrag ? cursorForHandle(handle) : "default",
-								pointerEvents: canDrag ? "auto" : "none",
-							}}
-						/>
-					))}
-					<div
-						style={{
-							position: "absolute",
-							top: heightPx + 4,
-							left: "50%",
-							transform: "translateX(-50%)",
-							whiteSpace: "nowrap",
-							font: "var(--type-label)",
-							color: "var(--fg-accent)",
-							pointerEvents: "none",
-						}}
-					>
-						{Math.round(el.w)}×{Math.round(el.h)} мм
-					</div>
-				</>
-			)}
-		</div>
-	);
-}
-
-interface DragState {
-	kind: "move" | "resize";
-	handle?: HandlePos;
-	startClientX: number;
-	startClientY: number;
-	startElement: CutlineElement;
-}
-
 export function Canvas({
 	doc,
 	zoom,
@@ -423,23 +70,6 @@ export function Canvas({
 	const rulerYStripRef = useRef<HTMLDivElement>(null);
 	const [scroll, setScroll] = useState({ left: 0, top: 0 });
 	const [viewport, setViewport] = useState<ViewportSize | null>(null);
-	const [drag, setDrag] = useState<DragState | null>(null);
-	const [liveElement, setLiveElement] = useState<CutlineElement | null>(null);
-	const liveElementRef = useRef<CutlineElement | null>(null);
-	const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
-	const [guideDrag, setGuideDrag] = useState<{
-		id: string | null;
-		axis: "x" | "y";
-		// текущая позиция существующей направляющей на момент mousedown — нужна, чтобы
-		// отличить «отпустили без единого mousemove» (клик) от «утащили обратно на
-		// линейку» (оба дают liveGuideMm не тронутым с начала жеста)
-		startPositionMm?: number;
-	} | null>(null);
-	// null = курсор сейчас над «своей» линейкой — при отпускании отмена/удаление, а не
-	// перенос в (0,0); ref — чтобы mouseup в эффекте ниже читал актуальное значение,
-	// а не то, что было на момент подписки (тот же приём, что и у liveElementRef)
-	const [liveGuideMm, setLiveGuideMm] = useState<number | null>(null);
-	const liveGuideMmRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		const el = viewportRef.current;
@@ -488,156 +118,23 @@ export function Canvas({
 		el.scrollTop = Math.max(0, (contentHeightPx - el.clientHeight) / 2);
 	}, [contentWidthPx, contentHeightPx]);
 
-	// Во время драга/resize документ в истории не трогаем (CLAUDE.md требует историю
-	// с первого дня, а не по шагу на каждый mousemove) — только локальное live-превью
-	// здесь, в Canvas; в историю уходит один onElementChange на mouseup с итогом.
-	useEffect(() => {
-		if (!drag) return;
-		function handleMouseMove(e: MouseEvent) {
-			if (!drag) return;
-			const dxMm = (e.clientX - drag.startClientX) / pxPerMm;
-			const dyMm = (e.clientY - drag.startClientY) / pxPerMm;
-			const others = doc.elements.filter(
-				(el) => el.id !== drag.startElement.id && el.visible,
-			);
-			const thresholdMm = SNAP_THRESHOLD_PX / pxPerMm;
-			if (drag.kind === "move") {
-				const moved = moveElement(drag.startElement, dxMm, dyMm);
-				const snapped = snapMove(
-					moved,
-					others,
-					doc.canvas,
-					doc.guides,
-					thresholdMm,
-				);
-				const updated = { ...moved, x: snapped.x, y: snapped.y };
-				liveElementRef.current = updated;
-				setLiveElement(updated);
-				setSnapGuides(snapped.guides);
-			} else {
-				const resized = resizeElement(
-					drag.startElement,
-					drag.handle as HandlePos,
-					dxMm,
-					dyMm,
-				);
-				const snapped = snapResize(
-					resized,
-					drag.handle as HandlePos,
-					others,
-					doc.canvas,
-					doc.guides,
-					thresholdMm,
-				);
-				const updated = {
-					...resized,
-					x: snapped.x,
-					y: snapped.y,
-					w: snapped.w,
-					h: snapped.h,
-				};
-				liveElementRef.current = updated;
-				setLiveElement(updated);
-				setSnapGuides(snapped.guides);
-			}
-		}
-		function handleMouseUp() {
-			if (liveElementRef.current) {
-				onElementChange(liveElementRef.current);
-			}
-			liveElementRef.current = null;
-			setLiveElement(null);
-			setSnapGuides([]);
-			setDrag(null);
-		}
-		window.addEventListener("mousemove", handleMouseMove);
-		window.addEventListener("mouseup", handleMouseUp);
-		return () => {
-			window.removeEventListener("mousemove", handleMouseMove);
-			window.removeEventListener("mouseup", handleMouseUp);
-		};
-	}, [drag, pxPerMm, onElementChange, doc]);
-
-	// Тянем направляющую с линейки (новую) или двигаем существующую — тот же принцип,
-	// что и у драга элемента выше: только live-превью здесь, один onGuidesChange на mouseup.
-	useEffect(() => {
-		if (!guideDrag) return;
-		function handleMouseMove(e: MouseEvent) {
-			if (!guideDrag) return;
-			const ownRulerRect =
-				guideDrag.axis === "x"
-					? rulerXStripRef.current?.getBoundingClientRect()
-					: rulerYStripRef.current?.getBoundingClientRect();
-			const overOwnRuler =
-				guideDrag.axis === "x"
-					? ownRulerRect && e.clientY < ownRulerRect.bottom
-					: ownRulerRect && e.clientX < ownRulerRect.right;
-			if (overOwnRuler) {
-				liveGuideMmRef.current = null;
-				setLiveGuideMm(null);
-				return;
-			}
-			const contentRect = contentRef.current?.getBoundingClientRect();
-			if (!contentRect) return;
-			const mm =
-				guideDrag.axis === "x"
-					? (e.clientX - contentRect.left - originXPx) / pxPerMm
-					: (e.clientY - contentRect.top - originYPx) / pxPerMm;
-			liveGuideMmRef.current = mm;
-			setLiveGuideMm(mm);
-		}
-		function handleMouseUp() {
-			if (!guideDrag) return;
-			const positionMm = liveGuideMmRef.current;
-			if (positionMm !== null) {
-				if (guideDrag.id) {
-					// обычный клик без движения — positionMm остался равен стартовой
-					// позиции (инициализирован ею же на mousedown), реального переноса
-					// не было, лишний шаг истории не нужен
-					if (positionMm !== guideDrag.startPositionMm) {
-						onGuidesChange(
-							doc.guides.map((g) =>
-								g.id === guideDrag.id ? { ...g, positionMm } : g,
-							),
-							{ boundary: true },
-						);
-					}
-				} else {
-					// выделяем сразу — как handlePlace выделяет только что созданный элемент
-					const newId = crypto.randomUUID();
-					onGuidesChange(
-						[...doc.guides, { id: newId, axis: guideDrag.axis, positionMm }],
-						{ boundary: true },
-					);
-					onSelectGuide(newId);
-				}
-			} else if (guideDrag.id) {
-				// отпустили над своей линейкой — удаление существующей направляющей
-				onGuidesChange(
-					doc.guides.filter((g) => g.id !== guideDrag.id),
-					{ boundary: true },
-				);
-				onSelectGuide(null);
-			}
-			liveGuideMmRef.current = null;
-			setLiveGuideMm(null);
-			setGuideDrag(null);
-		}
-		window.addEventListener("mousemove", handleMouseMove);
-		window.addEventListener("mouseup", handleMouseUp);
-		return () => {
-			window.removeEventListener("mousemove", handleMouseMove);
-			window.removeEventListener("mouseup", handleMouseUp);
-		};
-	}, [
-		guideDrag,
+	const { liveElement, snapGuides, startMove, startResize } = useElementDrag({
+		doc,
 		pxPerMm,
-		originXPx,
-		originYPx,
-		onGuidesChange,
-		onSelectGuide,
-		doc.guides,
-	]);
+		onElementChange,
+	});
+	const { guideDrag, liveGuideMm, startNewGuide, startMoveGuide } =
+		useGuideDrag({
+			guides: doc.guides,
+			pxPerMm,
+			originXPx,
+			originYPx,
+			contentRef,
+			rulerXStripRef,
+			rulerYStripRef,
+			onGuidesChange,
+			onSelectGuide,
+		});
 
 	const elements = liveElement
 		? doc.elements.map((el) => (el.id === liveElement.id ? liveElement : el))
@@ -677,9 +174,7 @@ export function Canvas({
 					ref={rulerXStripRef}
 					onMouseDown={(e) => {
 						e.preventDefault();
-						liveGuideMmRef.current = null;
-						setLiveGuideMm(null);
-						setGuideDrag({ id: null, axis: "x" });
+						startNewGuide("x");
 					}}
 					style={{
 						flex: 1,
@@ -711,9 +206,7 @@ export function Canvas({
 					ref={rulerYStripRef}
 					onMouseDown={(e) => {
 						e.preventDefault();
-						liveGuideMmRef.current = null;
-						setLiveGuideMm(null);
-						setGuideDrag({ id: null, axis: "y" });
+						startNewGuide("y");
 					}}
 					style={{
 						width: RULER_SIZE,
@@ -862,22 +355,11 @@ export function Canvas({
 									onSelect={() => onSelect(el.id)}
 									onStartMove={(e) => {
 										e.preventDefault();
-										setDrag({
-											kind: "move",
-											startClientX: e.clientX,
-											startClientY: e.clientY,
-											startElement: el,
-										});
+										startMove(el, e);
 									}}
 									onStartResize={(handle, e) => {
 										e.preventDefault();
-										setDrag({
-											kind: "resize",
-											handle,
-											startClientX: e.clientX,
-											startClientY: e.clientY,
-											startElement: el,
-										});
+										startResize(el, handle, e);
 									}}
 								/>
 							))}
@@ -900,16 +382,7 @@ export function Canvas({
 									e.preventDefault();
 									e.stopPropagation();
 									onSelectGuide(guide.id);
-									// инициализируем текущей позицией, а не null — иначе
-									// обычный клик без единого mousemove неотличим от
-									// «отпустили над линейкой» и направляющая бы удалялась
-									liveGuideMmRef.current = guide.positionMm;
-									setLiveGuideMm(guide.positionMm);
-									setGuideDrag({
-										id: guide.id,
-										axis: guide.axis,
-										startPositionMm: guide.positionMm,
-									});
+									startMoveGuide(guide);
 								}}
 							/>
 						))}
@@ -926,5 +399,3 @@ export function Canvas({
 		</div>
 	);
 }
-
-export { BASE_PX_PER_MM, PAD_MM };
