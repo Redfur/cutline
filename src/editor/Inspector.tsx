@@ -7,6 +7,7 @@ import { PropertyRow } from "../ui/editor/PropertyRow";
 import { ColorField } from "../ui/forms/ColorField";
 import { Select } from "../ui/forms/Select";
 import { TextField } from "../ui/forms/TextField";
+import { ImageInspector } from "./ImageInspector";
 import { ShapeInspector } from "./ShapeInspector";
 import { TextInspector } from "./TextInspector";
 
@@ -133,18 +134,7 @@ export function Inspector({
 				<TextInspector element={selectedElement} onChange={onElementChange} />
 			)}
 			{selectedElement && selectedElement.type === "image" && (
-				<PanelSection title={selectedElement.name}>
-					<div
-						style={{
-							padding: "0 0 12px",
-							font: "var(--type-label)",
-							color: "var(--fg-3)",
-						}}
-					>
-						Свойства для этого типа элемента пока не поддерживаются в инспекторе
-						— отдельный будущий срез.
-					</div>
-				</PanelSection>
+				<ImageInspector element={selectedElement} onChange={onElementChange} />
 			)}
 		</div>
 	);
