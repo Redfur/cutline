@@ -10,6 +10,7 @@ import type {
 	Guide,
 } from "../../model/document";
 import type { IconProps } from "../../ui/core/Icon";
+import type { BorderVisibility } from "../lib/snap";
 import { CanvasInspector } from "./CanvasInspector";
 import { GuideInspector } from "./GuideInspector";
 import { ImageInspector } from "./ImageInspector";
@@ -32,6 +33,9 @@ export interface InspectorProps {
 	overflowRecords: number[];
 	// цвета документа — быстрый выбор у каждого поля цвета
 	swatches: string[];
+	// видимость границ холста — галочки «Направляющие»
+	borders: BorderVisibility;
+	onBordersChange: (borders: BorderVisibility) => void;
 }
 
 const TYPE_LABEL: Record<ElementType, string> = {
@@ -61,6 +65,8 @@ export function Inspector({
 	record,
 	overflowRecords,
 	swatches,
+	borders,
+	onBordersChange,
 }: InspectorProps) {
 	return (
 		<aside className={styles.inspector}>
@@ -115,6 +121,8 @@ export function Inspector({
 						canvas={canvas}
 						onChange={onCanvasChange}
 						swatches={swatches}
+						borders={borders}
+						onBordersChange={onBordersChange}
 					/>
 				</>
 			)}

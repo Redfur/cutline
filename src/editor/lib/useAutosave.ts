@@ -102,24 +102,25 @@ export function useAutosave(
 	// Ctrl+Z до исходного — тоже изменение относительно того, что уже записано.
 	const initialRef = useRef({ doc, ...view });
 	const touchedRef = useRef(false);
-	const { mode, recordIndex } = view;
+	const { mode, recordIndex, borders } = view;
 	useEffect(() => {
 		const initial = initialRef.current;
 		if (
 			!touchedRef.current &&
 			doc === initial.doc &&
 			mode === initial.mode &&
-			recordIndex === initial.recordIndex
+			recordIndex === initial.recordIndex &&
+			borders === initial.borders
 		) {
 			return;
 		}
 		touchedRef.current = true;
 		saverRef.current?.schedule({
 			doc,
-			view: { mode, recordIndex },
+			view: { mode, recordIndex, borders },
 			savedAt: Date.now(),
 		});
-	}, [doc, mode, recordIndex]);
+	}, [doc, mode, recordIndex, borders]);
 
 	return state;
 }

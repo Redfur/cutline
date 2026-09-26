@@ -74,6 +74,7 @@ export function EditorShell({
 	// 0-based; общий для обоих режимов — двойной клик по миниатюре в «Данных» открывает
 	// «Дизайн» именно на этой записи
 	const [recordIndex, setRecordIndex] = useState(initialView.recordIndex);
+	const [borders, setBorders] = useState(initialView.borders);
 
 	const { records, fields } = history.doc;
 	// после удаления записей или undo индекс мог уйти за конец — не храним исправленное
@@ -146,7 +147,7 @@ export function EditorShell({
 	// за конец, и после перезагрузки навигатор показал бы несуществующую запись
 	const save = useAutosave(
 		history.doc,
-		{ mode, recordIndex: currentRecord },
+		{ mode, recordIndex: currentRecord, borders },
 		{ enabled: storageAvailable, notice },
 	);
 
@@ -407,6 +408,7 @@ export function EditorShell({
 						selectedGuideId={selectedGuideId}
 						onSelectGuide={handleSelectGuide}
 						onViewportResize={setViewportSize}
+						borders={borders}
 					/>
 					<Inspector
 						canvas={history.doc.canvas}
@@ -421,6 +423,8 @@ export function EditorShell({
 						record={previewRecord}
 						overflowRecords={selectedOverflowRecords}
 						swatches={swatches}
+						borders={borders}
+						onBordersChange={setBorders}
 					/>
 				</div>
 			)}

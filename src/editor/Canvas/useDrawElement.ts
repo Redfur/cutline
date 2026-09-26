@@ -10,7 +10,12 @@ import type {
 } from "../../model/document";
 import { drawElement, placeElement } from "../lib/createElement";
 import { cleanGeometry, roundMouseMm } from "../lib/geometry";
-import { type SnapGuide, snapMove, snapResize } from "../lib/snap";
+import {
+	type BorderVisibility,
+	type SnapGuide,
+	snapMove,
+	snapResize,
+} from "../lib/snap";
 import { SNAP_THRESHOLD_PX } from "./constants";
 import { swallowNextClick } from "./swallowNextClick";
 
@@ -31,6 +36,7 @@ interface DrawState {
 
 export function useDrawElement({
 	doc,
+	borders,
 	pxPerMm,
 	originXPx,
 	originYPx,
@@ -38,6 +44,8 @@ export function useDrawElement({
 	onCreate,
 }: {
 	doc: CutlineDocument;
+	// видимые границы холста — только к ним и примагничиваем
+	borders: BorderVisibility;
 	pxPerMm: number;
 	originXPx: number;
 	originYPx: number;
@@ -72,6 +80,7 @@ export function useDrawElement({
 				doc.canvas,
 				doc.guides,
 				thresholdMm,
+				borders,
 			);
 			return { point: { x: s.x, y: s.y }, guides: s.guides };
 		};
@@ -116,6 +125,7 @@ export function useDrawElement({
 						doc.canvas,
 						doc.guides,
 						thresholdMm,
+						borders,
 					);
 					element = { ...element, x: s.x, y: s.y, w: s.w, h: s.h };
 					guides = [...guides, ...s.guides];
@@ -151,7 +161,7 @@ export function useDrawElement({
 			window.removeEventListener("mouseup", handleMouseUp);
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [draw, doc, pxPerMm, originXPx, originYPx, onCreate]);
+	}, [draw, doc, borders, pxPerMm, originXPx, originYPx, onCreate]);
 
 	return {
 		draft,

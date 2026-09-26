@@ -23,6 +23,20 @@ export interface SnapResizeResult {
 	guides: SnapGuide[];
 }
 
+// Какие границы холста видны. Скрытая граница не примагничивает: липнуть к линии,
+// которую не видно, — необъяснимое поведение. Центр холста виден всегда.
+export interface BorderVisibility {
+	trim: boolean;
+	bleed: boolean;
+	safe: boolean;
+}
+
+export const ALL_BORDERS: BorderVisibility = {
+	trim: true,
+	bleed: true,
+	safe: true,
+};
+
 interface Box {
 	x: number;
 	y: number;
@@ -35,18 +49,14 @@ function axisTargets(
 	others: CutlineElement[],
 	canvas: Canvas,
 	guides: Guide[],
+	borders: BorderVisibility,
 ): number[] {
 	const size = axis === "x" ? canvas.w : canvas.h;
 	// к полям (вылет, обрез, безопасное поле) и к центру холста
-	const targets = [
-		-canvas.bleed,
-		0,
-		size,
-		size + canvas.bleed,
-		size / 2,
-		canvas.safe,
-		size - canvas.safe,
-	];
+	const targets = [size / 2];
+	if (borders.trim) targets.push(0, size);
+	if (borders.bleed) targets.push(-canvas.bleed, size + canvas.bleed);
+	if (borders.safe) targets.push(canvas.safe, size - canvas.safe);
 	for (const el of others) {
 		const start = axis === "x" ? el.x : el.y;
 		const length = axis === "x" ? el.w : el.h;
@@ -84,13 +94,14 @@ export function snapMove(
 	canvas: Canvas,
 	userGuides: Guide[],
 	thresholdMm: number,
+	borders: BorderVisibility = ALL_BORDERS,
 ): SnapResult {
 	const guides: SnapGuide[] = [];
 	let { x, y } = box;
 
 	const xBest = bestSnap(
 		[x, x + box.w / 2, x + box.w],
-		axisTargets("x", others, canvas, userGuides),
+		axisTargets("x", others, canvas, userGuides, borders),
 		thresholdMm,
 	);
 	if (xBest) {
@@ -100,7 +111,7 @@ export function snapMove(
 
 	const yBest = bestSnap(
 		[y, y + box.h / 2, y + box.h],
-		axisTargets("y", others, canvas, userGuides),
+		axisTargets("y", others, canvas, userGuides, borders),
 		thresholdMm,
 	);
 	if (yBest) {
@@ -121,6 +132,7 @@ export function snapResize(
 	canvas: Canvas,
 	userGuides: Guide[],
 	thresholdMm: number,
+	borders: BorderVisibility = ALL_BORDERS,
 ): SnapResizeResult {
 	const guides: SnapGuide[] = [];
 	let { x, y, w, h } = box;
@@ -129,7 +141,7 @@ export function snapResize(
 		const point = handle.x === 0 ? x : x + w;
 		const best = bestSnap(
 			[point],
-			axisTargets("x", others, canvas, userGuides),
+			axisTargets("x", others, canvas, userGuides, borders),
 			thresholdMm,
 		);
 		if (best) {
@@ -148,7 +160,7 @@ export function snapResize(
 		const point = handle.y === 0 ? y : y + h;
 		const best = bestSnap(
 			[point],
-			axisTargets("y", others, canvas, userGuides),
+			axisTargets("y", others, canvas, userGuides, borders),
 			thresholdMm,
 		);
 		if (best) {

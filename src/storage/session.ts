@@ -3,12 +3,15 @@
 // лежат data URI, и лимит localStorage (~5 МБ на сайт) кончился бы на первой
 // фотографии. Сам доступ — idb-keyval: одна запись по ключу, своя обёртка не нужна.
 import { createStore, get, promisifyRequest, type UseStore } from "idb-keyval";
+import type { BorderVisibility } from "../editor/lib/snap";
 import type { CutlineDocument } from "../model/document";
 import { validateDocument } from "../model/file";
 
 export interface ViewState {
 	mode: "design" | "data";
 	recordIndex: number;
+	// галочки «Направляющие» в инспекторе холста — вид, как зум, но переживает перезагрузку
+	borders: BorderVisibility;
 }
 
 export interface StoredSession {
@@ -46,7 +49,16 @@ function validateView(value: unknown): ViewState {
 		v.recordIndex >= 0
 			? v.recordIndex
 			: 0;
-	return { mode, recordIndex };
+	const b = "borders" in v && typeof v.borders === "object" && v.borders;
+	// не булево или нет поля (сессия до появления галочек) — граница видна
+	const shown = (key: keyof BorderVisibility) =>
+		!(b && key in b && (b as Record<string, unknown>)[key] === false);
+	const borders = {
+		trim: shown("trim"),
+		bleed: shown("bleed"),
+		safe: shown("safe"),
+	};
+	return { mode, recordIndex, borders };
 }
 
 // Ошибки самого IndexedDB (недоступен, заблокирован) пробрасываются: это другой

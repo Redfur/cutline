@@ -34,6 +34,22 @@ describe("snapMove", () => {
 		expect(r.y + 10).toBeCloseTo(55);
 	});
 
+	it("скрытая граница не примагничивает, видимые — как раньше", () => {
+		const hidden = { trim: false, bleed: false, safe: true };
+		const r = snapMove(box(0.6, 12, 12, 10), [], canvas, [], THRESHOLD, hidden);
+		expect(r.x).toBe(0.6);
+		expect(r.guides).toEqual([]);
+		const safe = snapMove(
+			box(5.4, 12, 12, 10),
+			[],
+			canvas,
+			[],
+			THRESHOLD,
+			hidden,
+		);
+		expect(safe.x).toBeCloseTo(5);
+	});
+
 	it("центр прилипает к центру холста", () => {
 		const r = snapMove(box(45.4, 12, 10, 10), [], canvas, [], THRESHOLD);
 		expect(r.x).toBeCloseTo(45);

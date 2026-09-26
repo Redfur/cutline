@@ -14,6 +14,7 @@ import type {
 } from "../../model/document";
 import { render } from "../../render/render";
 import { boundsOf } from "../lib/geometry";
+import type { BorderVisibility } from "../lib/snap";
 import type { Tool } from "../Toolbar";
 import styles from "./Canvas.module.css";
 import { BASE_PX_PER_MM, PAD_MM } from "./constants";
@@ -56,6 +57,8 @@ export interface CanvasProps {
 	selectedGuideId: string | null;
 	onSelectGuide: (id: string | null) => void;
 	onViewportResize?: (size: ViewportSize) => void;
+	// какие границы холста показывать (галочки в инспекторе холста) — это вид, не документ
+	borders: BorderVisibility;
 }
 
 const PLACEABLE_TOOLS = new Set<Tool>([
@@ -81,6 +84,7 @@ export function Canvas({
 	selectedGuideId,
 	onSelectGuide,
 	onViewportResize,
+	borders,
 }: CanvasProps) {
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const contentRef = useRef<HTMLDivElement>(null);
@@ -146,6 +150,7 @@ export function Canvas({
 	const { liveElement, snapGuides, startMove, startResize, startLineEnd } =
 		useElementDrag({
 			doc,
+			borders,
 			pxPerMm,
 			onElementChange,
 		});
@@ -159,6 +164,7 @@ export function Canvas({
 		startDraw,
 	} = useDrawElement({
 		doc,
+		borders,
 		pxPerMm,
 		originXPx,
 		originYPx,
@@ -305,9 +311,13 @@ export function Canvas({
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: render() выдаёт доверенный SVG из собственного документа редактора
 								dangerouslySetInnerHTML={{ __html: cardSvg }}
 							/>
-							<div className={styles.trim} />
-							<div className={styles.bleed} style={{ inset: -bleedPx }} />
-							<div className={styles.safe} style={{ inset: safePx }} />
+							{borders.trim && <div className={styles.trim} />}
+							{borders.bleed && (
+								<div className={styles.bleed} style={{ inset: -bleedPx }} />
+							)}
+							{borders.safe && (
+								<div className={styles.safe} style={{ inset: safePx }} />
+							)}
 							{draftBounds && (
 								// у картинки без src render() ничего не рисует — без рамки
 								// черновик изображения был бы невидим

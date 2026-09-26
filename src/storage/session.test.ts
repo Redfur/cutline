@@ -14,7 +14,11 @@ const raw = createStore("cutline", "documents");
 
 const session: StoredSession = {
 	doc: blankDocument,
-	view: { mode: "data", recordIndex: 3 },
+	view: {
+		mode: "data",
+		recordIndex: 3,
+		borders: { trim: true, bleed: false, safe: true },
+	},
 	savedAt: 1,
 };
 
@@ -77,9 +81,34 @@ describe("session", () => {
 			status: "ok",
 			session: {
 				doc: blankDocument,
-				view: { mode: "design", recordIndex: 0 },
+				view: {
+					mode: "design",
+					recordIndex: 0,
+					borders: { trim: true, bleed: true, safe: true },
+				},
 				savedAt: 0,
 			},
+		});
+	});
+
+	it("галочки границ: не-булево и отсутствие — видно, false — скрыто", async () => {
+		await set(
+			"current",
+			{
+				doc: blankDocument,
+				view: {
+					mode: "design",
+					recordIndex: 0,
+					borders: { bleed: false, trim: "x" },
+				},
+			},
+			raw,
+		);
+		const loaded = await loadSession();
+		expect(loaded.status === "ok" && loaded.session.view.borders).toEqual({
+			trim: true,
+			bleed: false,
+			safe: true,
 		});
 	});
 

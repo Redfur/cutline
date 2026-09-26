@@ -11,7 +11,12 @@ import {
 	moveLineEnd,
 	resizeElement,
 } from "../lib/resizeElement";
-import { type SnapGuide, snapMove, snapResize } from "../lib/snap";
+import {
+	type BorderVisibility,
+	type SnapGuide,
+	snapMove,
+	snapResize,
+} from "../lib/snap";
 import { SNAP_THRESHOLD_PX } from "./constants";
 import { swallowNextClick } from "./swallowNextClick";
 
@@ -31,10 +36,13 @@ interface ClientPoint {
 
 export function useElementDrag({
 	doc,
+	borders,
 	pxPerMm,
 	onElementChange,
 }: {
 	doc: CutlineDocument;
+	// видимые границы холста — только к ним и примагничиваем
+	borders: BorderVisibility;
 	pxPerMm: number;
 	onElementChange: (
 		element: CutlineElement,
@@ -64,6 +72,7 @@ export function useElementDrag({
 					doc.canvas,
 					doc.guides,
 					thresholdMm,
+					borders,
 				);
 				const updated = { ...moved, x: snapped.x, y: snapped.y };
 				liveElementRef.current = updated;
@@ -82,6 +91,7 @@ export function useElementDrag({
 					doc.canvas,
 					doc.guides,
 					thresholdMm,
+					borders,
 				);
 				const updated = moveLineEnd(
 					drag.startElement,
@@ -106,6 +116,7 @@ export function useElementDrag({
 					doc.canvas,
 					doc.guides,
 					thresholdMm,
+					borders,
 				);
 				const updated = {
 					...resized,
@@ -138,7 +149,7 @@ export function useElementDrag({
 			window.removeEventListener("mousemove", handleMouseMove);
 			window.removeEventListener("mouseup", handleMouseUp);
 		};
-	}, [drag, pxPerMm, onElementChange, doc]);
+	}, [drag, pxPerMm, onElementChange, doc, borders]);
 
 	return {
 		liveElement,

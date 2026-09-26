@@ -7,12 +7,17 @@ import { blankDocument } from "../../render/fixtures/blank";
 import { loadSession, type ViewState } from "../../storage/session";
 import { EditorShell } from "../EditorShell";
 import { EditorSkeleton } from "../EditorSkeleton";
+import { ALL_BORDERS } from "../lib/snap";
 
 // IndexedDB обычно отвечает за 10–50 мс: скелетон, мелькнувший на один кадр,
 // выглядит хуже короткой пустоты, поэтому показываем его только если ждём дольше
 const SKELETON_DELAY_MS = 150;
 
-const DEFAULT_VIEW: ViewState = { mode: "design", recordIndex: 0 };
+const DEFAULT_VIEW: ViewState = {
+	mode: "design",
+	recordIndex: 0,
+	borders: ALL_BORDERS,
+};
 
 type LoaderState =
 	| { phase: "loading" }
