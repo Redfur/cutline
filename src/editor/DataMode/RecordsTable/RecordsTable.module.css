@@ -59,6 +59,11 @@
 	border-right: 1px solid var(--border-1);
 }
 
+/* иначе scrollIntoView ставит строку под липкую шапку */
+.row {
+	scroll-margin-top: 32px;
+}
+
 .selected {
 	background: var(--bg-selected);
 }

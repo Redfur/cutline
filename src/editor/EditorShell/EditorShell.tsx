@@ -1,7 +1,7 @@
 // Раскладка «Общей оболочки» и обоих режимов из docs/ui-spec.md. Здесь живёт
 // состояние редактора, которое не принадлежит документу: режим, инструмент, зум,
 // выделение и текущая запись предпросмотра.
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { sampleRecord } from "../../data/placeholders";
 import { documentProblems, hasProblems } from "../../data/problems";
 import type {
@@ -28,6 +28,7 @@ import {
 	createText,
 } from "../lib/createElement";
 import { useDocumentHistory } from "../lib/useDocumentHistory";
+import { useFontsVersion } from "../lib/useFontsVersion";
 import { type Tool, Toolbar } from "../Toolbar";
 import { type Mode, TopBar } from "../TopBar";
 import styles from "./EditorShell.module.css";
@@ -72,7 +73,12 @@ export function EditorShell() {
 		records[currentRecord] ?? (records.length ? {} : sampleRecord(fields));
 	// один проход раскладки по всем записям на изменение документа — им пользуются
 	// таблица, сетка, холст и навигатор
-	const problems = useMemo(() => documentProblems(history.doc), [history.doc]);
+	const fontsVersion = useFontsVersion();
+	const problems = useMemo(
+		() => documentProblems(history.doc),
+		// fontsVersion не читается внутри, но меняет результат measureText — см. хук
+		[history.doc, fontsVersion],
+	);
 
 	const selectedElement =
 		history.doc.elements.find((el) => el.id === selectedId) ?? null;
@@ -89,6 +95,13 @@ export function EditorShell() {
 		setSelectedGuideId(id);
 		setSelectedId(null);
 	};
+
+	// стабильная ссылка: сетка миниатюр мемоизирована и не должна перерисовываться
+	// из-за новой функции на каждый рендер оболочки
+	const handleOpenRecord = useCallback((index: number) => {
+		setRecordIndex(index);
+		setMode("design");
+	}, []);
 
 	const handleFitToWindow = () => {
 		if (!viewportSize) return;
@@ -296,8 +309,10 @@ export function EditorShell() {
 					doc={history.doc}
 					onChange={history.set}
 					problems={problems}
+					fontsVersion={fontsVersion}
 					selectedIndex={records.length ? currentRecord : null}
 					onSelect={setRecordIndex}
+					onOpen={handleOpenRecord}
 				/>
 			) : (
 				<div className={styles.workspace}>

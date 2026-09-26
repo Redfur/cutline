@@ -1,8 +1,8 @@
 // Режим «Данные» (docs/ui-spec.md, «Экран 2»). Все правки идут через onChange —
 // это history.set оболочки, поэтому набор в ячейке, удаление записи и смена ключа
 // отменяются тем же Ctrl+Z, что и правки макета.
-import { useState } from "react";
-import type { RecordProblems } from "../../data/problems";
+import { type MouseEvent, useRef, useState } from "react";
+import { hasProblems, type RecordProblems } from "../../data/problems";
 import type { CutlineDocument } from "../../model/document";
 import { Icon } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
@@ -18,15 +18,26 @@ import {
 import type { DocumentHistory } from "../lib/useDocumentHistory";
 import styles from "./DataMode.module.css";
 import { RecordsTable } from "./RecordsTable";
+import { type RecordFilter, ThumbnailGrid } from "./ThumbnailGrid";
 
 export interface DataModeProps {
 	doc: CutlineDocument;
 	onChange: DocumentHistory["set"];
 	problems: RecordProblems[];
+	// меняется, когда догрузился шрифт, — миниатюры надо перемерить (useFontsVersion)
+	fontsVersion: number;
 	// выделенная строка — она же текущая запись предпросмотра в «Дизайне»
 	selectedIndex: number | null;
 	onSelect: (index: number) => void;
+	// двойной щелчок по миниатюре — открыть запись в «Дизайне»
+	onOpen: (index: number) => void;
 }
+
+// Доля высоты под таблицу: 55% — по docs/ui-spec.md, пределы — чтобы ни таблицу,
+// ни сетку нельзя было утянуть в ноль и потерять
+const INITIAL_SPLIT = 0.55;
+const MIN_SPLIT = 0.2;
+const MAX_SPLIT = 0.8;
 
 const RENAME_KEY_ERRORS = {
 	empty: "Ключ не может быть пустым",
@@ -37,18 +48,28 @@ export function DataMode({
 	doc,
 	onChange,
 	problems,
+	fontsVersion,
 	selectedIndex,
 	onSelect,
+	onOpen,
 }: DataModeProps) {
+	const rootRef = useRef<HTMLElement>(null);
+	const [split, setSplit] = useState(INITIAL_SPLIT);
+	const [filter, setFilter] = useState<RecordFilter>("all");
 	const [freshFieldKey, setFreshFieldKey] = useState<string | null>(null);
 	const [focusIndex, setFocusIndex] = useState<number | null>(null);
 	const { records, fields } = doc;
 	const empty = records.length === 0;
-	const rows = records.map((_, i) => i);
+	const rows = records
+		.map((_, i) => i)
+		.filter((i) => filter === "all" || hasProblems(problems[i]));
 
 	const handleAddRecord = () => {
 		const index = records.length;
 		onChange(addRecord, { boundary: true });
+		// новая запись пустая — при фильтре «С проблемами» она могла бы и не попасть
+		// в список, если в макете нет плейсхолдеров; сбрасываем, чтобы точно увидеть
+		setFilter("all");
 		onSelect(index);
 		setFocusIndex(index);
 	};
@@ -127,9 +148,33 @@ export function DataMode({
 		);
 	}
 
+	const handleSplitDown = (e: MouseEvent) => {
+		e.preventDefault();
+		const root = rootRef.current;
+		if (!root) return;
+		const rect = root.getBoundingClientRect();
+		const onMove = (ev: globalThis.MouseEvent) => {
+			const ratio = (ev.clientY - rect.top) / rect.height;
+			setSplit(Math.max(MIN_SPLIT, Math.min(MAX_SPLIT, ratio)));
+		};
+		const onUp = () => {
+			window.removeEventListener("mousemove", onMove);
+			window.removeEventListener("mouseup", onUp);
+			document.body.classList.remove(styles.resizing ?? "");
+		};
+		// курсор на body: иначе при быстром движении мышь уходит с полоски
+		// разделителя и курсор мигает обратно в стрелку
+		document.body.classList.add(styles.resizing ?? "");
+		window.addEventListener("mousemove", onMove);
+		window.addEventListener("mouseup", onUp);
+	};
+
 	return (
-		<main className={styles.root}>
-			<section className={styles.tableSection}>
+		<main ref={rootRef} className={styles.root}>
+			<section
+				className={styles.tableSection}
+				style={{ height: `${split * 100}%` }}
+			>
 				<div className={styles.tableScroll}>{table}</div>
 				<div className={styles.toolbar}>
 					<Button size="sm" icon="plus" onClick={handleAddRecord}>
@@ -137,6 +182,28 @@ export function DataMode({
 					</Button>
 				</div>
 			</section>
+			{/* Разделитель тянется только мышью, как и направляющие холста: это настройка
+			    вида, а не данные, и клавиатурный путь к ней не нужен */}
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
+			<div
+				className={styles.splitter}
+				title="Потяните, чтобы изменить высоту"
+				onMouseDown={handleSplitDown}
+			>
+				<div className={styles.splitterLine} />
+				<div className={styles.splitterGrip} />
+			</div>
+			<ThumbnailGrid
+				doc={doc}
+				rows={rows}
+				problems={problems}
+				fontsVersion={fontsVersion}
+				filter={filter}
+				onFilterChange={setFilter}
+				selectedIndex={selectedIndex}
+				onSelect={onSelect}
+				onOpen={onOpen}
+			/>
 		</main>
 	);
 }

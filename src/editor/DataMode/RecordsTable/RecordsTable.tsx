@@ -1,7 +1,7 @@
 // Таблица записей по docs/ui-spec.md, «Экран 2»: строки — записи, колонки — поля.
 // Ячейки — обычные <input>, значение берётся из документа на каждом рендере: своего
 // состояния у таблицы нет, кроме того, какой заголовок сейчас правится.
-
+import { useEffect, useRef } from "react";
 import type { RecordProblems } from "../../../data/problems";
 import type { DataRecord, FieldDef } from "../../../model/document";
 import { Icon } from "../../../ui/core/Icon";
@@ -50,8 +50,19 @@ export function RecordsTable({
 	onDeleteField,
 	focusIndex,
 }: RecordsTableProps) {
+	const tableRef = useRef<HTMLTableElement>(null);
+
+	// выбрали миниатюру — строка подъезжает в видимую часть таблицы; nearest не
+	// дёргает прокрутку, когда строку выбрали кликом в самой таблице
+	useEffect(() => {
+		if (selectedIndex === null) return;
+		tableRef.current
+			?.querySelector(`[data-row="${selectedIndex}"]`)
+			?.scrollIntoView({ block: "nearest" });
+	}, [selectedIndex]);
+
 	return (
-		<table className={styles.table}>
+		<table ref={tableRef} className={styles.table}>
 			<colgroup>
 				<col className={styles.numCol} />
 				{fields.map((f, i) => (
