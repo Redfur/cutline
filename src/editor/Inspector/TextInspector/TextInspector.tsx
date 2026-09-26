@@ -7,15 +7,15 @@ import type {
 	TextElement,
 	TextFit,
 	TextValign,
-} from "../../model/document";
-import { PanelSection } from "../../ui/editor/PanelSection";
-import { PropertyRow } from "../../ui/editor/PropertyRow";
-import { ColorField } from "../../ui/forms/ColorField";
-import { IconButton } from "../../ui/forms/IconButton";
-import { SegmentedControl } from "../../ui/forms/SegmentedControl";
-import { Select } from "../../ui/forms/Select";
-import { TextField } from "../../ui/forms/TextField";
-import { PositionSizeFields } from "./PositionSizeFields";
+} from "../../../model/document";
+import { PanelSection } from "../../../ui/editor/PanelSection";
+import { PropertyRow } from "../../../ui/editor/PropertyRow";
+import { ColorField } from "../../../ui/forms/ColorField";
+import { IconButton } from "../../../ui/forms/IconButton";
+import { SegmentedControl } from "../../../ui/forms/SegmentedControl";
+import { Select } from "../../../ui/forms/Select";
+import { TextField } from "../../../ui/forms/TextField";
+import { PositionSizeFields } from "../PositionSizeFields";
 
 export interface TextInspectorProps {
 	element: TextElement;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CutlineElement, Guide } from "../../model/document";
-import { Icon } from "../../ui/core/Icon";
 import { LayerRow } from "../../ui/editor/LayerRow";
+import { GuideRow } from "./GuideRow";
 import styles from "./LayersPanel.module.css";
 
 export interface LayerPatch {
@@ -24,30 +24,6 @@ export interface LayersPanelProps {
 // Строка направляющей в списке слоёв — не переиспользует LayerRow: у направляющих
 // нет замка/видимости/переименования/своего места в z-порядке элементов, натягивать
 // эти концепции на них было бы искусственно ради общего компонента.
-function GuideRow({
-	guide,
-	selected,
-	onClick,
-}: {
-	guide: Guide;
-	selected: boolean;
-	onClick: () => void;
-}) {
-	const label = Number.isInteger(guide.positionMm)
-		? guide.positionMm
-		: Math.round(guide.positionMm * 10) / 10;
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className={`${styles.guideRow} ${selected ? styles.selected : ""}`}
-		>
-			<Icon name="ruler" size={14} />
-			{guide.axis === "x" ? "X" : "Y"} · {label} мм
-		</button>
-	);
-}
-
 // Высота строки фиксирована токеном --row-h — позицию вставки при перетаскивании
 // можно посчитать по одной только высоте, без ref на каждую строку.
 const ROW_HEIGHT_PX = 28;

@@ -1,0 +1,19 @@
+.guideRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	height: var(--row-h);
+	padding: 0 10px;
+	border: 0;
+	background: transparent;
+	font: var(--type-label);
+	color: var(--fg-1);
+	cursor: pointer;
+	text-align: left;
+}
+
+.guideRow.selected {
+	background: var(--bg-selected);
+	color: var(--fg-accent);
+}

@@ -1,4 +1,4 @@
-import { MAJOR_TICK_MM, MINOR_TICK_MM, PAD_MM } from "./constants";
+import { MAJOR_TICK_MM, MINOR_TICK_MM, PAD_MM } from "../constants";
 import styles from "./Ruler.module.css";
 
 function ticksInRange(fromMm: number, toMm: number, stepMm: number): number[] {

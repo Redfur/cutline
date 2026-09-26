@@ -1,7 +1,7 @@
 // X/Y/W/H — общие для любого типа элемента (Base из docs/document-model.md).
 // Общий кусок инспектора: ShapeInspector и TextInspector оба его используют.
-import { PropertyRow } from "../../ui/editor/PropertyRow";
-import { TextField } from "../../ui/forms/TextField";
+import { PropertyRow } from "../../../ui/editor/PropertyRow";
+import { TextField } from "../../../ui/forms/TextField";
 
 export interface PositionSizeFieldsProps {
 	x: number;

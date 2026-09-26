@@ -1,9 +1,9 @@
 // Один div-оверлей на элемент документа — по нему выделяют, двигают и ресайзят. render()
 // рисует карточку одним непрозрачным SVG-блобом (архитектурное правило CLAUDE.md: он не
 // в курсе редактора), поэтому все эти взаимодействия нельзя повесить на её же SVG-узел.
-import type { CutlineElement } from "../../model/document";
-import type { HandlePos } from "../resizeElement";
-import { HANDLE_SIZE, MIN_HIT_HEIGHT_PX } from "./constants";
+import type { CutlineElement } from "../../../model/document";
+import type { HandlePos } from "../../resizeElement";
+import { HANDLE_SIZE, MIN_HIT_HEIGHT_PX } from "../constants";
 import styles from "./ElementOverlay.module.css";
 
 function cursorForHandle(handle: HandlePos): string {
