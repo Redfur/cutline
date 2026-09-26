@@ -1,11 +1,13 @@
 // Правки записей и полей данных — чистые функции документа → документ, чтобы
 // оболочка только оборачивала их в history.set, а логику можно было проверить
 // тестом без React.
+import { type CsvTable, NEW_FIELD, SKIP } from "../../data/csv";
 import { normalizeKey, renamePlaceholder } from "../../data/placeholders";
 import type {
 	CutlineDocument,
 	CutlineElement,
 	DataRecord,
+	FieldDef,
 } from "../../model/document";
 
 export function emptyRecord(doc: CutlineDocument): DataRecord {
@@ -37,15 +39,19 @@ export function setCell(
 	};
 }
 
+function freeFieldKey(fields: FieldDef[]): { key: string; n: number } {
+	let n = fields.length + 1;
+	while (fields.some((f) => f.key === `field_${n}`)) n++;
+	return { key: `field_${n}`, n };
+}
+
 // Ключ нового поля латиницей, а не из label: label пользователь сразу переименует,
 // а ключ, выросший из «Поле 3», остался бы в {{…}} навсегда.
 export function addField(doc: CutlineDocument): {
 	doc: CutlineDocument;
 	key: string;
 } {
-	let n = doc.fields.length + 1;
-	while (doc.fields.some((f) => f.key === `field_${n}`)) n++;
-	const key = `field_${n}`;
+	const { key, n } = freeFieldKey(doc.fields);
 	return {
 		key,
 		doc: {
@@ -121,4 +127,48 @@ export function deleteField(
 			return rest;
 		}),
 	};
+}
+
+export type ImportMode = "replace" | "append";
+
+// Импорт CSV по сопоставлению колонок (ключ поля / SKIP / NEW_FIELD, см. data/csv).
+// Здесь, в отличие от «Добавить поле», ключ берётся из заголовка колонки: у файла
+// уже есть осмысленные имена, и {{ФИО}} понятнее, чем {{field_7}}.
+export function importRecords(
+	doc: CutlineDocument,
+	table: CsvTable,
+	mapping: string[],
+	mode: ImportMode,
+): CutlineDocument {
+	let fields = doc.fields;
+	const keys = mapping.map((target, col) => {
+		if (target !== NEW_FIELD) return target;
+		const header = table.header?.[col] ?? "";
+		const fromHeader = normalizeKey(header);
+		const key =
+			fromHeader && !fields.some((f) => f.key === fromHeader)
+				? fromHeader
+				: freeFieldKey(fields).key;
+		fields = [
+			...fields,
+			{ key, label: header || `Колонка ${col + 1}`, sample: "" },
+		];
+		return key;
+	});
+
+	// новые записи — со всеми полями документа, как и «Добавить запись»; старые при
+	// append получают пустые значения новых полей, чтобы таблица была ровной
+	const blank = Object.fromEntries(fields.map((f) => [f.key, ""]));
+	const imported = table.rows.map((row) => {
+		const record: DataRecord = { ...blank };
+		keys.forEach((key, col) => {
+			if (key !== SKIP) record[key] = row[col] ?? "";
+		});
+		return record;
+	});
+	const records =
+		mode === "append"
+			? [...doc.records.map((r) => ({ ...blank, ...r })), ...imported]
+			: imported;
+	return { ...doc, fields, records };
 }

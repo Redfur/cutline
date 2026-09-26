@@ -103,3 +103,7 @@
 	cursor: row-resize;
 	user-select: none;
 }
+
+.fileInput {
+	display: none;
+}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NEW_FIELD, SKIP, toTable } from "../../data/csv";
 import type { CutlineDocument } from "../../model/document";
 import { blankDocument } from "../../render/fixtures/blank";
 import {
@@ -6,6 +7,7 @@ import {
 	addRecord,
 	deleteField,
 	deleteRecord,
+	importRecords,
 	renameFieldKey,
 	setCell,
 	setFieldLabel,
@@ -106,5 +108,57 @@ describe("поля", () => {
 		expect(next.fields.map((f) => f.key)).toEqual(["name"]);
 		expect(next.records[0]).toEqual({ name: "Анна" });
 		expect(next.elements).toBe(doc.elements);
+	});
+});
+
+describe("importRecords", () => {
+	const table = toTable(
+		[
+			["ФИО", "Город", "Email", ""],
+			["Ира", "Уфа", "i@x.ru", "a"],
+			["Лев", "Орёл", "l@x.ru", "b"],
+		],
+		true,
+	);
+
+	it("replace: сопоставленные колонки, новые поля из заголовков, пропуск", () => {
+		const next = importRecords(
+			doc,
+			table,
+			["name", "city", NEW_FIELD, NEW_FIELD],
+			"replace",
+		);
+		expect(next.fields.map((f) => [f.key, f.label])).toEqual([
+			["name", "Имя"],
+			["city", "Город"],
+			["Email", "Email"],
+			["field_4", "Колонка 4"],
+		]);
+		expect(next.records).toEqual([
+			{ name: "Ира", city: "Уфа", Email: "i@x.ru", field_4: "a" },
+			{ name: "Лев", city: "Орёл", Email: "l@x.ru", field_4: "b" },
+		]);
+	});
+
+	it("append: старые записи остаются и получают новые поля пустыми", () => {
+		const next = importRecords(
+			doc,
+			table,
+			["name", SKIP, NEW_FIELD, SKIP],
+			"append",
+		);
+		expect(next.records).toEqual([
+			{ name: "Анна", city: "Казань", Email: "" },
+			{ name: "Олег", city: "Томск", Email: "" },
+			{ name: "Ира", city: "", Email: "i@x.ru" },
+			{ name: "Лев", city: "", Email: "l@x.ru" },
+		]);
+	});
+
+	it("заголовок, совпавший с существующим ключом, не перетирает поле", () => {
+		const clash = toTable([["name"], ["Ира"]], true);
+		const next = importRecords(doc, clash, [NEW_FIELD], "replace");
+		expect(next.fields.at(-1)?.key).toBe("field_3");
+		expect(next.records[0]).toEqual({ name: "", city: "", field_3: "Ира" });
 	});
 });

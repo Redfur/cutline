@@ -1,8 +1,11 @@
 // Режим «Данные» (docs/ui-spec.md, «Экран 2»). Все правки идут через onChange —
 // это history.set оболочки, поэтому набор в ячейке, удаление записи и смена ключа
 // отменяются тем же Ctrl+Z, что и правки макета.
-import { type MouseEvent, useRef, useState } from "react";
+import { type ChangeEvent, type MouseEvent, useRef, useState } from "react";
+import type { CsvTable } from "../../data/csv";
+import { usedFields } from "../../data/placeholders";
 import { hasProblems, type RecordProblems } from "../../data/problems";
+import { downloadCsv } from "../../export/csv";
 import type { CutlineDocument } from "../../model/document";
 import { Icon } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
@@ -11,12 +14,15 @@ import {
 	addRecord,
 	deleteField,
 	deleteRecord,
+	type ImportMode,
+	importRecords,
 	renameFieldKey,
 	setCell,
 	setFieldLabel,
 } from "../lib/records";
 import type { DocumentHistory } from "../lib/useDocumentHistory";
 import styles from "./DataMode.module.css";
+import { type CsvFile, ImportDialog } from "./ImportDialog";
 import { RecordsTable } from "./RecordsTable";
 import { type RecordFilter, ThumbnailGrid } from "./ThumbnailGrid";
 
@@ -58,6 +64,8 @@ export function DataMode({
 	const [filter, setFilter] = useState<RecordFilter>("all");
 	const [freshFieldKey, setFreshFieldKey] = useState<string | null>(null);
 	const [focusIndex, setFocusIndex] = useState<number | null>(null);
+	const [importFile, setImportFile] = useState<CsvFile | null>(null);
+	const csvInputRef = useRef<HTMLInputElement>(null);
 	const { records, fields } = doc;
 	const empty = records.length === 0;
 	const rows = records
@@ -97,6 +105,58 @@ export function DataMode({
 		}
 		return null;
 	};
+
+	const handleCsvPicked = (e: ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		e.target.value = ""; // тот же файл можно выбрать повторно после правки в Excel
+		if (!file) return;
+		void file
+			.arrayBuffer()
+			.then((buf) =>
+				setImportFile({ name: file.name, bytes: new Uint8Array(buf) }),
+			);
+	};
+
+	const handleImport = (
+		table: CsvTable,
+		mapping: string[],
+		mode: ImportMode,
+	) => {
+		const firstNew = mode === "append" ? records.length : 0;
+		// один шаг истории на весь импорт: Ctrl+Z возвращает таблицу как была
+		onChange((d) => importRecords(d, table, mapping, mode), {
+			boundary: true,
+		});
+		setImportFile(null);
+		setFilter("all");
+		onSelect(firstNew);
+	};
+
+	const csv = (
+		<>
+			<input
+				ref={csvInputRef}
+				type="file"
+				accept=".csv,.tsv,.txt,text/csv"
+				className={styles.fileInput}
+				onChange={handleCsvPicked}
+			/>
+			{importFile && (
+				<ImportDialog
+					// другой файл — свежее состояние диалога (кодировка, сопоставление)
+					key={`${importFile.name}-${importFile.bytes.length}`}
+					file={importFile}
+					fields={fields}
+					usedKeys={[...usedFields(doc).keys()]}
+					hasRecords={records.length > 0}
+					onCancel={() => setImportFile(null)}
+					onPickOther={() => csvInputRef.current?.click()}
+					onImport={handleImport}
+				/>
+			)}
+		</>
+	);
+	const pickCsv = () => csvInputRef.current?.click();
 
 	const table = (
 		<RecordsTable
@@ -142,8 +202,12 @@ export function DataMode({
 						<Button variant="primary" icon="plus" onClick={handleAddRecord}>
 							Добавить запись
 						</Button>
+						<Button icon="file-text" onClick={pickCsv}>
+							Импорт CSV
+						</Button>
 					</div>
 				</div>
+				{csv}
 			</main>
 		);
 	}
@@ -180,6 +244,17 @@ export function DataMode({
 					<Button size="sm" icon="plus" onClick={handleAddRecord}>
 						Добавить запись
 					</Button>
+					<Button size="sm" variant="ghost" icon="file-text" onClick={pickCsv}>
+						Импорт CSV
+					</Button>
+					<Button
+						size="sm"
+						variant="ghost"
+						icon="download"
+						onClick={() => downloadCsv(fields, records, "cutline-data.csv")}
+					>
+						Экспорт CSV
+					</Button>
 				</div>
 			</section>
 			{/* Разделитель тянется только мышью, как и направляющие холста: это настройка
@@ -204,6 +279,7 @@ export function DataMode({
 				onSelect={onSelect}
 				onOpen={onOpen}
 			/>
+			{csv}
 		</main>
 	);
 }

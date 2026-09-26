@@ -1,0 +1,128 @@
+.file {
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+	padding: var(--space-4) 10px;
+	border: 1px solid var(--border-1);
+	border-radius: var(--radius-control);
+	background: var(--bg-subtle);
+}
+
+.fileIcon {
+	display: flex;
+	color: var(--fg-2);
+}
+
+.fileInfo {
+	flex: 1;
+	min-width: 0;
+}
+
+.fileName {
+	font: var(--type-mono);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.fileMeta {
+	margin-top: 2px;
+	font: var(--type-label);
+	color: var(--fg-3);
+}
+
+/* Тело Dialog не прокручивается само — у файла с двадцатью колонками таблица
+   сопоставления вытолкнула бы кнопки за экран */
+.mappingScroll {
+	max-height: 320px;
+	overflow: auto;
+	border: 1px solid var(--border-1);
+	border-radius: var(--radius-control);
+}
+
+.mapping {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	table-layout: fixed;
+	font: var(--type-body);
+}
+
+.colName {
+	width: 128px;
+}
+
+.colArrow {
+	width: 24px;
+}
+
+.colField {
+	width: 176px;
+}
+
+.mapping th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	height: 28px;
+	padding: 0 var(--space-4);
+	background: var(--bg-subtle);
+	border-bottom: 1px solid var(--border-1);
+	text-align: left;
+	font: var(--type-section);
+	color: var(--fg-2);
+}
+
+.mapping td {
+	padding: var(--space-2) var(--space-4);
+	border-bottom: 1px solid var(--border-1);
+	vertical-align: middle;
+}
+
+.mapping tr:last-child td {
+	border-bottom: 0;
+}
+
+.name {
+	font-weight: 500;
+	color: var(--fg-1);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.sample {
+	color: var(--fg-3);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.arrow {
+	padding: 0;
+	color: var(--fg-3);
+}
+
+.off .name,
+.off .arrow {
+	color: var(--fg-disabled);
+}
+
+.note {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	font: var(--type-label);
+	color: var(--fg-2);
+}
+
+.mode {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.modeLabel {
+	font: var(--type-label);
+	color: var(--fg-2);
+}
