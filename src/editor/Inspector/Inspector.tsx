@@ -10,12 +10,15 @@ import type {
 	Guide,
 } from "../../model/document";
 import type { IconProps } from "../../ui/core/Icon";
+import { Button } from "../../ui/forms/Button";
+import { plural } from "../lib/plural";
 import type { BorderVisibility } from "../lib/snap";
 import { CanvasInspector } from "./CanvasInspector";
 import { GuideInspector } from "./GuideInspector";
 import { ImageInspector } from "./ImageInspector";
 import styles from "./Inspector.module.css";
 import { InspectorHeader } from "./InspectorHeader";
+import { OverflowAlert } from "./OverflowAlert";
 import { ShapeInspector } from "./ShapeInspector";
 import { TextInspector } from "./TextInspector";
 
@@ -36,6 +39,9 @@ export interface InspectorProps {
 	// видимость границ холста — галочки «Направляющие»
 	borders: BorderVisibility;
 	onBordersChange: (borders: BorderVisibility) => void;
+	// элементы, не влезшие на текущей записи, — сводка у холста, когда ничего не выделено
+	overflowElements: CutlineElement[];
+	onSelectElement: (id: string) => void;
 }
 
 const TYPE_LABEL: Record<ElementType, string> = {
@@ -67,6 +73,8 @@ export function Inspector({
 	swatches,
 	borders,
 	onBordersChange,
+	overflowElements,
+	onSelectElement,
 }: InspectorProps) {
 	return (
 		<aside className={styles.inspector}>
@@ -117,6 +125,26 @@ export function Inspector({
 			) : (
 				<>
 					<InspectorHeader title="Холст" kind="Ничего не выделено" />
+					{overflowElements[0] && (
+						<OverflowAlert
+							title={`${overflowElements.length} ${plural(
+								overflowElements.length,
+								"элемент не влезает",
+								"элемента не влезают",
+								"элементов не влезают",
+							)}`}
+							actions={
+								// первый — чинить по одному, остальные подсвечены на холсте
+								<Button
+									size="sm"
+									variant="warning"
+									onClick={() => onSelectElement(overflowElements[0].id)}
+								>
+									Выделить «{overflowElements[0].name}»
+								</Button>
+							}
+						/>
+					)}
 					<CanvasInspector
 						canvas={canvas}
 						onChange={onCanvasChange}

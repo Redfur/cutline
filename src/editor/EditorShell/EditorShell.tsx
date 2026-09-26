@@ -425,6 +425,10 @@ export function EditorShell({
 						swatches={swatches}
 						borders={borders}
 						onBordersChange={setBorders}
+						overflowElements={history.doc.elements.filter((el) =>
+							overflowIds.includes(el.id),
+						)}
+						onSelectElement={handleSelectElement}
 					/>
 				</div>
 			)}
