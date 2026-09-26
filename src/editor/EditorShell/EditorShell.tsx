@@ -19,6 +19,7 @@ import type { ViewState } from "../../storage/session";
 import { RecordNavigator } from "../../ui/editor/RecordNavigator";
 import { BASE_PX_PER_MM, Canvas, type ViewportSize } from "../Canvas";
 import { DataMode } from "../DataMode";
+import { ExportDialog } from "../ExportDialog";
 import { Inspector } from "../Inspector";
 import { type LayerPatch, LayersPanel } from "../LayersPanel";
 import { documentColors } from "../lib/documentColors";
@@ -76,6 +77,7 @@ export function EditorShell({
 	// «Дизайн» именно на этой записи
 	const [recordIndex, setRecordIndex] = useState(initialView.recordIndex);
 	const [borders, setBorders] = useState(initialView.borders);
+	const [exporting, setExporting] = useState(false);
 
 	const { records, fields } = history.doc;
 	// после удаления записей или undo индекс мог уйти за конец — не храним исправленное
@@ -230,6 +232,9 @@ export function EditorShell({
 
 	useEffect(() => {
 		function onKeyDown(e: KeyboardEvent) {
+			// под модальным диалогом холст недоступен: Backspace вне поля удалил бы
+			// выделенный элемент, а Ctrl+Z откатил бы документ за спиной у диалога
+			if (exporting) return;
 			const mod = e.metaKey || e.ctrlKey;
 			const key = e.key.toLowerCase();
 
@@ -333,6 +338,7 @@ export function EditorShell({
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
 	}, [
+		exporting,
 		mode,
 		selectedId,
 		selectedGuideId,
@@ -345,11 +351,11 @@ export function EditorShell({
 		<div className={styles.shell}>
 			<TopBar
 				doc={history.doc}
-				record={previewRecord}
 				mode={mode}
 				onModeChange={setMode}
 				onOpenDocument={handleOpenDocument}
 				onNewDocument={handleNewDocument}
+				onExport={() => setExporting(true)}
 				save={save}
 				canUndo={history.canUndo}
 				canRedo={history.canRedo}
@@ -434,6 +440,14 @@ export function EditorShell({
 						onSelectElement={handleSelectElement}
 					/>
 				</div>
+			)}
+			{exporting && (
+				<ExportDialog
+					doc={history.doc}
+					recordIndex={currentRecord}
+					problems={problems}
+					onClose={() => setExporting(false)}
+				/>
 			)}
 		</div>
 	);

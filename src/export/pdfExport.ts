@@ -1,9 +1,9 @@
-// Экспорт PDF из редактора: проверка шрифтов → кривые → PDF → файл. Всё, что
+// Экспорт PDF из редактора: проверка шрифтов → кривые → спуск → PDF. Всё, что
 // требует браузера (fetch, canvas), — здесь; сборка страниц в pdf.ts от DOM не зависит.
+// Грузится лениво из batch.ts вместе с pdf-lib.
 import type { CutlineDocument, DataRecord } from "../model/document";
 import { render } from "../render/render";
-import { downloadBlob } from "./download";
-import { layoutOptions, pageLayout } from "./imposition";
+import { type LayoutOption, pageLayout } from "./imposition";
 import { buildPdf, decodeDataUri, type ImageBytes, imposeSheets } from "./pdf";
 import { pdfFontProblems, pdfFontProblemsMessage } from "./pdfPreflight";
 
@@ -73,11 +73,17 @@ async function resolveImageInBrowser(href: string): Promise<ImageBytes> {
 	}
 }
 
-export async function downloadPdf(
+// Тираж одним PDF: карточки по спуску выбранной раскладки, текст кривыми.
+// Системный шрифт отсекает диалог (pdfPreflight) — сюда он попасть не должен, но
+// проверка стоит и здесь: иначе render() молча оставил бы <text>, и сборка упала бы
+// непонятной ошибкой разбора.
+export async function buildTiragePdf(
 	doc: CutlineDocument,
-	record: DataRecord,
-	filename: string,
-): Promise<void> {
+	records: DataRecord[],
+	option: LayoutOption,
+	printMarks: boolean,
+	onProgress: (done: number) => void,
+): Promise<Blob> {
 	const problems = pdfFontProblems(doc);
 	if (problems.length) {
 		throw new Error(pdfFontProblemsMessage(problems));
@@ -85,16 +91,22 @@ export async function downloadPdf(
 	// opentype.js — отдельным чанком: вместе с pdf-lib они не влезали в лимит Vite на чанк
 	const { loadOutlineFonts } = await import("../fonts/outlineFonts");
 	const outlines = await loadOutlineFonts(doc);
-	const svg = render(doc, record, { outlines, bleed: true });
+	const svgs: string[] = [];
+	for (const record of records) {
+		svgs.push(render(doc, record, { outlines, bleed: printMarks }));
+		onProgress(svgs.length);
+		// отдать кадр: на сотне карточек иначе замирает и счётчик на кнопке
+		await nextFrame();
+	}
 	const card = { w: doc.canvas.w, h: doc.canvas.h, bleed: doc.canvas.bleed };
-	const layout = pageLayout(card, layoutOptions(card, true)[0], true);
 	const bytes = await buildPdf(
-		imposeSheets(layout, [svg]),
+		imposeSheets(pageLayout(card, option, printMarks), svgs),
 		resolveImageInBrowser,
 	);
 	// slice — копия на ArrayBuffer: Blob не принимает представление поверх SharedArrayBuffer
-	downloadBlob(
-		new Blob([bytes.slice()], { type: "application/pdf" }),
-		filename,
-	);
+	return new Blob([bytes.slice()], { type: "application/pdf" });
+}
+
+export function nextFrame(): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, 0));
 }

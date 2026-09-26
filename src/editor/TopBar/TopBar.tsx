@@ -1,13 +1,14 @@
-import { type ChangeEvent, useState } from "react";
+// Шапка по макету (ui_kits/editor/Chrome.jsx): одна основная кнопка «Экспорт» и меню
+// «…» с файловыми действиями. Форматы, раскладка и записи выбираются в диалоге
+// экспорта — отдельные кнопки под каждый формат в шапке не держим.
+import { type ChangeEvent, useRef } from "react";
 import { downloadDocument, openDocumentFile } from "../../export/document";
-import { downloadPng } from "../../export/png";
-import { downloadSvg } from "../../export/svg";
-import type { CutlineDocument, DataRecord } from "../../model/document";
-import { render, renderedSize } from "../../render/render";
+import type { CutlineDocument } from "../../model/document";
 import { SaveIndicator } from "../../ui/feedback/SaveIndicator";
 import { Button } from "../../ui/forms/Button";
 import { IconButton } from "../../ui/forms/IconButton";
 import { SegmentedControl } from "../../ui/forms/SegmentedControl";
+import { Menu } from "../../ui/overlays/Menu";
 import type { AutosaveState } from "../lib/useAutosave";
 import styles from "./TopBar.module.css";
 
@@ -15,13 +16,11 @@ export type Mode = "design" | "data";
 
 export interface TopBarProps {
 	doc: CutlineDocument;
-	// SVG/PNG/PDF экспортируют ту карточку, что сейчас на холсте, — пакетный экспорт
-	// всех записей придёт вместе с панелью экспорта
-	record: DataRecord;
 	mode: Mode;
 	onModeChange: (mode: Mode) => void;
 	onOpenDocument: (doc: CutlineDocument) => void;
 	onNewDocument: () => void;
+	onExport: () => void;
 	save: AutosaveState;
 	canUndo: boolean;
 	canRedo: boolean;
@@ -31,29 +30,19 @@ export interface TopBarProps {
 
 export function TopBar({
 	doc,
-	record,
 	mode,
 	onModeChange,
 	onOpenDocument,
 	onNewDocument,
+	onExport,
 	save,
 	canUndo,
 	canRedo,
 	onUndo,
 	onRedo,
 }: TopBarProps) {
-	// PDF собирается заметное время (шрифты, картинки) — второй клик не запускает вторую сборку
-	const [pdfBusy, setPdfBusy] = useState(false);
-	const handlePdf = () => {
-		setPdfBusy(true);
-		// pdf-lib и opentype.js — лениво: основному бандлу они не нужны до первого PDF
-		import("../../export/pdfExport")
-			.then(({ downloadPdf }) => downloadPdf(doc, record, "cutline.pdf"))
-			.catch((err: unknown) => {
-				alert(err instanceof Error ? err.message : String(err));
-			})
-			.finally(() => setPdfBusy(false));
-	};
+	// пункт меню — кнопка, а файловый диалог открывает только клик по input[type=file]
+	const fileInput = useRef<HTMLInputElement>(null);
 
 	const handleOpen = (e: ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -69,6 +58,7 @@ export function TopBar({
 	return (
 		<div className={styles.topBar}>
 			<span className={styles.logo}>Cutline</span>
+			<span className={styles.divider} />
 			<span title={save.message ?? undefined}>
 				<SaveIndicator status={save.status} label={save.label ?? undefined} />
 			</span>
@@ -97,54 +87,36 @@ export function TopBar({
 					]}
 				/>
 			</div>
-			<Button
-				variant="ghost"
-				onClick={() =>
-					downloadSvg(
-						render(doc, record, {
-							outlines: null,
-							bleed: false,
-						}),
-						"cutline.svg",
-					)
-				}
-			>
-				Экспорт SVG
+			<Button variant="primary" icon="download" onClick={onExport}>
+				Экспорт
 			</Button>
-			<Button
-				variant="ghost"
-				onClick={() => {
-					const opts = { outlines: null, bleed: false };
-					const svg = render(doc, record, opts);
-					const { widthMm, heightMm } = renderedSize(doc.canvas, opts);
-					downloadPng(svg, widthMm, heightMm, 300, "cutline@300dpi.png");
-				}}
-			>
-				Экспорт PNG
-			</Button>
-			<Button variant="ghost" disabled={pdfBusy} onClick={handlePdf}>
-				{pdfBusy ? "Собираю PDF…" : "Экспорт PDF"}
-			</Button>
-			<Button
-				variant="ghost"
-				onClick={() => downloadDocument(doc, "cutline.json")}
-			>
-				Сохранить в файл
-			</Button>
-			{/* С автосохранением перезагрузка возвращает прошлый документ — к пустому
-			    листу иначе не вернуться. Отменяется Ctrl+Z, поэтому без подтверждения */}
-			<Button variant="ghost" onClick={onNewDocument}>
-				Новый
-			</Button>
-			<label className={styles.openLabel}>
-				<span className={styles.openButton}>Открыть…</span>
-				<input
-					type="file"
-					accept="application/json"
-					onChange={handleOpen}
-					className={styles.fileInput}
-				/>
-			</label>
+			<Menu
+				align="right"
+				width={220}
+				trigger={<IconButton icon="ellipsis" label="Меню" />}
+				items={[
+					// С автосохранением перезагрузка возвращает прошлый документ — к пустому
+					// листу иначе не вернуться. Отменяется Ctrl+Z, поэтому без подтверждения
+					{ label: "Новый документ", icon: "plus", onSelect: onNewDocument },
+					{
+						label: "Открыть файл…",
+						icon: "file-text",
+						onSelect: () => fileInput.current?.click(),
+					},
+					{
+						label: "Сохранить в файл",
+						icon: "download",
+						onSelect: () => downloadDocument(doc, "cutline.json"),
+					},
+				]}
+			/>
+			<input
+				ref={fileInput}
+				type="file"
+				accept="application/json"
+				onChange={handleOpen}
+				className={styles.fileInput}
+			/>
 		</div>
 	);
 }
