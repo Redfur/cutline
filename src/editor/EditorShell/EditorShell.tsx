@@ -22,6 +22,7 @@ import { type LayerPatch, LayersPanel } from "../LayersPanel/LayersPanel";
 import { type Tool, Toolbar } from "../Toolbar/Toolbar";
 import { type Mode, TopBar } from "../TopBar/TopBar";
 import { useDocumentHistory } from "../useDocumentHistory";
+import styles from "./EditorShell.module.css";
 
 const FIT_MARGIN_PX = 32;
 const DUPLICATE_OFFSET_MM = 5;
@@ -245,7 +246,7 @@ export function EditorShell() {
 	}, [selectedId, selectedGuideId, history.set, history.undo, history.redo]);
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+		<div className={styles.shell}>
 			<TopBar
 				doc={history.doc}
 				mode={mode}
@@ -257,20 +258,11 @@ export function EditorShell() {
 				onRedo={history.redo}
 			/>
 			{mode === "data" ? (
-				<div
-					style={{
-						flex: 1,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						color: "var(--fg-3)",
-						font: "var(--type-body)",
-					}}
-				>
+				<div className={styles.placeholder}>
 					Режим «Данные» — Этап 3 роадмапа, ещё не реализован.
 				</div>
 			) : (
-				<div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+				<div className={styles.workspace}>
 					<Toolbar
 						tool={tool}
 						onToolChange={setTool}

@@ -1,6 +1,7 @@
 // Направляющая, вытянутая с линейки (как в Фигме) — тонкая видимая линия внутри более
 // широкого невидимого хитбокса (иначе за 1px мышью не попасть). Без onMouseDown — это
 // живое превью во время перетаскивания, не сама направляющая, тянуть его нельзя.
+import styles from "./GuideLine.module.css";
 
 export interface GuideLineProps {
 	axis: "x" | "y";
@@ -23,7 +24,14 @@ export function GuideLine({
 }: GuideLineProps) {
 	const posPx = originPx + positionMm * pxPerMm;
 	const interactive = Boolean(onMouseDown);
-	const thickness = selected ? 2 : 1;
+	const className = [
+		styles.hitbox,
+		styles[axis],
+		interactive && styles.interactive,
+		selected && styles.selected,
+	]
+		.filter(Boolean)
+		.join(" ");
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: перетаскивание мышью, как и остальные хит-таргеты холста рядом (ElementOverlay, маркеры ресайза) — клавиатурного пути нет
 		// biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше
@@ -32,38 +40,10 @@ export function GuideLine({
 			// mousedown выше гасит только само перетаскивание; следующий за ним click иначе
 			// всплыл бы до contentRef и снял выделение элемента просто от клика по линии
 			onClick={interactive ? (e) => e.stopPropagation() : undefined}
-			style={{
-				position: "absolute",
-				pointerEvents: interactive ? "auto" : "none",
-				cursor: interactive
-					? axis === "x"
-						? "ew-resize"
-						: "ns-resize"
-					: undefined,
-				...(axis === "x"
-					? { left: posPx - 3, top: 0, width: 6, height: "100%" }
-					: { top: posPx - 3, left: 0, height: 6, width: "100%" }),
-			}}
+			className={className}
+			style={axis === "x" ? { left: posPx - 3 } : { top: posPx - 3 }}
 		>
-			<div
-				style={{
-					position: "absolute",
-					background: "var(--selection)",
-					...(axis === "x"
-						? {
-								left: 3 - (thickness - 1) / 2,
-								top: 0,
-								width: thickness,
-								height: "100%",
-							}
-						: {
-								top: 3 - (thickness - 1) / 2,
-								left: 0,
-								height: thickness,
-								width: "100%",
-							}),
-				}}
-			/>
+			<div className={styles.line} />
 		</div>
 	);
 }

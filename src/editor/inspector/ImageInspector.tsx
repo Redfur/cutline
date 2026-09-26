@@ -10,6 +10,7 @@ import { PropertyRow } from "../../ui/editor/PropertyRow";
 import { Button } from "../../ui/forms/Button";
 import { Select } from "../../ui/forms/Select";
 import { TextField } from "../../ui/forms/TextField";
+import styles from "./Inspector.module.css";
 import { PositionSizeFields } from "./PositionSizeFields";
 
 export interface ImageInspectorProps {
@@ -80,33 +81,9 @@ export function ImageInspector({ element, onChange }: ImageInspectorProps) {
 			</PropertyRow>
 
 			{element.src ? (
-				<img
-					src={element.src}
-					alt=""
-					style={{
-						width: "100%",
-						height: 80,
-						objectFit: "contain",
-						borderRadius: "var(--radius-control)",
-						border: "1px solid var(--border-1)",
-						background: "var(--bg-subtle)",
-					}}
-				/>
+				<img src={element.src} alt="" className={styles.imagePreview} />
 			) : (
-				<div
-					style={{
-						display: "flex",
-						flexDirection: "column",
-						alignItems: "center",
-						justifyContent: "center",
-						gap: 4,
-						height: 80,
-						borderRadius: "var(--radius-control)",
-						border: "1px dashed var(--border-2)",
-						color: "var(--fg-3)",
-						font: "var(--type-label)",
-					}}
-				>
+				<div className={styles.imagePlaceholder}>
 					<Icon name="image" size={20} />
 					Вставьте ссылку или загрузите файл
 				</div>
@@ -125,7 +102,7 @@ export function ImageInspector({ element, onChange }: ImageInspectorProps) {
 				ref={fileInputRef}
 				type="file"
 				accept="image/*"
-				style={{ display: "none" }}
+				className={styles.fileInput}
 				onChange={(e) => {
 					const file = e.target.files?.[0];
 					e.target.value = ""; // разрешить повторный выбор того же файла

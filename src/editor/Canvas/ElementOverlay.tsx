@@ -4,6 +4,7 @@
 import type { CutlineElement } from "../../model/document";
 import type { HandlePos } from "../resizeElement";
 import { HANDLE_SIZE, MIN_HIT_HEIGHT_PX } from "./constants";
+import styles from "./ElementOverlay.module.css";
 
 function cursorForHandle(handle: HandlePos): string {
 	if (handle.x !== 0.5 && handle.y !== 0.5) {
@@ -66,30 +67,21 @@ export function ElementOverlay({
 				onSelect();
 				if (canDrag) onStartMove(e);
 			}}
-			// клик тоже долетел бы до canvas-card (место/снять выделение) — гасим здесь,
+			// клик тоже долетел бы до карточки (место/снять выделение) — гасим здесь,
 			// само выделение уже случилось на mousedown выше
 			onClick={(e) => e.stopPropagation()}
+			className={`${styles.overlay} ${canDrag ? styles.draggable : ""}`}
 			style={{
-				position: "absolute",
 				left: el.x * pxPerMm,
 				top: el.y * pxPerMm - hitBoxTopAdjust,
 				width: widthPx,
 				height: heightPx,
-				cursor: canDrag ? "move" : "pointer",
 				transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
-				transformOrigin: "center",
 			}}
 		>
 			{selected && !el.locked && (
 				<>
-					<div
-						style={{
-							position: "absolute",
-							inset: 0,
-							outline: "1px solid var(--border-focus)",
-							pointerEvents: "none",
-						}}
-					/>
+					<div className={styles.outline} />
 					{HANDLE_POSITIONS.map((handle) => (
 						// Маркер ресайза, тот же случай, что и хит-таргет элемента выше — не контрол,
 						// клавиатурного пути к ресайзу пока нет нигде в редакторе (горячие клавиши — отдельный пункт роадмапа)
@@ -101,31 +93,16 @@ export function ElementOverlay({
 								e.stopPropagation();
 								onStartResize(handle, e);
 							}}
+							className={styles.handle}
 							style={{
-								position: "absolute",
 								left: handle.x * widthPx - HANDLE_SIZE / 2,
 								top: handle.y * heightPx - HANDLE_SIZE / 2,
-								width: HANDLE_SIZE,
-								height: HANDLE_SIZE,
-								background: "#FFFFFF",
-								border: "1px solid var(--border-focus)",
-								cursor: canDrag ? cursorForHandle(handle) : "default",
-								pointerEvents: canDrag ? "auto" : "none",
+								// курсор зависит от маркера — восемь классов ради этого не заводим
+								cursor: canDrag ? cursorForHandle(handle) : undefined,
 							}}
 						/>
 					))}
-					<div
-						style={{
-							position: "absolute",
-							top: heightPx + 4,
-							left: "50%",
-							transform: "translateX(-50%)",
-							whiteSpace: "nowrap",
-							font: "var(--type-label)",
-							color: "var(--fg-accent)",
-							pointerEvents: "none",
-						}}
-					>
+					<div className={styles.sizeLabel} style={{ top: heightPx + 4 }}>
 						{Math.round(el.w)}×{Math.round(el.h)} мм
 					</div>
 				</>

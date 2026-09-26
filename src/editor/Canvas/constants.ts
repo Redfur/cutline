@@ -2,7 +2,6 @@
 // Остальное — экранные размеры оверлеев редактора, к модели документа не относятся.
 
 export const BASE_PX_PER_MM = 96 / 25.4; // 100% зума = «настоящий» CSS-пиксель при 96dpi
-export const RULER_SIZE = 20; // px, совпадает с --ruler-size
 export const PAD_MM = 20; // запас вокруг карточки, чтобы вылет и линейки было видно при любом zoom
 export const MAJOR_TICK_MM = 10;
 export const MINOR_TICK_MM = 5;

@@ -1,0 +1,47 @@
+.topBar {
+	height: var(--topbar-h);
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 0 12px;
+	background: var(--bg-panel);
+	border-bottom: 1px solid var(--border-1);
+}
+
+.logo {
+	font: 700 var(--text-md) / 1 var(--font-ui);
+	color: var(--fg-1);
+}
+
+.history {
+	display: flex;
+	gap: 2px;
+}
+
+.modeSwitch {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+}
+
+.openLabel {
+	display: inline-flex;
+}
+
+/* Выглядит как secondary-кнопка, но это <label> вокруг скрытого input[type=file] —
+   Button из src/ui рендерит <button>, а клик по нему файловый диалог не откроет */
+.openButton {
+	display: inline-flex;
+	align-items: center;
+	height: var(--control-md);
+	padding: 0 10px;
+	border: 1px solid var(--border-2);
+	border-radius: var(--radius-control);
+	font: 500 var(--text-sm) / 1 var(--font-ui);
+	cursor: pointer;
+}
+
+.fileInput {
+	display: none;
+}

@@ -1,0 +1,40 @@
+.overlay {
+	position: absolute;
+	cursor: pointer;
+	transform-origin: center;
+}
+
+.draggable {
+	cursor: move;
+}
+
+.outline {
+	position: absolute;
+	inset: 0;
+	outline: 1px solid var(--border-focus);
+	pointer-events: none;
+}
+
+.handle {
+	position: absolute;
+	width: 7px; /* HANDLE_SIZE в constants.ts — по нему же считается смещение центра */
+	height: 7px;
+	background: #ffffff;
+	border: 1px solid var(--border-focus);
+	cursor: default;
+	pointer-events: none;
+}
+
+.draggable .handle {
+	pointer-events: auto;
+}
+
+.sizeLabel {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	white-space: nowrap;
+	font: var(--type-label);
+	color: var(--fg-accent);
+	pointer-events: none;
+}

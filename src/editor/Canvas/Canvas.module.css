@@ -1,0 +1,119 @@
+.root {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--bg-canvas);
+}
+
+.topRow {
+	display: flex;
+	flex: none;
+	height: var(--ruler-size);
+}
+
+.corner {
+	width: var(--ruler-size);
+	flex: none;
+	background: var(--bg-panel);
+	border-right: 1px solid var(--border-1);
+	border-bottom: 1px solid var(--border-1);
+}
+
+.rulerStrip {
+	overflow: hidden;
+	position: relative;
+	background: var(--bg-panel);
+}
+
+.rulerStripX {
+	flex: 1;
+	border-bottom: 1px solid var(--border-1);
+	cursor: ew-resize;
+}
+
+.rulerStripY {
+	width: var(--ruler-size);
+	flex: none;
+	border-right: 1px solid var(--border-1);
+	cursor: ns-resize;
+}
+
+.body {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
+.viewport {
+	flex: 1;
+	overflow: auto;
+	position: relative;
+}
+
+.content {
+	position: relative;
+}
+
+.card {
+	position: absolute;
+	box-shadow: var(--shadow-card);
+	cursor: default;
+}
+
+.placing {
+	cursor: crosshair;
+}
+
+.cardArt {
+	width: 100%;
+	height: 100%;
+}
+
+/* У <svg> из render() свой intrinsic-размер в мм — без этого он рисуется в этом
+   размере независимо от контейнера и вылезает за его пределы. Контейнер уже
+   подогнан под то же соотношение сторон (canvas.w×canvas.h), что и viewBox самого
+   SVG — можно смело растянуть на 100% по обеим осям. */
+.cardArt :global(svg) {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.trim,
+.bleed,
+.safe {
+	position: absolute;
+	pointer-events: none;
+}
+
+.trim {
+	inset: 0;
+	border: 1px solid var(--guide-trim);
+}
+
+.bleed {
+	border: 1px dashed var(--guide-bleed);
+}
+
+.safe {
+	border: 1px dashed var(--guide-safe);
+}
+
+.snapGuide {
+	position: absolute;
+	background: var(--selection);
+	pointer-events: none;
+}
+
+.snapGuideX {
+	top: 0;
+	width: 1px;
+	height: 100%;
+}
+
+.snapGuideY {
+	left: 0;
+	width: 100%;
+	height: 1px;
+}

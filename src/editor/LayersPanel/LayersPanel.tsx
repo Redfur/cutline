@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CutlineElement, Guide } from "../../model/document";
 import { Icon } from "../../ui/core/Icon";
 import { LayerRow } from "../../ui/editor/LayerRow";
+import styles from "./LayersPanel.module.css";
 
 export interface LayerPatch {
 	locked?: boolean;
@@ -39,20 +40,7 @@ function GuideRow({
 		<button
 			type="button"
 			onClick={onClick}
-			style={{
-				display: "flex",
-				alignItems: "center",
-				gap: 8,
-				width: "100%",
-				height: "var(--row-h)",
-				padding: "0 10px",
-				border: 0,
-				background: selected ? "var(--bg-selected)" : "transparent",
-				font: "var(--type-label)",
-				color: selected ? "var(--fg-accent)" : "var(--fg-1)",
-				cursor: "pointer",
-				textAlign: "left",
-			}}
+			className={`${styles.guideRow} ${selected ? styles.selected : ""}`}
 		>
 			<Icon name="ruler" size={14} />
 			{guide.axis === "x" ? "X" : "Y"} · {label} мм
@@ -130,42 +118,16 @@ export function LayersPanel({
 	}, [dragId]);
 
 	return (
-		<div
-			ref={containerRef}
-			style={{
-				width: "var(--layers-w)",
-				flex: "none",
-				background: "var(--bg-panel)",
-				borderRight: "1px solid var(--border-1)",
-				overflowY: "auto",
-				position: "relative",
-			}}
-		>
+		<div ref={containerRef} className={styles.panel}>
 			{elements.length === 0 ? (
-				<div
-					style={{
-						padding: "16px 12px",
-						font: "var(--type-label)",
-						color: "var(--fg-3)",
-					}}
-				>
+				<div className={styles.empty}>
 					Элементов нет. Добавьте первый через панель инструментов слева.
 				</div>
 			) : (
 				displayed.map((el, index) => (
-					<div key={el.id} style={{ position: "relative" }}>
+					<div key={el.id} className={styles.row}>
 						{drag && drag.overIndex === index && (
-							<div
-								style={{
-									position: "absolute",
-									left: 0,
-									right: 0,
-									top: -1,
-									height: 2,
-									background: "var(--selection)",
-									zIndex: 1,
-								}}
-							/>
+							<div className={styles.dropIndicator} />
 						)}
 						<LayerRow
 							type={el.type}
@@ -189,15 +151,7 @@ export function LayersPanel({
 			)}
 			{guides.length > 0 && (
 				<>
-					<div
-						style={{
-							padding: "8px 10px 4px",
-							font: "var(--type-label)",
-							color: "var(--fg-3)",
-						}}
-					>
-						Направляющие
-					</div>
+					<div className={styles.sectionTitle}>Направляющие</div>
 					{guides.map((guide) => (
 						<GuideRow
 							key={guide.id}

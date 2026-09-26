@@ -4,6 +4,7 @@
 // Зум внизу панели работает по-настоящему — это часть чеклиста «Холст».
 import type { IconProps } from "../../ui/core/Icon";
 import { IconButton } from "../../ui/forms/IconButton";
+import styles from "./Toolbar.module.css";
 
 export type Tool = "select" | "text" | "rect" | "ellipse" | "line" | "image";
 
@@ -36,19 +37,7 @@ export function Toolbar({
 	onFitToWindow,
 }: ToolbarProps) {
 	return (
-		<div
-			style={{
-				width: "var(--toolbar-w)",
-				flex: "none",
-				background: "var(--bg-panel)",
-				borderRight: "1px solid var(--border-1)",
-				display: "flex",
-				flexDirection: "column",
-				alignItems: "center",
-				padding: "8px 0",
-				gap: 4,
-			}}
-		>
+		<div className={styles.toolbar}>
 			{TOOLS.map(({ tool: t, icon, label }) => (
 				<IconButton
 					key={t}
@@ -59,15 +48,13 @@ export function Toolbar({
 					onClick={() => onToolChange(t)}
 				/>
 			))}
-			<div style={{ flex: 1 }} />
+			<div className={styles.spacer} />
 			<IconButton
 				icon="zoom-out"
 				label="Уменьшить масштаб"
 				onClick={() => onZoomChange(Math.max(MIN_ZOOM, zoom - ZOOM_STEP))}
 			/>
-			<span style={{ font: "var(--type-label)", color: "var(--fg-2)" }}>
-				{Math.round(zoom * 100)}%
-			</span>
+			<span className={styles.zoom}>{Math.round(zoom * 100)}%</span>
 			<IconButton
 				icon="zoom-in"
 				label="Увеличить масштаб"

@@ -13,6 +13,7 @@ import { Select } from "../../ui/forms/Select";
 import { TextField } from "../../ui/forms/TextField";
 import { GuideInspector } from "./GuideInspector";
 import { ImageInspector } from "./ImageInspector";
+import styles from "./Inspector.module.css";
 import { ShapeInspector } from "./ShapeInspector";
 import { TextInspector } from "./TextInspector";
 
@@ -118,15 +119,7 @@ export function Inspector({
 	onGuideChange,
 }: InspectorProps) {
 	return (
-		<div
-			style={{
-				width: "var(--inspector-w)",
-				flex: "none",
-				background: "var(--bg-panel)",
-				borderLeft: "1px solid var(--border-1)",
-				overflowY: "auto",
-			}}
-		>
+		<div className={styles.inspector}>
 			{selectedGuide && (
 				<GuideInspector guide={selectedGuide} onChange={onGuideChange} />
 			)}

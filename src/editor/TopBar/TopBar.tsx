@@ -8,6 +8,7 @@ import { SaveIndicator } from "../../ui/feedback/SaveIndicator";
 import { Button } from "../../ui/forms/Button";
 import { IconButton } from "../../ui/forms/IconButton";
 import { SegmentedControl } from "../../ui/forms/SegmentedControl";
+import styles from "./TopBar.module.css";
 
 export type Mode = "design" | "data";
 
@@ -44,28 +45,10 @@ export function TopBar({
 	};
 
 	return (
-		<div
-			style={{
-				height: "var(--topbar-h)",
-				flex: "none",
-				display: "flex",
-				alignItems: "center",
-				gap: 16,
-				padding: "0 12px",
-				background: "var(--bg-panel)",
-				borderBottom: "1px solid var(--border-1)",
-			}}
-		>
-			<span
-				style={{
-					font: "700 var(--text-md)/1 var(--font-ui)",
-					color: "var(--fg-1)",
-				}}
-			>
-				Cutline
-			</span>
+		<div className={styles.topBar}>
+			<span className={styles.logo}>Cutline</span>
 			<SaveIndicator status="saved" />
-			<div style={{ display: "flex", gap: 2 }}>
+			<div className={styles.history}>
 				<IconButton
 					icon="undo-2"
 					label="Отменить"
@@ -79,7 +62,7 @@ export function TopBar({
 					onClick={onRedo}
 				/>
 			</div>
-			<div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+			<div className={styles.modeSwitch}>
 				<SegmentedControl
 					size="lg"
 					value={mode}
@@ -118,26 +101,13 @@ export function TopBar({
 			>
 				Сохранить
 			</Button>
-			<label style={{ display: "inline-flex" }}>
-				<span
-					style={{
-						display: "inline-flex",
-						alignItems: "center",
-						height: "var(--control-md)",
-						padding: "0 10px",
-						border: "1px solid var(--border-2)",
-						borderRadius: "var(--radius-control)",
-						font: "500 var(--text-sm)/1 var(--font-ui)",
-						cursor: "pointer",
-					}}
-				>
-					Открыть…
-				</span>
+			<label className={styles.openLabel}>
+				<span className={styles.openButton}>Открыть…</span>
 				<input
 					type="file"
 					accept="application/json"
 					onChange={handleOpen}
-					style={{ display: "none" }}
+					className={styles.fileInput}
 				/>
 			</label>
 		</div>

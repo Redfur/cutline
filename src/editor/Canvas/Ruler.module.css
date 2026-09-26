@@ -1,0 +1,114 @@
+.ruler {
+	position: absolute;
+}
+
+.x.ruler {
+	top: 0;
+	height: 100%;
+}
+
+.y.ruler {
+	left: 0;
+	width: 100%;
+}
+
+/* Подсветка проекции элемента, который сейчас тянут */
+.highlight {
+	position: absolute;
+	background: var(--bg-selected);
+}
+
+.x .highlight {
+	top: 0;
+	height: 100%;
+}
+
+.y .highlight {
+	left: 0;
+	width: 100%;
+}
+
+.minor,
+.major {
+	position: absolute;
+	background: var(--border-2);
+}
+
+/* От верхнего края, а не bottom: 0 — полоса линейки ниже на 1px бордера, и тик
+   должен упираться в него так же, как major-тик высотой --ruler-size */
+.x .minor {
+	top: calc(var(--ruler-size) - 5px);
+	width: 1px;
+	height: 5px;
+}
+
+.y .minor {
+	left: calc(var(--ruler-size) - 5px);
+	width: 5px;
+	height: 1px;
+}
+
+.x .major {
+	top: 0;
+	width: 1px;
+	height: var(--ruler-size);
+}
+
+.y .major {
+	left: 0;
+	width: var(--ruler-size);
+	height: 1px;
+}
+
+.label {
+	position: absolute;
+	font: var(--type-label);
+	color: var(--fg-3);
+}
+
+.x .label {
+	left: 3px;
+	top: 1px;
+}
+
+.y .label {
+	top: 3px;
+	left: 2px;
+}
+
+/* Метка пользовательской направляющей — толще тика и цветом выделения */
+.guideMark {
+	position: absolute;
+	pointer-events: none;
+	background: var(--selection);
+}
+
+.x .guideMark {
+	top: 0;
+	width: 2px;
+	height: var(--ruler-size);
+}
+
+.y .guideMark {
+	left: 0;
+	width: var(--ruler-size);
+	height: 2px;
+}
+
+.guideLabel {
+	position: absolute;
+	font: var(--type-label);
+	font-weight: 600;
+	color: var(--selection);
+	white-space: nowrap;
+}
+
+.x .guideLabel {
+	left: 3px;
+	top: 1px;
+}
+
+.y .guideLabel {
+	top: 3px;
+	left: 4px;
+}

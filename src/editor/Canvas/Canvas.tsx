@@ -12,7 +12,8 @@ import type {
 } from "../../model/document";
 import { render } from "../../render/render";
 import type { Tool } from "../Toolbar/Toolbar";
-import { BASE_PX_PER_MM, PAD_MM, RULER_SIZE } from "./constants";
+import styles from "./Canvas.module.css";
+import { BASE_PX_PER_MM, PAD_MM } from "./constants";
 import { ElementOverlay } from "./ElementOverlay";
 import { GuideLine } from "./GuideLine";
 import { Ruler } from "./Ruler";
@@ -148,25 +149,9 @@ export function Canvas({
 	);
 
 	return (
-		<div
-			style={{
-				flex: 1,
-				minWidth: 0,
-				display: "flex",
-				flexDirection: "column",
-				background: "var(--bg-canvas)",
-			}}
-		>
-			<div style={{ display: "flex", flex: "none", height: RULER_SIZE }}>
-				<div
-					style={{
-						width: RULER_SIZE,
-						flex: "none",
-						background: "var(--bg-panel)",
-						borderRight: "1px solid var(--border-1)",
-						borderBottom: "1px solid var(--border-1)",
-					}}
-				/>
+		<div className={styles.root}>
+			<div className={styles.topRow}>
+				<div className={styles.corner} />
 				{/* Тянет новую направляющую на холст, как в Фигме — не семантический
 				    контрол, клавиатурного эквивалента нет, как и у самого холста ниже */}
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
@@ -176,14 +161,7 @@ export function Canvas({
 						e.preventDefault();
 						startNewGuide("x");
 					}}
-					style={{
-						flex: 1,
-						overflow: "hidden",
-						position: "relative",
-						background: "var(--bg-panel)",
-						borderBottom: "1px solid var(--border-1)",
-						cursor: "ew-resize",
-					}}
+					className={`${styles.rulerStrip} ${styles.rulerStripX}`}
 				>
 					<Ruler
 						axis="x"
@@ -200,7 +178,7 @@ export function Canvas({
 					/>
 				</div>
 			</div>
-			<div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+			<div className={styles.body}>
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: тянет новую направляющую, см. комментарий у горизонтальной линейки выше */}
 				<div
 					ref={rulerYStripRef}
@@ -208,15 +186,7 @@ export function Canvas({
 						e.preventDefault();
 						startNewGuide("y");
 					}}
-					style={{
-						width: RULER_SIZE,
-						flex: "none",
-						overflow: "hidden",
-						position: "relative",
-						background: "var(--bg-panel)",
-						borderRight: "1px solid var(--border-1)",
-						cursor: "ns-resize",
-					}}
+					className={`${styles.rulerStrip} ${styles.rulerStripY}`}
 				>
 					<Ruler
 						axis="y"
@@ -240,28 +210,25 @@ export function Canvas({
 							top: e.currentTarget.scrollTop,
 						})
 					}
-					style={{ flex: 1, overflow: "auto", position: "relative" }}
+					className={styles.viewport}
 				>
 					{/* Серая область вокруг карточки — клик здесь снимает выделение, как клик по
-					    самой карточке мимо элементов; .canvas-card гасит свой click ниже,
+					    самой карточке мимо элементов; карточка гасит свой click ниже,
 					    чтобы не сработать здесь же ещё раз всплытием */}
 					{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
 					{/* biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше */}
 					<div
 						ref={contentRef}
 						onClick={() => onSelect(null)}
-						style={{
-							width: contentWidthPx,
-							height: contentHeightPx,
-							position: "relative",
-						}}
+						className={styles.content}
+						style={{ width: contentWidthPx, height: contentHeightPx }}
 					>
 						{/* Кликабельная поверхность холста — размещение/снятие выделения по координате клика,
 						    не семантический контрол; клавиатурного эквивалента здесь нет, как и у canvas */}
 						{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
 						{/* biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше */}
 						<div
-							className="canvas-card"
+							className={`${styles.card} ${PLACEABLE_TOOLS.has(tool) ? styles.placing : ""}`}
 							onClick={(e) => {
 								// иначе всплыл бы на серую область выше и снял выделение сразу
 								// после размещения нового элемента этим же кликом
@@ -278,71 +245,29 @@ export function Canvas({
 								}
 							}}
 							style={{
-								position: "absolute",
 								left: originXPx,
 								top: originYPx,
 								width: cardWidthPx,
 								height: cardHeightPx,
-								boxShadow: "var(--shadow-card)",
-								cursor: PLACEABLE_TOOLS.has(tool) ? "crosshair" : "default",
 							}}
 						>
 							<div
-								style={{ width: "100%", height: "100%" }}
+								className={styles.cardArt}
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: render() выдаёт доверенный SVG из собственного документа редактора
 								dangerouslySetInnerHTML={{ __html: cardSvg }}
 							/>
-							<div
-								style={{
-									position: "absolute",
-									inset: 0,
-									border: "1px solid var(--guide-trim)",
-									pointerEvents: "none",
-								}}
-							/>
-							<div
-								style={{
-									position: "absolute",
-									left: -bleedPx,
-									top: -bleedPx,
-									right: -bleedPx,
-									bottom: -bleedPx,
-									border: "1px dashed var(--guide-bleed)",
-									pointerEvents: "none",
-								}}
-							/>
-							<div
-								style={{
-									position: "absolute",
-									left: safePx,
-									top: safePx,
-									right: safePx,
-									bottom: safePx,
-									border: "1px dashed var(--guide-safe)",
-									pointerEvents: "none",
-								}}
-							/>
+							<div className={styles.trim} />
+							<div className={styles.bleed} style={{ inset: -bleedPx }} />
+							<div className={styles.safe} style={{ inset: safePx }} />
 							{snapGuides.map((guide) => (
 								<div
 									key={`${guide.axis}-${guide.positionMm}`}
-									style={{
-										position: "absolute",
-										background: "var(--selection)",
-										pointerEvents: "none",
-										...(guide.axis === "x"
-											? {
-													left: guide.positionMm * pxPerMm,
-													top: 0,
-													width: 1,
-													height: "100%",
-												}
-											: {
-													top: guide.positionMm * pxPerMm,
-													left: 0,
-													height: 1,
-													width: "100%",
-												}),
-									}}
+									className={`${styles.snapGuide} ${guide.axis === "x" ? styles.snapGuideX : styles.snapGuideY}`}
+									style={
+										guide.axis === "x"
+											? { left: guide.positionMm * pxPerMm }
+											: { top: guide.positionMm * pxPerMm }
+									}
 								/>
 							))}
 							{elements.map((el) => (
@@ -366,7 +291,7 @@ export function Canvas({
 						</div>
 					</div>
 					{/* Направляющие рисуются во всю область редактора (не обрезаются по карточке),
-					    поэтому это сосед .canvas-card внутри contentRef, а не его потомок — позиция
+					    поэтому это сосед карточки внутри contentRef, а не её потомок — позиция
 					    считается от originXPx/originYPx, той же точки мм=0, что и у самой карточки */}
 					{doc.guides
 						.filter((g) => g.id !== guideDrag?.id)
