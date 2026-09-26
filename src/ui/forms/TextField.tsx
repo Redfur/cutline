@@ -2,18 +2,26 @@ import type {
 	ChangeEvent,
 	CSSProperties,
 	FocusEvent,
+	KeyboardEvent,
 	ReactNode,
 	Ref,
 } from "react";
 import { useState } from "react";
 import { Icon, type IconProps } from "../core/Icon";
 
+// шаги стрелок вверх/вниз для числовых полей — как в Фигме
+const ARROW_STEP = 1;
+const ARROW_STEP_LARGE = 10; // Shift
+const ARROW_STEP_SMALL = 0.1; // Alt/Option
+// округляем результат — иначе повторные +0.1/-0.1 копят ошибку плавающей точки
+const ARROW_STEP_PRECISION = 1000;
+
 export interface TextFieldProps {
 	value?: string | number;
 	defaultValue?: string | number;
 	onChange?: (
 		value: string,
-		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+		e?: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
 	) => void;
 	/** Short inline label inside the field: "X", "Ш", "Кегль" */
 	prefix?: string;
@@ -59,6 +67,16 @@ export function TextField({
 	style,
 }: TextFieldProps) {
 	const [f, setF] = useState(false);
+	// Числовое поле отличаем по типу самого значения — это уже надёжный сигнал:
+	// у нас в проекте числовые поля всегда получают number, текстовые — string,
+	// заводить для этого отдельный проп незачем.
+	const isNumeric = typeof value === "number";
+	// Пока поле в фокусе, показываем то, что реально набрано (draft), а не value:
+	// controlled-input на каждый onChange перерисовывается с новым value, и если
+	// родитель нормализует "-", "-0", "4." через Number(v)||0 в число, реальный
+	// набор строки (например смена знака на минус) стирался бы посреди печати.
+	const [draft, setDraft] = useState<string | null>(null);
+	const displayValue = isNumeric && draft !== null ? draft : value;
 	const bd = invalid
 		? "var(--border-danger)"
 		: warning
@@ -141,19 +159,44 @@ export function TextField({
 			) : (
 				<input
 					ref={inputRef as Ref<HTMLInputElement>}
-					value={value}
+					value={displayValue}
 					defaultValue={defaultValue}
 					placeholder={placeholder}
 					disabled={disabled}
-					onChange={(e) => onChange?.(e.target.value, e)}
+					onChange={(e) => {
+						if (isNumeric) setDraft(e.target.value);
+						onChange?.(e.target.value, e);
+					}}
 					onFocus={(e) => {
 						setF(true);
+						if (isNumeric) setDraft(String(value));
 						onFocus?.(e);
 					}}
 					onBlur={(e) => {
 						setF(false);
+						setDraft(null);
 						onBlur?.(e);
 					}}
+					onKeyDown={
+						isNumeric
+							? (e: KeyboardEvent<HTMLInputElement>) => {
+									if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+									e.preventDefault();
+									const step = e.shiftKey
+										? ARROW_STEP_LARGE
+										: e.altKey
+											? ARROW_STEP_SMALL
+											: ARROW_STEP;
+									const current = Number(value) || 0;
+									const delta = e.key === "ArrowUp" ? step : -step;
+									const next =
+										Math.round((current + delta) * ARROW_STEP_PRECISION) /
+										ARROW_STEP_PRECISION;
+									setDraft(String(next));
+									onChange?.(String(next));
+								}
+							: undefined
+					}
 					style={fieldStyle}
 				/>
 			)}
