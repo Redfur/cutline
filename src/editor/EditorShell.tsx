@@ -12,6 +12,7 @@ import {
 } from "./Canvas";
 import {
 	createEllipse,
+	createImage,
 	createLine,
 	createRect,
 	createText,
@@ -73,7 +74,8 @@ export function EditorShell() {
 			ellipse: createEllipse,
 			line: createLine,
 			text: createText,
-		}[tool as "rect" | "ellipse" | "line" | "text"];
+			image: createImage,
+		}[tool as "rect" | "ellipse" | "line" | "text" | "image"];
 		if (!factory) return;
 		const element = factory(at);
 		// boundary: без него быстрая печать сразу после добавления могла бы смёржиться

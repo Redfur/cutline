@@ -36,7 +36,13 @@ export interface CanvasProps {
 	onViewportResize?: (size: ViewportSize) => void;
 }
 
-const PLACEABLE_TOOLS = new Set<Tool>(["rect", "ellipse", "line", "text"]);
+const PLACEABLE_TOOLS = new Set<Tool>([
+	"rect",
+	"ellipse",
+	"line",
+	"text",
+	"image",
+]);
 
 function cursorForHandle(handle: HandlePos): string {
 	if (handle.x !== 0.5 && handle.y !== 0.5) {

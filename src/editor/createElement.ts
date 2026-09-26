@@ -1,6 +1,7 @@
 // Фабрики фигур для добавления через тулбар. Точка клика — центр нового элемента.
 import type {
 	EllipseElement,
+	ImageElement,
 	LineElement,
 	RectElement,
 	TextElement,
@@ -16,6 +17,7 @@ const RECT_H_MM = 20;
 const LINE_LENGTH_MM = 30;
 const TEXT_W_MM = 40;
 const TEXT_H_MM = 10;
+const IMAGE_SIZE_MM = 40;
 
 function id(): string {
 	return crypto.randomUUID();
@@ -85,6 +87,25 @@ export function createText(at: PointMm): TextElement {
 		color: "#111111",
 		fit: "shrink",
 		transform: "none",
+	};
+}
+
+export function createImage(at: PointMm): ImageElement {
+	return {
+		id: id(),
+		name: "Изображение",
+		type: "image",
+		x: at.x - IMAGE_SIZE_MM / 2,
+		y: at.y - IMAGE_SIZE_MM / 2,
+		w: IMAGE_SIZE_MM,
+		h: IMAGE_SIZE_MM,
+		rotation: 0,
+		locked: false,
+		visible: true,
+		// хранить файлы негде (нет бэкенда) — src заполняется в инспекторе: ссылкой
+		// (основной способ) или через загрузку файла (data URI, второстепенный)
+		src: "",
+		fit: "cover",
 	};
 }
 
