@@ -3,6 +3,7 @@
 // здесь, в Canvas; в историю уходит один onElementChange на mouseup с итогом.
 import { useEffect, useRef, useState } from "react";
 import type { CutlineDocument, CutlineElement } from "../../model/document";
+import { cleanGeometry, roundMouseMm } from "../lib/geometry";
 import {
 	type HandlePos,
 	type LineEnd,
@@ -49,8 +50,8 @@ export function useElementDrag({
 		if (!drag) return;
 		function handleMouseMove(e: MouseEvent) {
 			if (!drag) return;
-			const dxMm = (e.clientX - drag.startClientX) / pxPerMm;
-			const dyMm = (e.clientY - drag.startClientY) / pxPerMm;
+			const dxMm = roundMouseMm((e.clientX - drag.startClientX) / pxPerMm);
+			const dyMm = roundMouseMm((e.clientY - drag.startClientY) / pxPerMm);
 			const others = doc.elements.filter(
 				(el) => el.id !== drag.startElement.id && el.visible,
 			);
@@ -120,7 +121,10 @@ export function useElementDrag({
 		}
 		function handleMouseUp() {
 			if (liveElementRef.current) {
-				onElementChange(liveElementRef.current, { boundary: true });
+				// дельта мыши в мм и привязка к соседям дают хвосты вроде 47.37500000000001
+				onElementChange(cleanGeometry(liveElementRef.current), {
+					boundary: true,
+				});
 				swallowNextClick();
 			}
 			liveElementRef.current = null;

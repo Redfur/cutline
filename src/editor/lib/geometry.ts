@@ -25,3 +25,30 @@ export function boundsOf(
 export function lineLength(el: Pick<CutlineElement, "w" | "h">): number {
 	return Math.hypot(el.w, el.h);
 }
+
+// Координаты после драга и привязки несут двоичный float-шум («47.37500000000001» в
+// инспекторе). Округляем до 1e-6 мм — хвост уходит, а совпадение с краем соседа после
+// привязки остаётся точным (до 0.1 мм не округляем: это сломало бы точность драга)
+export function cleanMm(v: number): number {
+	return Math.round(v * 1e6) / 1e6;
+}
+
+export function cleanGeometry<T extends Bounds>(el: T): T {
+	return {
+		...el,
+		x: cleanMm(el.x),
+		y: cleanMm(el.y),
+		w: cleanMm(el.w),
+		h: cleanMm(el.h),
+	};
+}
+
+// Шаг, до которого округляем то, что пришло от мыши (точка нажатия, дельта драга).
+// Пиксель на 100% — 0.26 мм, точнее мышью не попасть, а в инспекторе вместо
+// «47.254167» — «47.3». Привязка потом ставит край ровно на цель — её точность
+// округление не трогает.
+const MOUSE_STEP_MM = 0.1;
+
+export function roundMouseMm(v: number): number {
+	return cleanMm(Math.round(v / MOUSE_STEP_MM) * MOUSE_STEP_MM);
+}

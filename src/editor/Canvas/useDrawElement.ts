@@ -9,15 +9,13 @@ import type {
 	ElementType,
 } from "../../model/document";
 import { drawElement, placeElement } from "../lib/createElement";
+import { cleanGeometry, roundMouseMm } from "../lib/geometry";
 import { type SnapGuide, snapMove, snapResize } from "../lib/snap";
 import { SNAP_THRESHOLD_PX } from "./constants";
 import { swallowNextClick } from "./swallowNextClick";
 
 // Порог в экранных пикселях, не в мм: дрожь руки при клике не зависит от зума
 const DRAG_THRESHOLD_PX = 3;
-// Точку нажатия округляем до 0.1 мм — иначе в инспекторе у нового элемента
-// «37.238671875» вместо «37.2»; точнее на печати всё равно не видно
-const ROUND_MM = 10;
 
 interface PointMm {
 	x: number;
@@ -30,12 +28,6 @@ interface DrawState {
 	startClientY: number;
 	from: PointMm;
 }
-
-const roundMm = (v: number) => Math.round(v * ROUND_MM) / ROUND_MM;
-// Привязка берёт координаты соседних элементов вместе с их float-шумом, и в
-// инспекторе у нового элемента выходило «11.899999999999991». Округляем до 1e-6 мм —
-// шум уходит, а совпадение с краем соседа остаётся точным
-const clean = (v: number) => Math.round(v * 1e6) / 1e6;
 
 export function useDrawElement({
 	doc,
@@ -61,8 +53,8 @@ export function useDrawElement({
 		const rect = contentRef.current?.getBoundingClientRect();
 		if (!rect) return null;
 		return {
-			x: roundMm((clientX - rect.left - originXPx) / pxPerMm),
-			y: roundMm((clientY - rect.top - originYPx) / pxPerMm),
+			x: roundMouseMm((clientX - rect.left - originXPx) / pxPerMm),
+			y: roundMouseMm((clientY - rect.top - originYPx) / pxPerMm),
 		};
 	};
 
@@ -129,13 +121,8 @@ export function useDrawElement({
 					guides = [...guides, ...s.guides];
 				}
 			}
-			element = {
-				...element,
-				x: clean(element.x),
-				y: clean(element.y),
-				w: clean(element.w),
-				h: clean(element.h),
-			};
+			// привязка берёт координаты соседей вместе с их float-шумом
+			element = cleanGeometry(element);
 			draftRef.current = element;
 			setDraft(element);
 			setSnapGuides(guides);

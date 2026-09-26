@@ -4,7 +4,7 @@
 // render() — тот же путь, что и экспорт, поэтому холст не может разойтись с тем, что
 // попадёт в файл. Линейки, обрез/вылет/безопасное поле — поверх, отдельными слоями;
 // render() как был, так и остаётся не в курсе редактора.
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import type {
 	CutlineDocument,
 	CutlineElement,
@@ -89,11 +89,17 @@ export function Canvas({
 	const [scroll, setScroll] = useState({ left: 0, top: 0 });
 	const [viewport, setViewport] = useState<ViewportSize | null>(null);
 
-	useEffect(() => {
+	// Layout-эффект и синхронный замер при монтировании: ResizeObserver отдаёт размер
+	// только после первой отрисовки, и первый кадр шёл с viewport = null — карточка на
+	// мгновение вставала не по центру. Так первый же отрисованный кадр — уже по центру.
+	useLayoutEffect(() => {
 		const el = viewportRef.current;
 		if (!el) {
 			return;
 		}
+		const initial = { width: el.clientWidth, height: el.clientHeight };
+		setViewport(initial);
+		onViewportResize?.(initial);
 		const observer = new ResizeObserver(([entry]) => {
 			if (!entry) return;
 			const { width, height } = entry.contentRect;
@@ -128,8 +134,9 @@ export function Canvas({
 		.map((g) => g.positionMm);
 
 	// докручиваем до центра только когда контент больше вьюпорта — иначе он уже точно
-	// по центру за счёт contentWidthPx === viewport.width выше
-	useEffect(() => {
+	// по центру за счёт contentWidthPx === viewport.width выше; layout-эффект — чтобы
+	// прокрутка встала до отрисовки, а не кадром позже
+	useLayoutEffect(() => {
 		const el = viewportRef.current;
 		if (!el) return;
 		el.scrollLeft = Math.max(0, (contentWidthPx - el.clientWidth) / 2);
