@@ -189,11 +189,22 @@ export function EditorShell({
 		setTool("select");
 	};
 
-	const handleElementChange = (updated: CutlineElement) => {
-		history.set((doc) => ({
-			...doc,
-			elements: doc.elements.map((el) => (el.id === updated.id ? updated : el)),
-		}));
+	// Инспектор зовёт без boundary — набор в поле склеивается по времени; холст после
+	// драга передаёт boundary: драг — отдельное действие, и два быстрых драга подряд
+	// (или драг сразу после правки поля) иначе откатывались одним Ctrl+Z
+	const handleElementChange = (
+		updated: CutlineElement,
+		options?: { boundary?: boolean },
+	) => {
+		history.set(
+			(doc) => ({
+				...doc,
+				elements: doc.elements.map((el) =>
+					el.id === updated.id ? updated : el,
+				),
+			}),
+			options,
+		);
 	};
 
 	// Создание/перенос(драгом)/удаление направляющей — дискретные структурные правки

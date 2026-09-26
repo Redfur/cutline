@@ -2,7 +2,8 @@
 // рисует карточку одним непрозрачным SVG-блобом (архитектурное правило CLAUDE.md: он не
 // в курсе редактора), поэтому все эти взаимодействия нельзя повесить на её же SVG-узел.
 import type { CutlineElement } from "../../../model/document";
-import type { HandlePos } from "../../lib/resizeElement";
+import { boundsOf, lineLength } from "../../lib/geometry";
+import type { HandlePos, LineEnd } from "../../lib/resizeElement";
 import { HANDLE_SIZE, MIN_HIT_HEIGHT_PX } from "../constants";
 import styles from "./ElementOverlay.module.css";
 
@@ -37,6 +38,7 @@ export interface ElementOverlayProps {
 	onSelect: () => void;
 	onStartMove: (e: React.MouseEvent) => void;
 	onStartResize: (handle: HandlePos, e: React.MouseEvent) => void;
+	onStartLineEnd: (end: LineEnd, e: React.MouseEvent) => void;
 }
 
 export function ElementOverlay({
@@ -48,18 +50,37 @@ export function ElementOverlay({
 	onSelect,
 	onStartMove,
 	onStartResize,
+	onStartLineEnd,
 }: ElementOverlayProps) {
 	if (!el.visible) {
 		return null;
 	}
-	const widthPx = el.w * pxPerMm;
-	const naturalHeightPx = el.h * pxPerMm;
-	// у линии нулевая высота в модели — даём оверлею минимальную толщину хитбокса
-	const heightPx = Math.max(
-		naturalHeightPx,
-		el.h === 0 ? MIN_HIT_HEIGHT_PX : 0,
-	);
-	const hitBoxTopAdjust = (heightPx - naturalHeightPx) / 2;
+	const isLine = el.type === "line";
+	// у линии w/h — вектор и может быть отрицательным, коробку берём нормализованную
+	const bounds = boundsOf(el);
+	const naturalWidthPx = bounds.w * pxPerMm;
+	const naturalHeightPx = bounds.h * pxPerMm;
+	// горизонтальная или вертикальная линия — нулевая по одной оси: без минимальной
+	// толщины хитбокса её не ухватить мышью
+	const widthPx = Math.max(naturalWidthPx, isLine ? MIN_HIT_HEIGHT_PX : 0);
+	const heightPx = Math.max(naturalHeightPx, isLine ? MIN_HIT_HEIGHT_PX : 0);
+	const padX = (widthPx - naturalWidthPx) / 2;
+	const padY = (heightPx - naturalHeightPx) / 2;
+	// концы линии в координатах оверлея
+	const lineEnds: { end: LineEnd; x: number; y: number }[] = isLine
+		? [
+				{
+					end: "start",
+					x: (el.x - bounds.x) * pxPerMm + padX,
+					y: (el.y - bounds.y) * pxPerMm + padY,
+				},
+				{
+					end: "end",
+					x: (el.x + el.w - bounds.x) * pxPerMm + padX,
+					y: (el.y + el.h - bounds.y) * pxPerMm + padY,
+				},
+			]
+		: [];
 
 	return (
 		// Хит-таргет элемента на холсте, не отдельный фокусируемый контрол — как и в LayerRow,
@@ -76,15 +97,46 @@ export function ElementOverlay({
 			onClick={(e) => e.stopPropagation()}
 			className={`${styles.overlay} ${canDrag ? styles.draggable : ""}`}
 			style={{
-				left: el.x * pxPerMm,
-				top: el.y * pxPerMm - hitBoxTopAdjust,
+				left: bounds.x * pxPerMm - padX,
+				top: bounds.y * pxPerMm - padY,
 				width: widthPx,
 				height: heightPx,
 				transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
 			}}
 		>
 			{overflow && <div className={styles.overflow} />}
-			{selected && !el.locked && (
+			{selected && !el.locked && isLine && (
+				<>
+					{/* рамка по коробке у диагональной линии выглядела бы чужой —
+					    выделение рисуем самой линией */}
+					<svg className={styles.lineOutline} aria-hidden="true">
+						<line
+							x1={lineEnds[0]?.x}
+							y1={lineEnds[0]?.y}
+							x2={lineEnds[1]?.x}
+							y2={lineEnds[1]?.y}
+						/>
+					</svg>
+					{lineEnds.map(({ end, x, y }) => (
+						// Маркер конца линии — тот же случай, что и маркеры ресайза ниже
+						// biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий ниже
+						<div
+							key={end}
+							onMouseDown={(e) => {
+								if (!canDrag) return;
+								e.stopPropagation();
+								onStartLineEnd(end, e);
+							}}
+							className={`${styles.handle} ${styles.lineHandle}`}
+							style={{ left: x - HANDLE_SIZE / 2, top: y - HANDLE_SIZE / 2 }}
+						/>
+					))}
+					<div className={styles.sizeLabel} style={{ top: heightPx + 4 }}>
+						{Math.round(lineLength(el))} мм
+					</div>
+				</>
+			)}
+			{selected && !el.locked && !isLine && (
 				<>
 					<div className={styles.outline} />
 					{HANDLE_POSITIONS.map((handle) => (

@@ -12,6 +12,7 @@ import type {
 	Guide,
 } from "../../model/document";
 import { render } from "../../render/render";
+import { boundsOf } from "../lib/geometry";
 import type { Tool } from "../Toolbar";
 import styles from "./Canvas.module.css";
 import { BASE_PX_PER_MM, PAD_MM } from "./constants";
@@ -44,7 +45,10 @@ export interface CanvasProps {
 	selectedId: string | null;
 	onSelect: (id: string | null) => void;
 	onPlace: (at: PointMm) => void;
-	onElementChange: (element: CutlineElement) => void;
+	onElementChange: (
+		element: CutlineElement,
+		options?: { boundary?: boolean },
+	) => void;
 	onGuidesChange: (guides: Guide[], options?: { boundary?: boolean }) => void;
 	selectedGuideId: string | null;
 	onSelectGuide: (id: string | null) => void;
@@ -129,11 +133,12 @@ export function Canvas({
 		el.scrollTop = Math.max(0, (contentHeightPx - el.clientHeight) / 2);
 	}, [contentWidthPx, contentHeightPx]);
 
-	const { liveElement, snapGuides, startMove, startResize } = useElementDrag({
-		doc,
-		pxPerMm,
-		onElementChange,
-	});
+	const { liveElement, snapGuides, startMove, startResize, startLineEnd } =
+		useElementDrag({
+			doc,
+			pxPerMm,
+			onElementChange,
+		});
 	const { guideDrag, liveGuideMm, startNewGuide, startMoveGuide } =
 		useGuideDrag({
 			guides: doc.guides,
@@ -147,6 +152,8 @@ export function Canvas({
 			onSelectGuide,
 		});
 
+	// у линии w/h — вектор, подсветке на линейках нужна нормализованная коробка
+	const liveBounds = liveElement ? boundsOf(liveElement) : null;
 	const elements = liveElement
 		? doc.elements.map((el) => (el.id === liveElement.id ? liveElement : el))
 		: doc.elements;
@@ -180,8 +187,8 @@ export function Canvas({
 						offsetPx={scroll.left}
 						originPx={originXPx}
 						highlightRange={
-							liveElement
-								? { fromMm: liveElement.x, toMm: liveElement.x + liveElement.w }
+							liveBounds
+								? { fromMm: liveBounds.x, toMm: liveBounds.x + liveBounds.w }
 								: null
 						}
 						guideMarks={xGuideMarks}
@@ -205,8 +212,8 @@ export function Canvas({
 						offsetPx={scroll.top}
 						originPx={originYPx}
 						highlightRange={
-							liveElement
-								? { fromMm: liveElement.y, toMm: liveElement.y + liveElement.h }
+							liveBounds
+								? { fromMm: liveBounds.y, toMm: liveBounds.y + liveBounds.h }
 								: null
 						}
 						guideMarks={yGuideMarks}
@@ -296,6 +303,10 @@ export function Canvas({
 									onStartResize={(handle, e) => {
 										e.preventDefault();
 										startResize(el, handle, e);
+									}}
+									onStartLineEnd={(end, e) => {
+										e.preventDefault();
+										startLineEnd(el, end, e);
 									}}
 								/>
 							))}

@@ -5,15 +5,18 @@ import { useEffect, useRef, useState } from "react";
 import type { CutlineDocument, CutlineElement } from "../../model/document";
 import {
 	type HandlePos,
+	type LineEnd,
 	moveElement,
+	moveLineEnd,
 	resizeElement,
 } from "../lib/resizeElement";
 import { type SnapGuide, snapMove, snapResize } from "../lib/snap";
 import { SNAP_THRESHOLD_PX } from "./constants";
 
 interface DragState {
-	kind: "move" | "resize";
+	kind: "move" | "resize" | "lineEnd";
 	handle?: HandlePos;
+	end?: LineEnd;
 	startClientX: number;
 	startClientY: number;
 	startElement: CutlineElement;
@@ -45,7 +48,10 @@ export function useElementDrag({
 }: {
 	doc: CutlineDocument;
 	pxPerMm: number;
-	onElementChange: (element: CutlineElement) => void;
+	onElementChange: (
+		element: CutlineElement,
+		options?: { boundary?: boolean },
+	) => void;
 }) {
 	const [drag, setDrag] = useState<DragState | null>(null);
 	const [liveElement, setLiveElement] = useState<CutlineElement | null>(null);
@@ -72,6 +78,29 @@ export function useElementDrag({
 					thresholdMm,
 				);
 				const updated = { ...moved, x: snapped.x, y: snapped.y };
+				liveElementRef.current = updated;
+				setLiveElement(updated);
+				setSnapGuides(snapped.guides);
+			} else if (drag.kind === "lineEnd") {
+				const end = drag.end as LineEnd;
+				const moved = moveLineEnd(drag.startElement, end, dxMm, dyMm);
+				// привязываем только тянущийся конец — как точку: бокс нулевого размера
+				// в snapMove даёт ровно эту точку по обеим осям, отдельный хелпер не нужен
+				const px = end === "end" ? moved.x + moved.w : moved.x;
+				const py = end === "end" ? moved.y + moved.h : moved.y;
+				const snapped = snapMove(
+					{ x: px, y: py, w: 0, h: 0 },
+					others,
+					doc.canvas,
+					doc.guides,
+					thresholdMm,
+				);
+				const updated = moveLineEnd(
+					drag.startElement,
+					end,
+					dxMm + snapped.x - px,
+					dyMm + snapped.y - py,
+				);
 				liveElementRef.current = updated;
 				setLiveElement(updated);
 				setSnapGuides(snapped.guides);
@@ -104,7 +133,7 @@ export function useElementDrag({
 		}
 		function handleMouseUp() {
 			if (liveElementRef.current) {
-				onElementChange(liveElementRef.current);
+				onElementChange(liveElementRef.current, { boundary: true });
 				swallowNextClick();
 			}
 			liveElementRef.current = null;
@@ -126,6 +155,15 @@ export function useElementDrag({
 		startMove(el: CutlineElement, at: ClientPoint) {
 			setDrag({
 				kind: "move",
+				startClientX: at.clientX,
+				startClientY: at.clientY,
+				startElement: el,
+			});
+		},
+		startLineEnd(el: CutlineElement, end: LineEnd, at: ClientPoint) {
+			setDrag({
+				kind: "lineEnd",
+				end,
 				startClientX: at.clientX,
 				startClientY: at.clientY,
 				startElement: el,

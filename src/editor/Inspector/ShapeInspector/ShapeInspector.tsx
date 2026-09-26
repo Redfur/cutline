@@ -11,6 +11,7 @@ import { Checkbox } from "../../../ui/forms/Checkbox";
 import { ColorField } from "../../../ui/forms/ColorField";
 import { TextField } from "../../../ui/forms/TextField";
 import { PositionSizeFields } from "../PositionSizeFields";
+import { LineFields } from "./LineFields";
 
 type ShapeElement = RectElement | EllipseElement | LineElement;
 
@@ -26,13 +27,20 @@ export function ShapeInspector({ element, onChange }: ShapeInspectorProps) {
 
 	return (
 		<PanelSection title={element.name}>
-			<PositionSizeFields
-				x={element.x}
-				y={element.y}
-				w={element.w}
-				h={element.h}
-				onChange={(patch) => onChange({ ...element, ...patch })}
-			/>
+			{element.type === "line" ? (
+				<LineFields
+					line={element}
+					onChange={(patch) => onChange({ ...element, ...patch })}
+				/>
+			) : (
+				<PositionSizeFields
+					x={element.x}
+					y={element.y}
+					w={element.w}
+					h={element.h}
+					onChange={(patch) => onChange({ ...element, ...patch })}
+				/>
+			)}
 
 			{element.type !== "line" && (
 				<PropertyRow label="Заливка">
