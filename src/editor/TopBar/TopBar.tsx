@@ -2,7 +2,7 @@ import type { ChangeEvent } from "react";
 import { downloadDocument, openDocumentFile } from "../../export/document";
 import { downloadPng } from "../../export/png";
 import { downloadSvg } from "../../export/svg";
-import type { CutlineDocument } from "../../model/document";
+import type { CutlineDocument, DataRecord } from "../../model/document";
 import { render, renderedSize } from "../../render/render";
 import { SaveIndicator } from "../../ui/feedback/SaveIndicator";
 import { Button } from "../../ui/forms/Button";
@@ -14,6 +14,9 @@ export type Mode = "design" | "data";
 
 export interface TopBarProps {
 	doc: CutlineDocument;
+	// SVG/PNG экспортируют ту карточку, что сейчас на холсте, — пакетный экспорт
+	// всех записей относится к Этапу 4
+	record: DataRecord;
 	mode: Mode;
 	onModeChange: (mode: Mode) => void;
 	onOpenDocument: (doc: CutlineDocument) => void;
@@ -25,6 +28,7 @@ export interface TopBarProps {
 
 export function TopBar({
 	doc,
+	record,
 	mode,
 	onModeChange,
 	onOpenDocument,
@@ -77,7 +81,11 @@ export function TopBar({
 				variant="ghost"
 				onClick={() =>
 					downloadSvg(
-						render(doc, {}, { outlines: false, bleed: false, marks: false }),
+						render(doc, record, {
+							outlines: false,
+							bleed: false,
+							marks: false,
+						}),
 						"cutline.svg",
 					)
 				}
@@ -88,7 +96,7 @@ export function TopBar({
 				variant="ghost"
 				onClick={() => {
 					const opts = { outlines: false, bleed: false, marks: false };
-					const svg = render(doc, {}, opts);
+					const svg = render(doc, record, opts);
 					const { widthMm, heightMm } = renderedSize(doc.canvas, opts);
 					downloadPng(svg, widthMm, heightMm, 300, "cutline@300dpi.png");
 				}}

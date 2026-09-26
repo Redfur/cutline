@@ -43,6 +43,15 @@
 	display: flex;
 	flex: 1;
 	min-height: 0;
+	position: relative;
+}
+
+/* Поверх вьюпорта, а не внутри него — иначе уезжал бы вместе с прокруткой карточки */
+.bottomBar {
+	position: absolute;
+	bottom: var(--space-6);
+	left: calc(50% + var(--ruler-size) / 2);
+	transform: translateX(-50%);
 }
 
 .viewport {

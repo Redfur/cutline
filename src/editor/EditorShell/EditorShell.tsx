@@ -1,13 +1,16 @@
-// Раскладка «Общей оболочки» + «Экрана 1. Режим дизайна» из docs/ui-spec.md.
-// Добавление фигур (rect/ellipse/line), выделение и удаление — этот срез;
-// text/image, перетаскивание/resize, привязки, остальные горячие клавиши — ещё нет.
-import { useEffect, useState } from "react";
+// Раскладка «Общей оболочки» и обоих режимов из docs/ui-spec.md. Здесь живёт
+// состояние редактора, которое не принадлежит документу: режим, инструмент, зум,
+// выделение и текущая запись предпросмотра.
+import { useEffect, useMemo, useState } from "react";
+import { sampleRecord } from "../../data/placeholders";
+import { documentProblems, hasProblems } from "../../data/problems";
 import type {
 	CutlineDocument,
 	CutlineElement,
 	Guide,
 } from "../../model/document";
 import { blankDocument } from "../../render/fixtures/blank";
+import { RecordNavigator } from "../../ui/editor/RecordNavigator";
 import {
 	BASE_PX_PER_MM,
 	Canvas,
@@ -55,6 +58,20 @@ export function EditorShell() {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
 	const [viewportSize, setViewportSize] = useState<ViewportSize | null>(null);
+	// 0-based; общий для обоих режимов — двойной клик по миниатюре в «Данных» открывает
+	// «Дизайн» именно на этой записи
+	const [recordIndex, setRecordIndex] = useState(0);
+
+	const { records, fields } = history.doc;
+	// после удаления записей или undo индекс мог уйти за конец — не храним исправленное
+	// значение отдельно, а зажимаем при чтении
+	const currentRecord = Math.max(0, Math.min(recordIndex, records.length - 1));
+	// без записей карточка показывается на примерах из полей, а не пустой
+	const previewRecord =
+		records[currentRecord] ?? (records.length ? {} : sampleRecord(fields));
+	// один проход раскладки по всем записям на изменение документа — им пользуются
+	// таблица, сетка, холст и навигатор
+	const problems = useMemo(() => documentProblems(history.doc), [history.doc]);
 
 	const selectedElement =
 		history.doc.elements.find((el) => el.id === selectedId) ?? null;
@@ -253,6 +270,7 @@ export function EditorShell() {
 		<div className={styles.shell}>
 			<TopBar
 				doc={history.doc}
+				record={previewRecord}
 				mode={mode}
 				onModeChange={setMode}
 				onOpenDocument={handleOpenDocument}
@@ -286,6 +304,18 @@ export function EditorShell() {
 					/>
 					<Canvas
 						doc={history.doc}
+						record={previewRecord}
+						bottomBar={
+							records.length > 0 && (
+								<RecordNavigator
+									index={currentRecord + 1}
+									total={records.length}
+									warning={hasProblems(problems[currentRecord])}
+									onPrev={() => setRecordIndex(currentRecord - 1)}
+									onNext={() => setRecordIndex(currentRecord + 1)}
+								/>
+							)
+						}
 						zoom={zoom}
 						tool={tool}
 						selectedId={selectedId}

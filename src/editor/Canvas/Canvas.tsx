@@ -4,10 +4,11 @@
 // render() — тот же путь, что и экспорт, поэтому холст не может разойтись с тем, что
 // попадёт в файл. Линейки, обрез/вылет/безопасное поле — поверх, отдельными слоями;
 // render() как был, так и остаётся не в курсе редактора.
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type {
 	CutlineDocument,
 	CutlineElement,
+	DataRecord,
 	Guide,
 } from "../../model/document";
 import { render } from "../../render/render";
@@ -32,6 +33,10 @@ export interface PointMm {
 
 export interface CanvasProps {
 	doc: CutlineDocument;
+	// запись, которой заполняются плейсхолдеры на карточке; выбирает её оболочка
+	record: DataRecord;
+	// плавающая полоса внизу холста (навигатор записей) — не прокручивается с карточкой
+	bottomBar?: ReactNode;
 	zoom: number;
 	tool: Tool;
 	selectedId: string | null;
@@ -54,6 +59,8 @@ const PLACEABLE_TOOLS = new Set<Tool>([
 
 export function Canvas({
 	doc,
+	record,
+	bottomBar,
 	zoom,
 	tool,
 	selectedId,
@@ -142,11 +149,11 @@ export function Canvas({
 		: doc.elements;
 	const effectiveDoc = liveElement ? { ...doc, elements } : doc;
 
-	const cardSvg = render(
-		effectiveDoc,
-		{},
-		{ outlines: false, bleed: false, marks: false },
-	);
+	const cardSvg = render(effectiveDoc, record, {
+		outlines: false,
+		bleed: false,
+		marks: false,
+	});
 
 	return (
 		<div className={styles.root}>
@@ -320,6 +327,7 @@ export function Canvas({
 						/>
 					)}
 				</div>
+				{bottomBar && <div className={styles.bottomBar}>{bottomBar}</div>}
 			</div>
 		</div>
 	);
