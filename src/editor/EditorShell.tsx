@@ -48,10 +48,24 @@ export function EditorShell() {
 	const [tool, setTool] = useState<Tool>("select");
 	const [zoom, setZoom] = useState(1);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
 	const [viewportSize, setViewportSize] = useState<ViewportSize | null>(null);
 
 	const selectedElement =
 		history.doc.elements.find((el) => el.id === selectedId) ?? null;
+	const selectedGuide =
+		history.doc.guides.find((g) => g.id === selectedGuideId) ?? null;
+
+	// Выделение элемента и направляющей взаимоисключающее — выбор одного всегда
+	// сбрасывает другое, как и полное снятие выделения (id === null).
+	const handleSelectElement = (id: string | null) => {
+		setSelectedId(id);
+		setSelectedGuideId(null);
+	};
+	const handleSelectGuide = (id: string | null) => {
+		setSelectedGuideId(id);
+		setSelectedId(null);
+	};
 
 	const handleFitToWindow = () => {
 		if (!viewportSize) return;
@@ -65,7 +79,7 @@ export function EditorShell() {
 
 	const handleOpenDocument = (doc: CutlineDocument) => {
 		history.set(() => doc, { boundary: true });
-		setSelectedId(null);
+		handleSelectElement(null);
 	};
 
 	const handlePlace = (at: PointMm) => {
@@ -83,7 +97,7 @@ export function EditorShell() {
 		history.set((doc) => ({ ...doc, elements: [...doc.elements, element] }), {
 			boundary: true,
 		});
-		setSelectedId(element.id);
+		handleSelectElement(element.id);
 		setTool("select");
 	};
 
@@ -94,10 +108,20 @@ export function EditorShell() {
 		}));
 	};
 
-	// Создание/перенос/удаление направляющей — дискретная структурная правка, как
-	// создание/удаление элемента: не должна схлопываться по коалессингу с соседними.
-	const handleGuidesChange = (guides: Guide[]) => {
-		history.set((doc) => ({ ...doc, guides }), { boundary: true });
+	// Создание/перенос(драгом)/удаление направляющей — дискретные структурные правки
+	// (Canvas.tsx передаёт boundary:true явно); правка числового поля в инспекторе —
+	// как и у элементов, без boundary, коалесцируется тайм-аутным механизмом.
+	const handleGuidesChange = (
+		guides: Guide[],
+		options?: { boundary?: boolean },
+	) => {
+		history.set((doc) => ({ ...doc, guides }), options);
+	};
+
+	const handleGuidePositionChange = (guide: Guide) => {
+		handleGuidesChange(
+			history.doc.guides.map((g) => (g.id === guide.id ? guide : g)),
+		);
 	};
 
 	// Лок/видимость/переименование и реордер — дискретные структурные правки,
@@ -163,6 +187,7 @@ export function EditorShell() {
 					{ boundary: true },
 				);
 				setSelectedId(newId);
+				setSelectedGuideId(null);
 				return;
 			}
 
@@ -187,11 +212,23 @@ export function EditorShell() {
 				return;
 			}
 
-			// Delete/Backspace удаляют выделенный элемент — но не когда фокус в поле
-			// инспектора, иначе Backspace при правке текста стирал бы элемент с холста,
+			// Delete/Backspace удаляют выделенный элемент или направляющую — но не когда
+			// фокус в поле инспектора, иначе Backspace при правке текста стирал бы их,
 			// а не символ в поле.
 			if (e.key !== "Delete" && e.key !== "Backspace") return;
 			if (isTextEntryTarget(document.activeElement)) return;
+			if (selectedGuideId) {
+				e.preventDefault();
+				history.set(
+					(doc) => ({
+						...doc,
+						guides: doc.guides.filter((g) => g.id !== selectedGuideId),
+					}),
+					{ boundary: true },
+				);
+				setSelectedGuideId(null);
+				return;
+			}
 			if (!selectedId) return;
 			e.preventDefault();
 			history.set(
@@ -205,7 +242,7 @@ export function EditorShell() {
 		}
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [selectedId, history.set, history.undo, history.redo]);
+	}, [selectedId, selectedGuideId, history.set, history.undo, history.redo]);
 
 	return (
 		<div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -244,19 +281,24 @@ export function EditorShell() {
 					<LayersPanel
 						elements={history.doc.elements}
 						selectedId={selectedId}
-						onSelect={setSelectedId}
+						onSelect={handleSelectElement}
 						onLayerChange={handleLayerChange}
 						onReorder={handleReorder}
+						guides={history.doc.guides}
+						selectedGuideId={selectedGuideId}
+						onSelectGuide={handleSelectGuide}
 					/>
 					<Canvas
 						doc={history.doc}
 						zoom={zoom}
 						tool={tool}
 						selectedId={selectedId}
-						onSelect={setSelectedId}
+						onSelect={handleSelectElement}
 						onPlace={handlePlace}
 						onElementChange={handleElementChange}
 						onGuidesChange={handleGuidesChange}
+						selectedGuideId={selectedGuideId}
+						onSelectGuide={handleSelectGuide}
 						onViewportResize={setViewportSize}
 					/>
 					<Inspector
@@ -266,6 +308,8 @@ export function EditorShell() {
 						}
 						selectedElement={selectedElement}
 						onElementChange={handleElementChange}
+						selectedGuide={selectedGuide}
+						onGuideChange={handleGuidePositionChange}
 					/>
 				</div>
 			)}
