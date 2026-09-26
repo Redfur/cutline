@@ -37,6 +37,7 @@ src/
   editor/      холст, инструменты, инспектор, слои
   data/        плейсхолдеры, проблемы записей, CSV — чистые функции без DOM
   export/      SVG, PNG, PDF, спуск на лист
+  fonts/       встроенные OFL-шрифты (Golos Text, Manrope, PT Serif, JetBrains Mono) и их загрузка
   storage/     автосохранение сессии в IndexedDB (idb-keyval)
 docs/
   document-model.md   схема документа

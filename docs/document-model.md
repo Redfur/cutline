@@ -180,16 +180,22 @@ interface FontRef {
 
 Встроенные шрифты — только с открытой лицензией. Пользовательские живут в памяти сессии и сохраняются в проект как data URI, чтобы файл открывался на другой машине.
 
+Сейчас встроены четыре семейства по два начертания (Regular/Bold): **Golos Text, Manrope, PT Serif, JetBrains Mono** — `src/fonts/files/` c лицензиями OFL, каталог в `src/fonts/bundled.ts`. Golos, Manrope и JetBrains Mono в google/fonts вариативные, opentype.js оси не инстанцирует — в репозитории лежат статичные срезы wght=400/700 (`fontTools varLib.instancer`).
+
+`TextElement.font` — по-прежнему имя семейства строкой. Встроенное семейство распознаётся по имени: на экране редактор регистрирует его `FontFace` из того же файла (лениво, только используемые документом), в PDF текст идёт кривыми из этого файла. Системный шрифт (Arial и т.п.) остаётся для экрана и SVG, но PDF с ним не собирается — понятная ошибка с именем слоя, а не растровый текст. Пользовательские шрифты (`source: "user"`) пока не сделаны.
+
 ## Что рендерер делает с документом
 
 ```ts
 function render(
   doc: Document,
   record: Record<string, string>,
-  opts: { outlines: boolean; bleed: boolean; marks: boolean }
+  opts: { outlines: OutlineFonts | null; bleed: boolean; marks: boolean }
 ): string   // строка с SVG
 ```
 
 Единственная точка, где документ превращается в картинку. Из неё же растут PNG (через canvas) и PDF (через pdf-lib).
 
-`outlines: true` переводит текст в кривые через opentype.js — тогда SVG не зависит от шрифтов на чужой машине.
+`outlines` — разобранные шрифты для перевода текста в кривые (`(family, weight) → opentype.Font | undefined`, `src/render/outline.ts`) или `null`. Шрифты приходят аргументом: рендерер файлы не грузит. Текст, для шрифта которого кривых нет, остаётся `<text>`. Раскладка строк та же (`layoutText`), кривые повторяют только отрисовку строки.
+
+**PDF** (`src/export/`) строится из SVG `render()` с кривыми и вылетом, а не вторым обходом документа: `svgToPdfOps.ts` разбирает закрытое подмножество тегов, которое пишет `render()` (незнакомый тег — ошибка, не пропуск), `pdf.ts` рисует команды pdf-lib в мм SVG через одну матрицу на страницу. Страница: MediaBox = BleedBox = обрез + вылет, TrimBox = обрез. Цвета — RGB как в модели.
