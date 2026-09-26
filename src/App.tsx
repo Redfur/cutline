@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { EditorShell } from "./editor/EditorShell";
+import { DocumentLoader } from "./editor/DocumentLoader";
 import { badgeDocument } from "./render/fixtures/badge";
 import { Icon } from "./ui/core/Icon";
 import { FieldToken } from "./ui/editor/FieldToken";
@@ -237,7 +237,7 @@ function UiKitDemo() {
 function App() {
 	return (
 		<div>
-			<EditorShell />
+			<DocumentLoader />
 			<UiKitDemo />
 		</div>
 	);

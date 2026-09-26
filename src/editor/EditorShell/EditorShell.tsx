@@ -13,7 +13,7 @@ import type {
 	CutlineElement,
 	Guide,
 } from "../../model/document";
-import { blankDocument } from "../../render/fixtures/blank";
+import type { ViewState } from "../../storage/session";
 import { RecordNavigator } from "../../ui/editor/RecordNavigator";
 import {
 	BASE_PX_PER_MM,
@@ -56,9 +56,16 @@ function isTextEntryTarget(el: EventTarget | null): boolean {
 	);
 }
 
-export function EditorShell() {
-	const history = useDocumentHistory(blankDocument);
-	const [mode, setMode] = useState<Mode>("design");
+export interface EditorShellProps {
+	// документ и вид, с которых начинается сессия: сохранённые в IndexedDB или пустые
+	// (DocumentLoader); дальше редактор ими не управляется — это стартовые значения
+	initialDoc: CutlineDocument;
+	initialView: ViewState;
+}
+
+export function EditorShell({ initialDoc, initialView }: EditorShellProps) {
+	const history = useDocumentHistory(initialDoc);
+	const [mode, setMode] = useState<Mode>(initialView.mode);
 	const [tool, setTool] = useState<Tool>("select");
 	const [zoom, setZoom] = useState(1);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -66,7 +73,7 @@ export function EditorShell() {
 	const [viewportSize, setViewportSize] = useState<ViewportSize | null>(null);
 	// 0-based; общий для обоих режимов — двойной клик по миниатюре в «Данных» открывает
 	// «Дизайн» именно на этой записи
-	const [recordIndex, setRecordIndex] = useState(0);
+	const [recordIndex, setRecordIndex] = useState(initialView.recordIndex);
 
 	const { records, fields } = history.doc;
 	// после удаления записей или undo индекс мог уйти за конец — не храним исправленное
