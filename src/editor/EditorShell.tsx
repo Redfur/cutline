@@ -53,7 +53,7 @@ export function EditorShell() {
 	};
 
 	const handleOpenDocument = (doc: CutlineDocument) => {
-		history.set(() => doc);
+		history.set(() => doc, { boundary: true });
 		setSelectedId(null);
 	};
 
@@ -66,7 +66,11 @@ export function EditorShell() {
 		}[tool as "rect" | "ellipse" | "line" | "text"];
 		if (!factory) return;
 		const element = factory(at);
-		history.set((doc) => ({ ...doc, elements: [...doc.elements, element] }));
+		// boundary: без него быстрая печать сразу после добавления могла бы смёржиться
+		// с созданием элемента в один шаг истории — один Ctrl+Z снёс бы и то, и другое
+		history.set((doc) => ({ ...doc, elements: [...doc.elements, element] }), {
+			boundary: true,
+		});
 		setSelectedId(element.id);
 		setTool("select");
 	};
@@ -78,23 +82,44 @@ export function EditorShell() {
 		}));
 	};
 
-	// Delete/Backspace удаляют выделенный элемент — но не когда фокус в поле инспектора,
-	// иначе Backspace при правке текста стирал бы элемент с холста, а не символ в поле.
 	useEffect(() => {
 		function onKeyDown(e: KeyboardEvent) {
+			const mod = e.metaKey || e.ctrlKey;
+			const key = e.key.toLowerCase();
+
+			// Undo/redo — намеренно без проверки на фокус в поле ввода: у нас свой
+			// полноценный document-level undo, он главнее нативного undo браузера
+			// внутри <input> (preventDefault глушит нативный, чтобы они не мешали друг другу).
+			if (mod && key === "z" && !e.shiftKey) {
+				e.preventDefault();
+				history.undo();
+				return;
+			}
+			if (mod && ((key === "z" && e.shiftKey) || key === "y")) {
+				e.preventDefault();
+				history.redo();
+				return;
+			}
+
+			// Delete/Backspace удаляют выделенный элемент — но не когда фокус в поле
+			// инспектора, иначе Backspace при правке текста стирал бы элемент с холста,
+			// а не символ в поле.
 			if (e.key !== "Delete" && e.key !== "Backspace") return;
 			if (isTextEntryTarget(document.activeElement)) return;
 			if (!selectedId) return;
 			e.preventDefault();
-			history.set((doc) => ({
-				...doc,
-				elements: doc.elements.filter((el) => el.id !== selectedId),
-			}));
+			history.set(
+				(doc) => ({
+					...doc,
+					elements: doc.elements.filter((el) => el.id !== selectedId),
+				}),
+				{ boundary: true },
+			);
 			setSelectedId(null);
 		}
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [selectedId, history.set]);
+	}, [selectedId, history.set, history.undo, history.redo]);
 
 	return (
 		<div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -103,6 +128,10 @@ export function EditorShell() {
 				mode={mode}
 				onModeChange={setMode}
 				onOpenDocument={handleOpenDocument}
+				canUndo={history.canUndo}
+				canRedo={history.canRedo}
+				onUndo={history.undo}
+				onRedo={history.redo}
 			/>
 			{mode === "data" ? (
 				<div
