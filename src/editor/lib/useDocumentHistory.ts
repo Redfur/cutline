@@ -2,7 +2,7 @@
 // документа (даже свойство холста в инспекторе) должна проходить через один слой
 // истории, иначе прикручивать undo/redo позже значит переписывать половину проекта.
 import { useCallback, useRef, useState } from "react";
-import type { CutlineDocument } from "../model/document";
+import type { CutlineDocument } from "../../model/document";
 import { commit, type HistoryState, redo, undo } from "./history";
 
 // Поля инспектора (TextField и т.д.) вызывают onChange на каждое нажатие клавиши —

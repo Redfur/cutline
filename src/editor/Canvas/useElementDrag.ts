@@ -3,8 +3,12 @@
 // здесь, в Canvas; в историю уходит один onElementChange на mouseup с итогом.
 import { useEffect, useRef, useState } from "react";
 import type { CutlineDocument, CutlineElement } from "../../model/document";
-import { type HandlePos, moveElement, resizeElement } from "../resizeElement";
-import { type SnapGuide, snapMove, snapResize } from "../snap";
+import {
+	type HandlePos,
+	moveElement,
+	resizeElement,
+} from "../lib/resizeElement";
+import { type SnapGuide, snapMove, snapResize } from "../lib/snap";
 import { SNAP_THRESHOLD_PX } from "./constants";
 
 interface DragState {

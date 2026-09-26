@@ -5,7 +5,7 @@ import type {
 	LineElement,
 	RectElement,
 	TextElement,
-} from "../model/document";
+} from "../../model/document";
 
 interface PointMm {
 	x: number;

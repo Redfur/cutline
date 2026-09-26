@@ -14,18 +14,18 @@ import {
 	type PointMm,
 	type ViewportSize,
 } from "../Canvas";
+import { Inspector } from "../Inspector";
+import { type LayerPatch, LayersPanel } from "../LayersPanel";
 import {
 	createEllipse,
 	createImage,
 	createLine,
 	createRect,
 	createText,
-} from "../createElement";
-import { Inspector } from "../Inspector";
-import { type LayerPatch, LayersPanel } from "../LayersPanel";
+} from "../lib/createElement";
+import { useDocumentHistory } from "../lib/useDocumentHistory";
 import { type Tool, Toolbar } from "../Toolbar";
 import { type Mode, TopBar } from "../TopBar";
-import { useDocumentHistory } from "../useDocumentHistory";
 import styles from "./EditorShell.module.css";
 
 const FIT_MARGIN_PX = 32;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CutlineElement } from "../model/document";
+import type { CutlineElement } from "../../model/document";
 import { createRect } from "./createElement";
 import { type HandlePos, moveElement, resizeElement } from "./resizeElement";
 

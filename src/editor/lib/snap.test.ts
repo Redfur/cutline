@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Canvas, CutlineElement, Guide } from "../model/document";
+import type { Canvas, CutlineElement, Guide } from "../../model/document";
 import { createRect } from "./createElement";
 import { snapMove, snapResize } from "./snap";
 

@@ -1,6 +1,6 @@
 // Геометрия resize по одному из 8 маркеров — чистая функция, без DOM и без состояния,
 // чтобы её можно было применить и во время live-превью драга, и (потом) при snapping.
-import type { CutlineElement } from "../model/document";
+import type { CutlineElement } from "../../model/document";
 
 export interface HandlePos {
 	x: 0 | 0.5 | 1;

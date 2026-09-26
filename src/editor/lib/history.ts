@@ -1,7 +1,7 @@
 // Чистые переходы истории — без React и без времени, чтобы их можно было проверить
 // тестами. Решение «коалесцировать или нет» (окно по времени, boundary) принимает
 // useDocumentHistory и передаёт сюда готовым флагом.
-import type { CutlineDocument } from "../model/document";
+import type { CutlineDocument } from "../../model/document";
 
 export interface HistoryState {
 	past: CutlineDocument[];

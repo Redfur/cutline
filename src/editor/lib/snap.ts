@@ -1,7 +1,7 @@
 // Привязки при перемещении — чистая геометрия, без DOM и состояния, как resizeElement.ts.
 // CLAUDE.md: «без них двигать элементы мышью мучительно, сделать хорошо — неожиданно
 // сложно» — отдельная функция, чтобы её было видно и проверять отдельно от драга.
-import type { Canvas, CutlineElement, Guide } from "../model/document";
+import type { Canvas, CutlineElement, Guide } from "../../model/document";
 import type { HandlePos } from "./resizeElement";
 
 export interface SnapGuide {

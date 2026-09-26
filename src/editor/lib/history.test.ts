@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CutlineDocument } from "../model/document";
-import { blankDocument } from "../render/fixtures/blank";
+import type { CutlineDocument } from "../../model/document";
+import { blankDocument } from "../../render/fixtures/blank";
 import { commit, type HistoryState, redo, undo } from "./history";
 
 // документы различаем по ширине холста — остальное содержимое тут не важно
