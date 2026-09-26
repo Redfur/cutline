@@ -3,6 +3,7 @@
 // истории, иначе прикручивать undo/redo позже значит переписывать половину проекта.
 import { useCallback, useRef, useState } from "react";
 import type { CutlineDocument } from "../model/document";
+import { commit, type HistoryState, redo, undo } from "./history";
 
 // Поля инспектора (TextField и т.д.) вызывают onChange на каждое нажатие клавиши —
 // без коалессинга набор «Привет» в поле «Содержимое» дал бы 6 шагов истории.
@@ -33,12 +34,6 @@ export interface DocumentHistory {
 	canRedo: boolean;
 }
 
-interface HistoryState {
-	past: CutlineDocument[];
-	present: CutlineDocument;
-	future: CutlineDocument[];
-}
-
 export function useDocumentHistory(initial: CutlineDocument): DocumentHistory {
 	const [state, setState] = useState<HistoryState>({
 		past: [],
@@ -59,55 +54,26 @@ export function useDocumentHistory(initial: CutlineDocument): DocumentHistory {
 				lastSetAtRef.current !== null &&
 				now - lastSetAtRef.current < COALESCE_MS;
 			lastSetAtRef.current = options?.boundary ? null : now;
-			setState(({ past, present, future }) => {
-				if (coalesce) {
-					return { past, present: updater(present), future };
-				}
-				return {
-					past: [...past, present],
-					present: updater(present),
-					future: [],
-				};
-			});
+			setState((state) => commit(state, updater, coalesce));
 		},
 		[],
 	);
 
-	const undo = useCallback(() => {
+	const undoStep = useCallback(() => {
 		lastSetAtRef.current = null; // следующая правка не должна смёржиться с отменённым состоянием
-		setState(({ past, present, future }) => {
-			const previous = past.at(-1);
-			if (!previous) {
-				return { past, present, future };
-			}
-			return {
-				past: past.slice(0, -1),
-				present: previous,
-				future: [present, ...future],
-			};
-		});
+		setState(undo);
 	}, []);
 
-	const redo = useCallback(() => {
+	const redoStep = useCallback(() => {
 		lastSetAtRef.current = null;
-		setState(({ past, present, future }) => {
-			const next = future[0];
-			if (!next) {
-				return { past, present, future };
-			}
-			return {
-				past: [...past, present],
-				present: next,
-				future: future.slice(1),
-			};
-		});
+		setState(redo);
 	}, []);
 
 	return {
 		doc: state.present,
 		set,
-		undo,
-		redo,
+		undo: undoStep,
+		redo: redoStep,
 		canUndo: state.past.length > 0,
 		canRedo: state.future.length > 0,
 	};
