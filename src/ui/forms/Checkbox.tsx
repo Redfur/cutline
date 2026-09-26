@@ -51,7 +51,10 @@ export function Checkbox({
 						: on
 							? "var(--bg-accent)"
 							: "var(--bg-input)",
-					color: "#fff",
+					// Отступление от исходника дизайн-системы: там у неактивной отмеченной галочки
+					// белый знак на светлом фоне — её не видно. Нужна панели экспорта («Текст в
+					// кривых» в PDF всегда включён и не выключается)
+					color: disabled ? "var(--fg-disabled)" : "#fff",
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "center",

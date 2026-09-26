@@ -6,6 +6,9 @@ export interface SegmentedOption {
 	label?: string;
 	icon?: IconProps["name"];
 	title?: string;
+	// Расширение порта: в исходнике дизайн-системы неактивного сегмента нет, а панели
+	// экспорта нужен видимый, но недоступный вариант («Выбранные», пока нет выбора записей)
+	disabled?: boolean;
 }
 
 export interface SegmentedControlProps {
@@ -50,6 +53,7 @@ export function SegmentedControl({
 						role="radio"
 						aria-checked={on}
 						title={o.title || o.label}
+						disabled={o.disabled}
 						onClick={() => onChange?.(o.value)}
 						style={{
 							flex: fullWidth ? 1 : "none",
@@ -63,9 +67,13 @@ export function SegmentedControl({
 							borderRadius: "var(--radius-1)",
 							background: on ? "var(--bg-panel)" : "transparent",
 							boxShadow: on ? "var(--shadow-card)" : "none",
-							color: on ? "var(--fg-1)" : "var(--fg-2)",
+							color: o.disabled
+								? "var(--fg-disabled)"
+								: on
+									? "var(--fg-1)"
+									: "var(--fg-2)",
 							font: `${on ? "500 " : "400 "}${size === "lg" ? "var(--text-md)" : "var(--text-sm)"}/1 var(--font-ui)`,
-							cursor: "pointer",
+							cursor: o.disabled ? "default" : "pointer",
 						}}
 					>
 						{o.icon && <Icon name={o.icon} size={14} />}
