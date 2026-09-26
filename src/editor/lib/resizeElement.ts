@@ -1,6 +1,7 @@
 // Геометрия resize по одному из 8 маркеров — чистая функция, без DOM и без состояния,
 // чтобы её можно было применить и во время live-превью драга, и (потом) при snapping.
 import type { CutlineElement } from "../../model/document";
+import { roundMouseMm } from "./geometry";
 
 export interface HandlePos {
 	x: 0 | 0.5 | 1;
@@ -91,11 +92,13 @@ export function resizeRotated(
 	const a = (start.rotation * Math.PI) / 180;
 	const cos = Math.cos(a);
 	const sin = Math.sin(a);
+	// повёрнутая дельта — иррациональная; до шага мыши, иначе в инспекторе
+	// «43.129869» вместо «43.1», как и у обычного драга (roundMouseMm)
 	const local = resizeElement(
 		start,
 		handle,
-		dxMm * cos + dyMm * sin,
-		-dxMm * sin + dyMm * cos,
+		roundMouseMm(dxMm * cos + dyMm * sin),
+		roundMouseMm(-dxMm * sin + dyMm * cos),
 	);
 	// противоположный маркер в координатах холста
 	const anchor = (el: CutlineElement) => {
@@ -108,9 +111,11 @@ export function resizeRotated(
 	};
 	const before = anchor(start);
 	const after = anchor(local);
+	// сотая миллиметра: угол сдвинется меньше, чем видно на печати, а в поле — «35.94»
+	const round = (v: number) => Math.round(v * 100) / 100;
 	return {
 		...local,
-		x: local.x + before.x - after.x,
-		y: local.y + before.y - after.y,
+		x: round(local.x + before.x - after.x),
+		y: round(local.y + before.y - after.y),
 	};
 }

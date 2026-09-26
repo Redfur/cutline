@@ -144,8 +144,9 @@ describe("resizeRotated", () => {
 			const r = resizeRotated(start, { x: 1, y: 1 }, 6, -4);
 			const before = worldPoint(start, 0, 0);
 			const after = worldPoint(r, 0, 0);
-			expect(after.x).toBeCloseTo(before.x);
-			expect(after.y).toBeCloseTo(before.y);
+			// x/y округлены до сотой мм — угол стоит с этой точностью
+			expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(0.01);
+			expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(0.01);
 		},
 	);
 });

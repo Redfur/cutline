@@ -10,6 +10,7 @@ import {
 	moveElement,
 	moveLineEnd,
 	resizeElement,
+	resizeRotated,
 } from "../lib/resizeElement";
 import {
 	type BorderVisibility,
@@ -103,15 +104,20 @@ export function useElementDrag({
 				setLiveElement(updated);
 				setSnapGuides(snapped.guides);
 			} else {
-				const resized = resizeElement(
-					drag.startElement,
-					drag.handle as HandlePos,
-					dxMm,
-					dyMm,
-				);
+				const handle = drag.handle as HandlePos;
+				if (drag.startElement.rotation) {
+					// у повёрнутого элемента края не параллельны осям холста — привязка
+					// краёв к вертикалям/горизонталям тут не имеет смысла
+					const resized = resizeRotated(drag.startElement, handle, dxMm, dyMm);
+					liveElementRef.current = resized;
+					setLiveElement(resized);
+					setSnapGuides([]);
+					return;
+				}
+				const resized = resizeElement(drag.startElement, handle, dxMm, dyMm);
 				const snapped = snapResize(
 					resized,
-					drag.handle as HandlePos,
+					handle,
 					others,
 					doc.canvas,
 					doc.guides,
