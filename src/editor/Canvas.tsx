@@ -33,7 +33,9 @@ export interface CanvasProps {
 	onSelect: (id: string | null) => void;
 	onPlace: (at: PointMm) => void;
 	onElementChange: (element: CutlineElement) => void;
-	onGuidesChange: (guides: Guide[]) => void;
+	onGuidesChange: (guides: Guide[], options?: { boundary?: boolean }) => void;
+	selectedGuideId: string | null;
+	onSelectGuide: (id: string | null) => void;
 	onViewportResize?: (size: ViewportSize) => void;
 }
 
@@ -88,6 +90,7 @@ function Ruler({
 	offsetPx,
 	originPx,
 	highlightRange,
+	guideMarks,
 }: {
 	axis: "x" | "y";
 	lengthMm: number;
@@ -95,6 +98,7 @@ function Ruler({
 	offsetPx: number;
 	originPx: number;
 	highlightRange?: { fromMm: number; toMm: number } | null;
+	guideMarks?: number[];
 }) {
 	const from = -PAD_MM;
 	const to = lengthMm + PAD_MM;
@@ -176,6 +180,37 @@ function Ruler({
 					</div>
 				);
 			})}
+			{guideMarks?.map((mm) => {
+				const posPx = originPx + mm * pxPerMm;
+				// компактная метка — точная позиция редактируется в инспекторе, не тут
+				const label = Number.isInteger(mm) ? mm : Math.round(mm * 10) / 10;
+				return (
+					<div
+						key={`guide-${mm}`}
+						style={{
+							position: "absolute",
+							pointerEvents: "none",
+							...(axis === "x"
+								? { left: posPx - 1, top: 0, width: 2, height: RULER_SIZE }
+								: { top: posPx - 1, left: 0, height: 2, width: RULER_SIZE }),
+							background: "var(--selection)",
+						}}
+					>
+						<span
+							style={{
+								position: "absolute",
+								font: "var(--type-label)",
+								fontWeight: 600,
+								color: "var(--selection)",
+								whiteSpace: "nowrap",
+								...(axis === "x" ? { left: 3, top: 1 } : { top: 3, left: 4 }),
+							}}
+						>
+							{label}
+						</span>
+					</div>
+				);
+			})}
 		</div>
 	);
 }
@@ -187,22 +222,29 @@ function GuideLine({
 	axis,
 	positionMm,
 	pxPerMm,
+	originPx,
+	selected,
 	onMouseDown,
 }: {
 	axis: "x" | "y";
 	positionMm: number;
 	pxPerMm: number;
+	// направляющая рисуется во всю область редактора (не только карточку), поэтому
+	// нулевая точка мм — не (0,0) её родителя, а origin{X,Y}Px, как и у Ruler
+	originPx: number;
+	selected?: boolean;
 	onMouseDown?: (e: React.MouseEvent) => void;
 }) {
-	const posPx = positionMm * pxPerMm;
+	const posPx = originPx + positionMm * pxPerMm;
 	const interactive = Boolean(onMouseDown);
+	const thickness = selected ? 2 : 1;
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: перетаскивание мышью, как и остальные хит-таргеты холста рядом (ElementOverlay, маркеры ресайза) — клавиатурного пути нет
 		// biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше
 		<div
 			onMouseDown={onMouseDown}
 			// mousedown выше гасит только само перетаскивание; следующий за ним click иначе
-			// всплыл бы до .canvas-card и снял выделение элемента просто от клика по линии
+			// всплыл бы до contentRef и снял выделение элемента просто от клика по линии
 			onClick={interactive ? (e) => e.stopPropagation() : undefined}
 			style={{
 				position: "absolute",
@@ -222,8 +264,18 @@ function GuideLine({
 					position: "absolute",
 					background: "var(--selection)",
 					...(axis === "x"
-						? { left: 3, top: 0, width: 1, height: "100%" }
-						: { top: 3, left: 0, height: 1, width: "100%" }),
+						? {
+								left: 3 - (thickness - 1) / 2,
+								top: 0,
+								width: thickness,
+								height: "100%",
+							}
+						: {
+								top: 3 - (thickness - 1) / 2,
+								left: 0,
+								height: thickness,
+								width: "100%",
+							}),
 				}}
 			/>
 		</div>
@@ -357,6 +409,8 @@ export function Canvas({
 	onPlace,
 	onElementChange,
 	onGuidesChange,
+	selectedGuideId,
+	onSelectGuide,
 	onViewportResize,
 }: CanvasProps) {
 	const viewportRef = useRef<HTMLDivElement>(null);
@@ -414,6 +468,12 @@ export function Canvas({
 	// originPx — где внутри области содержимого лежит мм-нулевая точка (угол обреза)
 	const originXPx = (contentWidthPx - cardWidthPx) / 2;
 	const originYPx = (contentHeightPx - cardHeightPx) / 2;
+	const xGuideMarks = doc.guides
+		.filter((g) => g.axis === "x")
+		.map((g) => g.positionMm);
+	const yGuideMarks = doc.guides
+		.filter((g) => g.axis === "y")
+		.map((g) => g.positionMm);
 
 	// докручиваем до центра только когда контент больше вьюпорта — иначе он уже точно
 	// по центру за счёт contentWidthPx === viewport.width выше
@@ -535,17 +595,25 @@ export function Canvas({
 							doc.guides.map((g) =>
 								g.id === guideDrag.id ? { ...g, positionMm } : g,
 							),
+							{ boundary: true },
 						);
 					}
 				} else {
-					onGuidesChange([
-						...doc.guides,
-						{ id: crypto.randomUUID(), axis: guideDrag.axis, positionMm },
-					]);
+					// выделяем сразу — как handlePlace выделяет только что созданный элемент
+					const newId = crypto.randomUUID();
+					onGuidesChange(
+						[...doc.guides, { id: newId, axis: guideDrag.axis, positionMm }],
+						{ boundary: true },
+					);
+					onSelectGuide(newId);
 				}
 			} else if (guideDrag.id) {
 				// отпустили над своей линейкой — удаление существующей направляющей
-				onGuidesChange(doc.guides.filter((g) => g.id !== guideDrag.id));
+				onGuidesChange(
+					doc.guides.filter((g) => g.id !== guideDrag.id),
+					{ boundary: true },
+				);
+				onSelectGuide(null);
 			}
 			liveGuideMmRef.current = null;
 			setLiveGuideMm(null);
@@ -557,7 +625,15 @@ export function Canvas({
 			window.removeEventListener("mousemove", handleMouseMove);
 			window.removeEventListener("mouseup", handleMouseUp);
 		};
-	}, [guideDrag, pxPerMm, originXPx, originYPx, onGuidesChange, doc.guides]);
+	}, [
+		guideDrag,
+		pxPerMm,
+		originXPx,
+		originYPx,
+		onGuidesChange,
+		onSelectGuide,
+		doc.guides,
+	]);
 
 	const elements = liveElement
 		? doc.elements.map((el) => (el.id === liveElement.id ? liveElement : el))
@@ -621,6 +697,7 @@ export function Canvas({
 								? { fromMm: liveElement.x, toMm: liveElement.x + liveElement.w }
 								: null
 						}
+						guideMarks={xGuideMarks}
 					/>
 				</div>
 			</div>
@@ -655,6 +732,7 @@ export function Canvas({
 								? { fromMm: liveElement.y, toMm: liveElement.y + liveElement.h }
 								: null
 						}
+						guideMarks={yGuideMarks}
 					/>
 				</div>
 				<div
@@ -770,37 +848,6 @@ export function Canvas({
 									}}
 								/>
 							))}
-							{doc.guides
-								.filter((g) => g.id !== guideDrag?.id)
-								.map((guide) => (
-									<GuideLine
-										key={guide.id}
-										axis={guide.axis}
-										positionMm={guide.positionMm}
-										pxPerMm={pxPerMm}
-										onMouseDown={(e) => {
-											e.preventDefault();
-											e.stopPropagation();
-											// инициализируем текущей позицией, а не null — иначе
-											// обычный клик без единого mousemove неотличим от
-											// «отпустили над линейкой» и направляющая бы удалялась
-											liveGuideMmRef.current = guide.positionMm;
-											setLiveGuideMm(guide.positionMm);
-											setGuideDrag({
-												id: guide.id,
-												axis: guide.axis,
-												startPositionMm: guide.positionMm,
-											});
-										}}
-									/>
-								))}
-							{guideDrag && liveGuideMm !== null && (
-								<GuideLine
-									axis={guideDrag.axis}
-									positionMm={liveGuideMm}
-									pxPerMm={pxPerMm}
-								/>
-							)}
 							{elements.map((el) => (
 								<ElementOverlay
 									key={el.id}
@@ -832,6 +879,44 @@ export function Canvas({
 							))}
 						</div>
 					</div>
+					{/* Направляющие рисуются во всю область редактора (не обрезаются по карточке),
+					    поэтому это сосед .canvas-card внутри contentRef, а не его потомок — позиция
+					    считается от originXPx/originYPx, той же точки мм=0, что и у самой карточки */}
+					{doc.guides
+						.filter((g) => g.id !== guideDrag?.id)
+						.map((guide) => (
+							<GuideLine
+								key={guide.id}
+								axis={guide.axis}
+								positionMm={guide.positionMm}
+								pxPerMm={pxPerMm}
+								originPx={guide.axis === "x" ? originXPx : originYPx}
+								selected={guide.id === selectedGuideId}
+								onMouseDown={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									onSelectGuide(guide.id);
+									// инициализируем текущей позицией, а не null — иначе
+									// обычный клик без единого mousemove неотличим от
+									// «отпустили над линейкой» и направляющая бы удалялась
+									liveGuideMmRef.current = guide.positionMm;
+									setLiveGuideMm(guide.positionMm);
+									setGuideDrag({
+										id: guide.id,
+										axis: guide.axis,
+										startPositionMm: guide.positionMm,
+									});
+								}}
+							/>
+						))}
+					{guideDrag && liveGuideMm !== null && (
+						<GuideLine
+							axis={guideDrag.axis}
+							positionMm={liveGuideMm}
+							pxPerMm={pxPerMm}
+							originPx={guideDrag.axis === "x" ? originXPx : originYPx}
+						/>
+					)}
 				</div>
 			</div>
 		</div>
