@@ -116,6 +116,12 @@ describe("firstBaselineY", () => {
 		expect((top + bottom) / 2).toBe(20);
 	});
 
+	it("по базовой — базовая последней строки на нижнем крае рамки", () => {
+		expect(firstBaselineY("baseline", 0, 40, one)).toBe(40);
+		// три строки: первая на 40 − 12·2
+		expect(firstBaselineY("baseline", 0, 40, three)).toBe(16);
+	});
+
 	it("по центру, три строки — центрируется весь блок", () => {
 		// блок 8 + 2 + 12·2 = 34 мм: верх на 3, первая базовая на 11
 		const base = firstBaselineY("middle", 0, 40, three);

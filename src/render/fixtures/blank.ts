@@ -2,7 +2,7 @@
 import type { CutlineDocument } from "../../model/document";
 
 export const blankDocument: CutlineDocument = {
-	version: 1,
+	version: 2,
 	canvas: {
 		w: 105,
 		h: 148,

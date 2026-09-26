@@ -102,7 +102,9 @@ export function firstBaselineY(
 			return y + ascentMm;
 		case "middle":
 			return y + h / 2 - blockHeightMm / 2 + ascentMm;
+		// базовая линия последней строки — на нижнем крае рамки: рамка охватывает текст,
+		// а тексты разных кеглей с одним y + h стоят на одной базовой
 		case "baseline":
-			return y;
+			return y + h - lineHeightMm * (lines.length - 1);
 	}
 }

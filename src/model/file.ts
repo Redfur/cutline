@@ -1,6 +1,7 @@
 // Сериализация документа в JSON и обратно. Чистые функции — без DOM и без File API,
 // это дело export/document.ts (скачивание/открытие — уже не про модель, а про файлы).
 import type { CutlineDocument } from "./document";
+import { migrateDocument } from "./migrate";
 
 export function serializeDocument(doc: CutlineDocument): string {
 	return JSON.stringify(doc, null, 2);
@@ -37,7 +38,7 @@ export function validateDocument(value: unknown): CutlineDocument {
 	// guides — не обязательное поле для проверки: документ, сохранённый до появления
 	// направляющих, не должен переставать открываться из-за их отсутствия
 	const guides = Array.isArray(value.guides) ? value.guides : [];
-	return { ...value, guides } as unknown as CutlineDocument;
+	return migrateDocument({ ...value, guides } as unknown as CutlineDocument);
 }
 
 export function parseDocument(json: string): CutlineDocument {
