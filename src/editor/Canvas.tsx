@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CutlineDocument, CutlineElement } from "../model/document";
 import { render } from "../render/render";
 import { type HandlePos, moveElement, resizeElement } from "./resizeElement";
+import { type SnapGuide, snapMove } from "./snap";
 import type { Tool } from "./Toolbar";
 
 const BASE_PX_PER_MM = 96 / 25.4; // 100% зума = «настоящий» CSS-пиксель при 96dpi
@@ -60,6 +61,9 @@ const HANDLE_POSITIONS: HandlePos[] = [
 const HANDLE_SIZE = 7;
 // у линии нулевая высота в модели — даём оверлею минимальную толщину хитбокса, иначе некликабельна
 const MIN_HIT_HEIGHT_PX = 8;
+// порог в экранных пикселях, не в мм — иначе на 400% zoom примагничивание срабатывало бы
+// от одного взгляда, а на 25% не срабатывало бы вовсе
+const SNAP_THRESHOLD_PX = 5;
 
 function ticksInRange(fromMm: number, toMm: number, stepMm: number): number[] {
 	const start = Math.ceil(fromMm / stepMm) * stepMm;
@@ -278,6 +282,7 @@ export function Canvas({
 	const [drag, setDrag] = useState<DragState | null>(null);
 	const [liveElement, setLiveElement] = useState<CutlineElement | null>(null);
 	const liveElementRef = useRef<CutlineElement | null>(null);
+	const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
 
 	useEffect(() => {
 		const el = viewportRef.current;
@@ -329,17 +334,27 @@ export function Canvas({
 			if (!drag) return;
 			const dxMm = (e.clientX - drag.startClientX) / pxPerMm;
 			const dyMm = (e.clientY - drag.startClientY) / pxPerMm;
-			const updated =
-				drag.kind === "move"
-					? moveElement(drag.startElement, dxMm, dyMm)
-					: resizeElement(
-							drag.startElement,
-							drag.handle as HandlePos,
-							dxMm,
-							dyMm,
-						);
-			liveElementRef.current = updated;
-			setLiveElement(updated);
+			if (drag.kind === "move") {
+				const moved = moveElement(drag.startElement, dxMm, dyMm);
+				const others = doc.elements.filter(
+					(el) => el.id !== drag.startElement.id && el.visible,
+				);
+				const thresholdMm = SNAP_THRESHOLD_PX / pxPerMm;
+				const snapped = snapMove(moved, others, doc.canvas, thresholdMm);
+				const updated = { ...moved, x: snapped.x, y: snapped.y };
+				liveElementRef.current = updated;
+				setLiveElement(updated);
+				setSnapGuides(snapped.guides);
+			} else {
+				const updated = resizeElement(
+					drag.startElement,
+					drag.handle as HandlePos,
+					dxMm,
+					dyMm,
+				);
+				liveElementRef.current = updated;
+				setLiveElement(updated);
+			}
 		}
 		function handleMouseUp() {
 			if (liveElementRef.current) {
@@ -347,6 +362,7 @@ export function Canvas({
 			}
 			liveElementRef.current = null;
 			setLiveElement(null);
+			setSnapGuides([]);
 			setDrag(null);
 		}
 		window.addEventListener("mousemove", handleMouseMove);
@@ -355,7 +371,7 @@ export function Canvas({
 			window.removeEventListener("mousemove", handleMouseMove);
 			window.removeEventListener("mouseup", handleMouseUp);
 		};
-	}, [drag, pxPerMm, onElementChange]);
+	}, [drag, pxPerMm, onElementChange, doc]);
 
 	const elements = liveElement
 		? doc.elements.map((el) => (el.id === liveElement.id ? liveElement : el))
@@ -505,6 +521,29 @@ export function Canvas({
 									pointerEvents: "none",
 								}}
 							/>
+							{snapGuides.map((guide) => (
+								<div
+									key={`${guide.axis}-${guide.positionMm}`}
+									style={{
+										position: "absolute",
+										background: "var(--selection)",
+										pointerEvents: "none",
+										...(guide.axis === "x"
+											? {
+													left: guide.positionMm * pxPerMm,
+													top: 0,
+													width: 1,
+													height: "100%",
+												}
+											: {
+													top: guide.positionMm * pxPerMm,
+													left: 0,
+													height: 1,
+													width: "100%",
+												}),
+									}}
+								/>
+							))}
 							{elements.map((el) => (
 								<ElementOverlay
 									key={el.id}
