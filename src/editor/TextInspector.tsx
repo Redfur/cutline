@@ -1,6 +1,7 @@
 // Свойства text — по группам из docs/ui-spec.md (Содержимое/Положение/Шрифт/
 // Выравнивание/Цвет/Автоподгонка). Вставка плейсхолдера по списку полей — когда
 // появятся doc.fields (Этап 3), пока {{key}} печатается в контенте вручную.
+import { useState } from "react";
 import type {
 	TextAlign,
 	TextElement,
@@ -44,8 +45,31 @@ const FIT_OPTIONS: { value: TextFit; label: string }[] = [
 	{ value: "none", label: "Не трогать" },
 ];
 
+// Классические кросс-платформенные системные шрифты (Windows/macOS/Linux через
+// Arimo/Liberation-замены) — не веб-шрифты редактора (Golos Text и т.п. загружены
+// только для интерфейса и их не будет на машине, где откроют экспортированный SVG).
+const FONT_PRESETS = [
+	"Arial",
+	"Georgia",
+	"Times New Roman",
+	"Verdana",
+	"Courier New",
+	"Trebuchet MS",
+];
+const CUSTOM_FONT = "custom";
+
 export function TextInspector({ element, onChange }: TextInspectorProps) {
 	const num = (v: string | number) => Number(v) || 0;
+	// Выбор «Свой…», когда font и так уже совпадает с одним из пресетов (частый
+	// случай — просто передумали и хотят вписать другое имя), иначе не переключил бы
+	// ничего: производное displayValue тут же снова показало бы этот же пресет.
+	// Инспектор перемонтируется на смену элемента (key={element.id} в Inspector.tsx),
+	// так что это состояние не «утечёт» на другой текстовый элемент.
+	const [forceCustom, setForceCustom] = useState(
+		() => !FONT_PRESETS.includes(element.font),
+	);
+	const showCustomFontField =
+		forceCustom || !FONT_PRESETS.includes(element.font);
 
 	return (
 		<PanelSection title={element.name}>
@@ -66,11 +90,31 @@ export function TextInspector({ element, onChange }: TextInspectorProps) {
 			/>
 
 			<PropertyRow label="Шрифт">
-				<TextField
-					value={element.font}
-					onChange={(v) => onChange({ ...element, font: v })}
+				<Select
+					value={showCustomFontField ? CUSTOM_FONT : element.font}
+					options={[
+						...FONT_PRESETS.map((f) => ({ value: f, label: f })),
+						{ value: CUSTOM_FONT, label: "Свой…" },
+					]}
+					onChange={(v) => {
+						if (v === CUSTOM_FONT) {
+							setForceCustom(true);
+						} else {
+							setForceCustom(false);
+							onChange({ ...element, font: v });
+						}
+					}}
 				/>
 			</PropertyRow>
+			{showCustomFontField && (
+				<PropertyRow>
+					<TextField
+						value={element.font}
+						placeholder="Название шрифта"
+						onChange={(v) => onChange({ ...element, font: v })}
+					/>
+				</PropertyRow>
+			)}
 			<PropertyRow label="Начертание">
 				<SegmentedControl
 					value={element.weight}
@@ -95,6 +139,11 @@ export function TextInspector({ element, onChange }: TextInspectorProps) {
 					onChange={(v) => onChange({ ...element, tracking: num(v) })}
 				/>
 			</PropertyRow>
+			{/* Множитель кегля (render.ts: lineHeightMm = sizeMm * lineHeight), а не мм —
+			    поэтому эффект виден только когда строк больше одной (перенос/ручные \n):
+			    позиция единственной строки от lineHeight не зависит. При автоподгонке
+			    shrink интервал пересчитывается от уже уменьшенного кегля, не от исходного —
+			    строки не могут наехать друг на друга из-за фиксированного интервала. */}
 			<PropertyRow label="Межстрочный">
 				<TextField
 					value={element.lineHeight}

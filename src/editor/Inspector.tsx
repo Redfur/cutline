@@ -144,7 +144,11 @@ export function Inspector({
 					/>
 				)}
 			{selectedElement && selectedElement.type === "text" && (
-				<TextInspector element={selectedElement} onChange={onElementChange} />
+				<TextInspector
+					key={selectedElement.id}
+					element={selectedElement}
+					onChange={onElementChange}
+				/>
 			)}
 			{selectedElement && selectedElement.type === "image" && (
 				<ImageInspector element={selectedElement} onChange={onElementChange} />
