@@ -21,6 +21,11 @@ function fitsAt(text: string, sizeMm: number, ctx: FitContext): boolean {
 }
 
 const SHRINK_STEP_MM = 0.1;
+// 0.1 во float неточен, и вычитание шага раз за разом копит ошибку: за 10 шагов от 5
+// выходит 4.0000000000000036. Это и лишний шаг на границе (ширина на 1e-15 больше
+// допустимой — «не влезло»), и хвост из 15 знаков в font-size экспортированного SVG.
+// Округляем каждый шаг до 1e-6 мм — на порядки точнее, чем что-либо на печати.
+const SIZE_PRECISION = 1e6;
 
 export function shrinkToFit(
 	text: string,
@@ -30,7 +35,9 @@ export function shrinkToFit(
 ): number {
 	let size = sizeMm;
 	while (size > minSizeMm && !fitsAt(text, size, ctx)) {
-		size = Math.max(minSizeMm, size - SHRINK_STEP_MM);
+		const next =
+			Math.round((size - SHRINK_STEP_MM) * SIZE_PRECISION) / SIZE_PRECISION;
+		size = Math.max(minSizeMm, next);
 	}
 	return size;
 }

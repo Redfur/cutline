@@ -28,14 +28,21 @@ describe("shrinkToFit", () => {
 		expect(shrinkToFit("abcd", 5, 2, ctx(10))).toBe(5);
 	});
 
-	// Шаг 0.1 копится во float (5 − 10×0.1 = 4.0000000000000036), поэтому граничный
-	// кегль иногда проскакивается на один шаг — проверяем «влезает и не мельче шага»,
-	// а не точное значение
 	it("уменьшает до кегля, при котором влезает", () => {
 		// 10 символов × size × 0.5 ≤ 20 → size ≤ 4
-		const size = shrinkToFit("abcdefghij", 5, 2, ctx(20));
-		expect(size).toBeLessThanOrEqual(4);
-		expect(size).toBeGreaterThan(3.85);
+		expect(shrinkToFit("abcdefghij", 5, 2, ctx(20))).toBe(4);
+	});
+
+	it("за много шагов не копит ошибку float", () => {
+		// 67 шагов по 0.1: без округления выходило 3.2000000000000206 — на шаг
+		// мельче нужного и с хвостом, который попадал в font-size SVG
+		// 10 символов × size × 0.5 ≤ 16.5 → size ≤ 3.3
+		expect(shrinkToFit("abcdefghij", 10, 1, ctx(16.5))).toBe(3.3);
+	});
+
+	it("кегль не по сетке шага уменьшается от себя, а не прыгает на сетку", () => {
+		// 10 × size × 0.5 ≤ 20.75 → size ≤ 4.15
+		expect(shrinkToFit("abcdefghij", 4.25, 2, ctx(20.75))).toBe(4.15);
 	});
 
 	it("не опускается ниже минимума", () => {
@@ -44,9 +51,7 @@ describe("shrinkToFit", () => {
 
 	it("учитывает трекинг", () => {
 		// 4 × 0.5·size + 3 × 1 ≤ 9 → size ≤ 3
-		const size = shrinkToFit("abcd", 5, 1, ctx(9, 1));
-		expect(size).toBeLessThanOrEqual(3);
-		expect(size).toBeGreaterThan(2.85);
+		expect(shrinkToFit("abcd", 5, 1, ctx(9, 1))).toBe(3);
 	});
 });
 
