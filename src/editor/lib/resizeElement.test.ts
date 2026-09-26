@@ -6,6 +6,7 @@ import {
 	moveElement,
 	moveLineEnd,
 	resizeElement,
+	resizeRotated,
 } from "./resizeElement";
 
 function box(x: number, y: number, w: number, h: number): CutlineElement {
@@ -108,4 +109,43 @@ describe("moveLineEnd", () => {
 		// конец (x+w, y+h) — там же, где был: (30, 10)
 		expect([moved.x + moved.w, moved.y + moved.h]).toEqual([30, 10]);
 	});
+});
+
+describe("resizeRotated", () => {
+	// точка бокса (u, v ∈ 0..1) в координатах холста с учётом поворота вокруг центра
+	function worldPoint(el: CutlineElement, u: number, v: number) {
+		const a = (el.rotation * Math.PI) / 180;
+		const ox = (u - 0.5) * el.w;
+		const oy = (v - 0.5) * el.h;
+		return {
+			x: el.x + el.w / 2 + ox * Math.cos(a) - oy * Math.sin(a),
+			y: el.y + el.h / 2 + ox * Math.sin(a) + oy * Math.cos(a),
+		};
+	}
+
+	it("без поворота совпадает с resizeElement", () => {
+		const start = box(10, 20, 30, 40);
+		expect(resizeRotated(start, { x: 1, y: 1 }, 5, 7)).toEqual(
+			resizeElement(start, { x: 1, y: 1 }, 5, 7),
+		);
+	});
+
+	it("при 90° движение мыши вниз растит ширину", () => {
+		const start = { ...box(10, 20, 30, 40), rotation: 90 };
+		const r = resizeRotated(start, { x: 1, y: 0.5 }, 0, 10);
+		expect(r.w).toBeCloseTo(40);
+		expect(r.h).toBeCloseTo(40);
+	});
+
+	it.each([30, 90, -45, 170])(
+		"при %i° противоположный угол остаётся на месте",
+		(rotation) => {
+			const start = { ...box(10, 20, 30, 40), rotation };
+			const r = resizeRotated(start, { x: 1, y: 1 }, 6, -4);
+			const before = worldPoint(start, 0, 0);
+			const after = worldPoint(r, 0, 0);
+			expect(after.x).toBeCloseTo(before.x);
+			expect(after.y).toBeCloseTo(before.y);
+		},
+	);
 });

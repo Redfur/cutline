@@ -75,3 +75,42 @@ export function moveLineEnd<
 		h: start.h - dyMm,
 	};
 }
+
+// Резайз повёрнутого элемента. Маркер на экране повёрнут вместе с элементом, а дельта
+// мыши — в осях холста: переводим её в оси элемента (поворот на −rotation) и ресайзим
+// как обычно. Поворот идёт вокруг центра бокса, а центр при резайзе смещается —
+// без поправки противоположный маркер уехал бы вбок. Сдвигаем x/y так, чтобы он
+// остался на месте в координатах холста.
+export function resizeRotated(
+	start: CutlineElement,
+	handle: HandlePos,
+	dxMm: number,
+	dyMm: number,
+): CutlineElement {
+	if (!start.rotation) return resizeElement(start, handle, dxMm, dyMm);
+	const a = (start.rotation * Math.PI) / 180;
+	const cos = Math.cos(a);
+	const sin = Math.sin(a);
+	const local = resizeElement(
+		start,
+		handle,
+		dxMm * cos + dyMm * sin,
+		-dxMm * sin + dyMm * cos,
+	);
+	// противоположный маркер в координатах холста
+	const anchor = (el: CutlineElement) => {
+		const ox = (0.5 - handle.x) * el.w;
+		const oy = (0.5 - handle.y) * el.h;
+		return {
+			x: el.x + el.w / 2 + ox * cos - oy * sin,
+			y: el.y + el.h / 2 + ox * sin + oy * cos,
+		};
+	};
+	const before = anchor(start);
+	const after = anchor(local);
+	return {
+		...local,
+		x: local.x + before.x - after.x,
+		y: local.y + before.y - after.y,
+	};
+}
