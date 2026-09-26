@@ -23,6 +23,16 @@ import { type Mode, TopBar } from "./TopBar";
 import { useDocumentHistory } from "./useDocumentHistory";
 
 const FIT_MARGIN_PX = 32;
+const DUPLICATE_OFFSET_MM = 5;
+const NUDGE_STEP_MM = 1;
+const NUDGE_STEP_LARGE_MM = 10; // Shift
+
+const NUDGE_KEYS: Record<string, { dx: number; dy: number }> = {
+	ArrowLeft: { dx: -1, dy: 0 },
+	ArrowRight: { dx: 1, dy: 0 },
+	ArrowUp: { dx: 0, dy: -1 },
+	ArrowDown: { dx: 0, dy: 1 },
+};
 
 function isTextEntryTarget(el: EventTarget | null): boolean {
 	if (!(el instanceof HTMLElement)) return false;
@@ -116,6 +126,56 @@ export function EditorShell() {
 			if (mod && ((key === "z" && e.shiftKey) || key === "y")) {
 				e.preventDefault();
 				history.redo();
+				return;
+			}
+
+			// Ctrl/Cmd+D — дублирование выделенного элемента. Тот же guard на фокус
+			// в поле ввода, что и у Delete ниже: иначе перехватили бы у браузера
+			// его родное Ctrl+D (добавить в закладки) прямо во время правки текста.
+			if (mod && key === "d") {
+				if (isTextEntryTarget(document.activeElement)) return;
+				if (!selectedId) return;
+				e.preventDefault();
+				// id генерируем заранее (не зависит от doc), а поиск исходного элемента —
+				// внутри апдейтера: doc там всегда актуальный аргумент, а не значение
+				// из замыкания на момент последней пересборки эффекта.
+				const newId = crypto.randomUUID();
+				history.set(
+					(doc) => {
+						const original = doc.elements.find((el) => el.id === selectedId);
+						if (!original) return doc;
+						const copy: CutlineElement = {
+							...original,
+							id: newId,
+							x: original.x + DUPLICATE_OFFSET_MM,
+							y: original.y + DUPLICATE_OFFSET_MM,
+						};
+						return { ...doc, elements: [...doc.elements, copy] };
+					},
+					{ boundary: true },
+				);
+				setSelectedId(newId);
+				return;
+			}
+
+			// Стрелки — сдвиг выделенного элемента. Без boundary: держать стрелку
+			// нажатой должно коалесцироваться в один шаг истории существующим
+			// тайм-аутным механизмом (COALESCE_MS в useDocumentHistory), а не плодить
+			// шаг на каждое повторение keydown при удержании клавиши.
+			const nudge = NUDGE_KEYS[e.key];
+			if (nudge) {
+				if (isTextEntryTarget(document.activeElement)) return;
+				if (!selectedId) return;
+				e.preventDefault();
+				const step = e.shiftKey ? NUDGE_STEP_LARGE_MM : NUDGE_STEP_MM;
+				history.set((doc) => ({
+					...doc,
+					elements: doc.elements.map((el) =>
+						el.id === selectedId
+							? { ...el, x: el.x + nudge.dx * step, y: el.y + nudge.dy * step }
+							: el,
+					),
+				}));
 				return;
 			}
 
