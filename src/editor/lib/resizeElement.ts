@@ -54,3 +54,24 @@ export function moveElement(
 ): CutlineElement {
 	return { ...start, x: start.x + dxMm, y: start.y + dyMm };
 }
+
+export type LineEnd = "start" | "end";
+
+// У линии вместо 8 маркеров два — на концах. Тянется один конец, другой стоит на
+// месте; w/h — вектор от начала к концу, поэтому без зажима минимумом: нулевая
+// проекция на ось (горизонтальная линия) и смена знака (конец ушёл левее начала) —
+// нормальные состояния, а не схлопывание.
+export function moveLineEnd<
+	T extends Pick<CutlineElement, "x" | "y" | "w" | "h">,
+>(start: T, end: LineEnd, dxMm: number, dyMm: number): T {
+	if (end === "end") {
+		return { ...start, w: start.w + dxMm, h: start.h + dyMm };
+	}
+	return {
+		...start,
+		x: start.x + dxMm,
+		y: start.y + dyMm,
+		w: start.w - dxMm,
+		h: start.h - dyMm,
+	};
+}

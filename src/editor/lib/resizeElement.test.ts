@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { CutlineElement } from "../../model/document";
 import { createRect } from "./createElement";
-import { type HandlePos, moveElement, resizeElement } from "./resizeElement";
+import {
+	type HandlePos,
+	moveElement,
+	moveLineEnd,
+	resizeElement,
+} from "./resizeElement";
 
 function box(x: number, y: number, w: number, h: number): CutlineElement {
 	return { ...createRect({ x: 0, y: 0 }), x, y, w, h };
@@ -82,5 +87,25 @@ describe("moveElement", () => {
 			w: 30,
 			h: 40,
 		});
+	});
+});
+
+describe("moveLineEnd", () => {
+	const line = { x: 10, y: 10, w: 20, h: 0 };
+
+	it("конец едет, начало стоит", () => {
+		expect(moveLineEnd(line, "end", 5, -15)).toEqual({
+			x: 10,
+			y: 10,
+			w: 25,
+			h: -15,
+		});
+	});
+
+	it("начало едет, конец стоит", () => {
+		const moved = moveLineEnd(line, "start", 40, 5);
+		expect(moved).toEqual({ x: 50, y: 15, w: -20, h: -5 });
+		// конец (x+w, y+h) — там же, где был: (30, 10)
+		expect([moved.x + moved.w, moved.y + moved.h]).toEqual([30, 10]);
 	});
 });

@@ -1,5 +1,9 @@
-// Фабрики фигур для добавления через тулбар. Точка клика — центр нового элемента.
+// Фабрики элементов для инструментов тулбара. Клик — элемент размера по умолчанию
+// с центром в точке клика (placeElement); протягивание — рамка от точки нажатия до
+// курсора (drawElement).
 import type {
+	CutlineElement,
+	ElementType,
 	EllipseElement,
 	ImageElement,
 	LineElement,
@@ -123,5 +127,71 @@ export function createLine(at: PointMm): LineElement {
 		visible: true,
 		stroke: "#111111",
 		strokeWidth: 0.5,
+	};
+}
+
+const FACTORIES: Record<ElementType, (at: PointMm) => CutlineElement> = {
+	rect: createRect,
+	ellipse: createEllipse,
+	line: createLine,
+	text: createText,
+	image: createImage,
+};
+
+export function placeElement(type: ElementType, at: PointMm): CutlineElement {
+	return FACTORIES[type](at);
+}
+
+// Протягивание, которое по одной оси почти не сдвинулось, не должно давать
+// прямоугольник нулевой высоты — его потом не ухватить мышью
+const MIN_DRAWN_MM = 1;
+const EIGHTH_TURN = Math.PI / 4;
+
+export interface DrawOptions {
+	// Shift: квадрат/круг у фигур, угол кратный 45° у линии
+	constrain?: boolean;
+}
+
+function constrainLine(dx: number, dy: number): { dx: number; dy: number } {
+	const length = Math.hypot(dx, dy);
+	const angle = Math.round(Math.atan2(dy, dx) / EIGHTH_TURN) * EIGHTH_TURN;
+	// cos(90°) во float не ноль, а 6e-17 — вертикальная линия получила бы хвост в x
+	const clean = (v: number) => (Math.abs(v) < 1e-9 ? 0 : v);
+	return {
+		dx: clean(length * Math.cos(angle)),
+		dy: clean(length * Math.sin(angle)),
+	};
+}
+
+export function drawElement(
+	type: ElementType,
+	from: PointMm,
+	to: PointMm,
+	{ constrain = false }: DrawOptions = {},
+): CutlineElement {
+	let dx = to.x - from.x;
+	let dy = to.y - from.y;
+	const base = placeElement(type, from);
+
+	// линия — вектор от начала к концу, без нормализации: направление и есть смысл
+	if (type === "line") {
+		if (constrain) ({ dx, dy } = constrainLine(dx, dy));
+		return { ...base, x: from.x, y: from.y, w: dx, h: dy };
+	}
+
+	if (constrain) {
+		const side = Math.max(Math.abs(dx), Math.abs(dy));
+		dx = (dx < 0 ? -1 : 1) * side;
+		dy = (dy < 0 ? -1 : 1) * side;
+	}
+	const w = Math.max(Math.abs(dx), MIN_DRAWN_MM);
+	const h = Math.max(Math.abs(dy), MIN_DRAWN_MM);
+	// тянули влево/вверх — точка нажатия становится правым/нижним краем
+	return {
+		...base,
+		x: dx < 0 ? from.x - w : from.x,
+		y: dy < 0 ? from.y - h : from.y,
+		w,
+		h,
 	};
 }
