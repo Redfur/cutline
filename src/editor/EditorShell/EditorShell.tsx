@@ -8,8 +8,12 @@ import type {
 	Guide,
 } from "../../model/document";
 import { blankDocument } from "../../render/fixtures/blank";
-import { Canvas, type PointMm, type ViewportSize } from "../Canvas/Canvas";
-import { BASE_PX_PER_MM } from "../Canvas/constants";
+import {
+	BASE_PX_PER_MM,
+	Canvas,
+	type PointMm,
+	type ViewportSize,
+} from "../Canvas";
 import {
 	createEllipse,
 	createImage,
@@ -17,10 +21,10 @@ import {
 	createRect,
 	createText,
 } from "../createElement";
-import { Inspector } from "../inspector/Inspector";
-import { type LayerPatch, LayersPanel } from "../LayersPanel/LayersPanel";
-import { type Tool, Toolbar } from "../Toolbar/Toolbar";
-import { type Mode, TopBar } from "../TopBar/TopBar";
+import { Inspector } from "../Inspector";
+import { type LayerPatch, LayersPanel } from "../LayersPanel";
+import { type Tool, Toolbar } from "../Toolbar";
+import { type Mode, TopBar } from "../TopBar";
 import { useDocumentHistory } from "../useDocumentHistory";
 import styles from "./EditorShell.module.css";
 

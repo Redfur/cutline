@@ -11,7 +11,7 @@ import type {
 	Guide,
 } from "../../model/document";
 import { render } from "../../render/render";
-import type { Tool } from "../Toolbar/Toolbar";
+import type { Tool } from "../Toolbar";
 import styles from "./Canvas.module.css";
 import { BASE_PX_PER_MM, PAD_MM } from "./constants";
 import { ElementOverlay } from "./ElementOverlay";
