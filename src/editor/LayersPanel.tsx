@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { CutlineElement } from "../model/document";
+import type { CutlineElement, Guide } from "../model/document";
+import { Icon } from "../ui/core/Icon";
 import { LayerRow } from "../ui/editor/LayerRow";
 
 export interface LayerPatch {
@@ -14,6 +15,49 @@ export interface LayersPanelProps {
 	onSelect: (id: string) => void;
 	onLayerChange: (id: string, patch: LayerPatch) => void;
 	onReorder: (elements: CutlineElement[]) => void;
+	guides: Guide[];
+	selectedGuideId: string | null;
+	onSelectGuide: (id: string) => void;
+}
+
+// Строка направляющей в списке слоёв — не переиспользует LayerRow: у направляющих
+// нет замка/видимости/переименования/своего места в z-порядке элементов, натягивать
+// эти концепции на них было бы искусственно ради общего компонента.
+function GuideRow({
+	guide,
+	selected,
+	onClick,
+}: {
+	guide: Guide;
+	selected: boolean;
+	onClick: () => void;
+}) {
+	const label = Number.isInteger(guide.positionMm)
+		? guide.positionMm
+		: Math.round(guide.positionMm * 10) / 10;
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			style={{
+				display: "flex",
+				alignItems: "center",
+				gap: 8,
+				width: "100%",
+				height: "var(--row-h)",
+				padding: "0 10px",
+				border: 0,
+				background: selected ? "var(--bg-selected)" : "transparent",
+				font: "var(--type-label)",
+				color: selected ? "var(--fg-accent)" : "var(--fg-1)",
+				cursor: "pointer",
+				textAlign: "left",
+			}}
+		>
+			<Icon name="ruler" size={14} />
+			{guide.axis === "x" ? "X" : "Y"} · {label} мм
+		</button>
+	);
 }
 
 // Высота строки фиксирована токеном --row-h — позицию вставки при перетаскивании
@@ -32,6 +76,9 @@ export function LayersPanel({
 	onSelect,
 	onLayerChange,
 	onReorder,
+	guides,
+	selectedGuideId,
+	onSelectGuide,
 }: LayersPanelProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [drag, setDrag] = useState<DragState | null>(null);
@@ -139,6 +186,27 @@ export function LayersPanel({
 						/>
 					</div>
 				))
+			)}
+			{guides.length > 0 && (
+				<>
+					<div
+						style={{
+							padding: "8px 10px 4px",
+							font: "var(--type-label)",
+							color: "var(--fg-3)",
+						}}
+					>
+						Направляющие
+					</div>
+					{guides.map((guide) => (
+						<GuideRow
+							key={guide.id}
+							guide={guide}
+							selected={guide.id === selectedGuideId}
+							onClick={() => onSelectGuide(guide.id)}
+						/>
+					))}
+				</>
 			)}
 		</div>
 	);
