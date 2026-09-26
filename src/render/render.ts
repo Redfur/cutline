@@ -3,6 +3,7 @@
 // запись данных и опции на входе, строка SVG на выходе. На ней держатся превью, сетка
 // миниатюр и все виды экспорта.
 
+import { substitute } from "../data/placeholders";
 import type {
 	Canvas,
 	CutlineDocument,
@@ -16,22 +17,12 @@ import type {
 	TextElement,
 	TextValign,
 } from "../model/document";
-import { applyFit, type FitContext } from "./fit";
-import { measureText } from "./measure";
+import { layoutText } from "./layout";
 
 export interface RenderOptions {
 	outlines: boolean; // перевод текста в кривые — появится вместе с opentype.js на Этапе 4
 	bleed: boolean; // расширить холст на вылет
 	marks: boolean; // метки реза по углам обреза
-}
-
-const PLACEHOLDER_RE = /\{\{(\w+)\}\}/g;
-
-function substitute(template: string, record: DataRecord): string {
-	return template.replace(
-		PLACEHOLDER_RE,
-		(_match, key: string) => record[key] ?? "",
-	);
 }
 
 function escapeXml(text: string): string {
@@ -82,37 +73,12 @@ function renderText(
 	record: DataRecord,
 	opts: RenderOptions,
 ): string {
-	const substituted = substitute(el.content, record);
-	if (!substituted) {
+	const layout = layoutText(el, record);
+	if (!layout) {
 		return "";
 	}
-	// transform — до подгонки, не после: прописные буквы шире строчных,
-	// подгонка по ширине строчного текста могла бы дать переполнение после регистра.
-	const content = applyTextTransform(substituted, el.transform);
-
-	const fitCtx: FitContext = {
-		fontFamily: el.font,
-		weight: el.weight,
-		trackingMm: el.tracking,
-		maxWidthMm: el.w,
-	};
-	const { sizeMm, lines: transformed } = applyFit(
-		content,
-		el.fit,
-		el.size,
-		el.minSize,
-		fitCtx,
-	);
-
-	const lineHeightMm = sizeMm * el.lineHeight;
-	const { ascentMm } = measureText(
-		transformed[0] ?? "",
-		sizeMm,
-		el.tracking,
-		el.font,
-		el.weight,
-	);
-	const blockHeightMm = lineHeightMm * (transformed.length - 1);
+	const { sizeMm, lines, lineHeightMm, ascentMm } = layout;
+	const blockHeightMm = lineHeightMm * (lines.length - 1);
 	const baseY = firstBaselineY(el.valign, el.y, el.h, ascentMm, blockHeightMm);
 	const anchorX = anchorXOf(el);
 	const anchor = textAnchorOf(el.align);
@@ -122,7 +88,7 @@ function renderText(
 	// только на машине, где шрифт установлен.
 	void opts.outlines;
 
-	return transformed
+	return lines
 		.map((line, i) => {
 			const y = baseY + lineHeightMm * i;
 			return (
@@ -133,15 +99,6 @@ function renderText(
 			);
 		})
 		.join("");
-}
-
-function applyTextTransform(
-	text: string,
-	transform: TextElement["transform"],
-): string {
-	if (transform === "upper") return text.toUpperCase();
-	if (transform === "lower") return text.toLowerCase();
-	return text;
 }
 
 function renderRect(el: RectElement): string {
