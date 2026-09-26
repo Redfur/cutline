@@ -3,7 +3,11 @@
 // выделение и текущая запись предпросмотра.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sampleRecord } from "../../data/placeholders";
-import { documentProblems, hasProblems } from "../../data/problems";
+import {
+	documentProblems,
+	hasProblems,
+	recordProblems,
+} from "../../data/problems";
 import type {
 	CutlineDocument,
 	CutlineElement,
@@ -74,11 +78,27 @@ export function EditorShell() {
 	// один проход раскладки по всем записям на изменение документа — им пользуются
 	// таблица, сетка, холст и навигатор
 	const fontsVersion = useFontsVersion();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: fontsVersion — см. комментарий у зависимостей
 	const problems = useMemo(
 		() => documentProblems(history.doc),
 		// fontsVersion не читается внутри, но меняет результат measureText — см. хук
 		[history.doc, fontsVersion],
 	);
+	// без записей холст показывает примеры полей — проверяем и их, иначе макет,
+	// в который не влезает даже пример, выглядел бы исправным
+	const currentProblems = useMemo(
+		() =>
+			records.length
+				? problems[currentRecord]
+				: recordProblems(history.doc, previewRecord),
+		[records.length, problems, currentRecord, history.doc, previewRecord],
+	);
+	const overflowIds = currentProblems?.overflowIds ?? [];
+	const selectedOverflowRecords = selectedId
+		? problems.flatMap((p, i) =>
+				p.overflowIds.includes(selectedId) ? [i + 1] : [],
+			)
+		: [];
 
 	const selectedElement =
 		history.doc.elements.find((el) => el.id === selectedId) ?? null;
@@ -330,12 +350,14 @@ export function EditorShell() {
 						onLayerChange={handleLayerChange}
 						onReorder={handleReorder}
 						guides={history.doc.guides}
+						warningIds={overflowIds}
 						selectedGuideId={selectedGuideId}
 						onSelectGuide={handleSelectGuide}
 					/>
 					<Canvas
 						doc={history.doc}
 						record={previewRecord}
+						overflowIds={overflowIds}
 						bottomBar={
 							records.length > 0 && (
 								<RecordNavigator
@@ -367,6 +389,8 @@ export function EditorShell() {
 						onElementChange={handleElementChange}
 						selectedGuide={selectedGuide}
 						onGuideChange={handleGuidePositionChange}
+						fields={fields}
+						overflowRecords={selectedOverflowRecords}
 					/>
 				</div>
 			)}

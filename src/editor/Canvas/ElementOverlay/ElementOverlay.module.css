@@ -15,6 +15,15 @@
 	pointer-events: none;
 }
 
+/* Под рамкой выделения: выделенный переполненный элемент видно и так, и так */
+.overflow {
+	position: absolute;
+	inset: 0;
+	outline: 1px solid var(--overflow);
+	background: var(--overflow-fill);
+	pointer-events: none;
+}
+
 .handle {
 	position: absolute;
 	width: 7px; /* HANDLE_SIZE в constants.ts — по нему же считается смещение центра */

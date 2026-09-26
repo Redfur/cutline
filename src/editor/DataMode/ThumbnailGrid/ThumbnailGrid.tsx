@@ -37,6 +37,7 @@ export function ThumbnailGrid({
 	// Документ без записей: меняется только вместе с макетом, так что правка ячейки
 	// не инвалидирует мемо у остальных миниатюр (у них тот же layout и тот же record).
 	// Из частей, а не { ...doc }: doc меняется на каждый набранный символ
+	// biome-ignore lint/correctness/useExhaustiveDependencies: fontsVersion — см. комментарий у зависимостей
 	const layout = useMemo<CutlineDocument>(
 		() => ({
 			version,

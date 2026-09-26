@@ -3,19 +3,22 @@
 // но раз файл локальный и его пропорции точно известны, заодно подгоняем размер
 // рамки под них.
 import { useRef } from "react";
-import type { ImageElement, ImageFit } from "../../../model/document";
+import type { FieldDef, ImageElement, ImageFit } from "../../../model/document";
 import { Icon } from "../../../ui/core/Icon";
 import { PanelSection } from "../../../ui/editor/PanelSection";
 import { PropertyRow } from "../../../ui/editor/PropertyRow";
 import { Button } from "../../../ui/forms/Button";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
+import { FieldMenu } from "../FieldMenu";
+import { MissingFields } from "../MissingFields";
 import { PositionSizeFields } from "../PositionSizeFields";
 import styles from "./ImageInspector.module.css";
 
 export interface ImageInspectorProps {
 	element: ImageElement;
 	onChange: (element: ImageElement) => void;
+	fields: FieldDef[];
 }
 
 const FIT_OPTIONS: { value: ImageFit; label: string }[] = [
@@ -42,7 +45,15 @@ function loadNaturalSize(src: string): Promise<{ w: number; h: number }> {
 	});
 }
 
-export function ImageInspector({ element, onChange }: ImageInspectorProps) {
+// превью в инспекторе — только для конкретного файла/ссылки: у {{photo}} картинка
+// своя в каждой записи, её видно на холсте
+const HAS_PLACEHOLDER = /\{\{/;
+
+export function ImageInspector({
+	element,
+	onChange,
+	fields,
+}: ImageInspectorProps) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	async function handleFileSelected(file: File) {
@@ -75,12 +86,18 @@ export function ImageInspector({ element, onChange }: ImageInspectorProps) {
 			<PropertyRow label="Источник">
 				<TextField
 					value={element.src}
-					placeholder="https://…"
+					placeholder="https://… или {{photo}}"
 					onChange={(v) => onChange({ ...element, src: v })}
 				/>
+				{/* src целиком заменяется полем: ссылка из ячейки — это и есть весь адрес */}
+				<FieldMenu
+					fields={fields}
+					onPick={(key) => onChange({ ...element, src: `{{${key}}}` })}
+				/>
 			</PropertyRow>
+			<MissingFields template={element.src} fields={fields} />
 
-			{element.src ? (
+			{HAS_PLACEHOLDER.test(element.src) ? null : element.src ? (
 				<img src={element.src} alt="" className={styles.imagePreview} />
 			) : (
 				<div className={styles.imagePlaceholder}>

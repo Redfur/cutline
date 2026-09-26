@@ -1,8 +1,9 @@
 // Свойства text — по группам из docs/ui-spec.md (Содержимое/Положение/Шрифт/
-// Выравнивание/Цвет/Автоподгонка). Вставка плейсхолдера по списку полей — когда
-// появятся doc.fields (Этап 3), пока {{key}} печатается в контенте вручную.
+// Выравнивание/Цвет/Автоподгонка). Рядом с содержимым — вставка плейсхолдера
+// из полей данных, у автоподгонки — пояснение, в каких записях текст не влез.
 import { useState } from "react";
 import type {
+	FieldDef,
 	TextAlign,
 	TextElement,
 	TextFit,
@@ -10,16 +11,34 @@ import type {
 } from "../../../model/document";
 import { PanelSection } from "../../../ui/editor/PanelSection";
 import { PropertyRow } from "../../../ui/editor/PropertyRow";
+import { InlineAlert } from "../../../ui/feedback/InlineAlert";
+import { Button } from "../../../ui/forms/Button";
 import { ColorField } from "../../../ui/forms/ColorField";
 import { IconButton } from "../../../ui/forms/IconButton";
 import { SegmentedControl } from "../../../ui/forms/SegmentedControl";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
+import { FieldMenu } from "../FieldMenu";
+import { MissingFields } from "../MissingFields";
 import { PositionSizeFields } from "../PositionSizeFields";
 
 export interface TextInspectorProps {
 	element: TextElement;
 	onChange: (element: TextElement) => void;
+	fields: FieldDef[];
+	// номера записей (с 1), где этот текст не влезает в рамку
+	overflowRecords: number[];
+}
+
+// дальше перечислять бессмысленно — полный список даёт фильтр в «Данных»
+const OVERFLOW_LIST_LIMIT = 5;
+
+function overflowText(records: number[]): string {
+	if (records.length === 0) return "";
+	const shown = records.slice(0, OVERFLOW_LIST_LIMIT).join(", ");
+	const rest = records.length - OVERFLOW_LIST_LIMIT;
+	const which = records.length === 1 ? "Запись" : "Записи";
+	return rest > 0 ? `${which} ${shown} и ещё ${rest}.` : `${which} ${shown}.`;
 }
 
 const ALIGN_OPTIONS: {
@@ -58,7 +77,12 @@ const FONT_PRESETS = [
 ];
 const CUSTOM_FONT = "custom";
 
-export function TextInspector({ element, onChange }: TextInspectorProps) {
+export function TextInspector({
+	element,
+	onChange,
+	fields,
+	overflowRecords,
+}: TextInspectorProps) {
 	const num = (v: string | number) => Number(v) || 0;
 	// Выбор «Свой…», когда font и так уже совпадает с одним из пресетов (частый
 	// случай — просто передумали и хотят вписать другое имя), иначе не переключил бы
@@ -79,7 +103,14 @@ export function TextInspector({ element, onChange }: TextInspectorProps) {
 					value={element.content}
 					onChange={(v) => onChange({ ...element, content: v })}
 				/>
+				<FieldMenu
+					fields={fields}
+					onPick={(key) =>
+						onChange({ ...element, content: `${element.content}{{${key}}}` })
+					}
+				/>
 			</PropertyRow>
+			<MissingFields template={element.content} fields={fields} />
 
 			<PositionSizeFields
 				x={element.x}
@@ -193,6 +224,30 @@ export function TextInspector({ element, onChange }: TextInspectorProps) {
 						onChange={(v) => onChange({ ...element, minSize: num(v) })}
 					/>
 				</PropertyRow>
+			)}
+			{overflowRecords.length > 0 && (
+				<InlineAlert
+					tone="warning"
+					title={
+						overflowRecords.length === 1
+							? "Текст не влезает в 1 записи"
+							: `Текст не влезает в ${overflowRecords.length} записях`
+					}
+					actions={
+						// сжатие — самое частое лечение; при shrink кнопка не нужна, там
+						// помогает только меньший мин. кегль или шире рамка
+						element.fit !== "shrink" && (
+							<Button
+								size="sm"
+								onClick={() => onChange({ ...element, fit: "shrink" })}
+							>
+								Уменьшать кегль
+							</Button>
+						)
+					}
+				>
+					{overflowText(overflowRecords)}
+				</InlineAlert>
 			)}
 		</PanelSection>
 	);

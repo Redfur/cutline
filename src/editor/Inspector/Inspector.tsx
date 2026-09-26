@@ -4,6 +4,7 @@
 import type {
 	Canvas as CanvasModel,
 	CutlineElement,
+	FieldDef,
 	Guide,
 } from "../../model/document";
 import { CanvasInspector } from "./CanvasInspector";
@@ -20,6 +21,9 @@ export interface InspectorProps {
 	onElementChange: (element: CutlineElement) => void;
 	selectedGuide: Guide | null;
 	onGuideChange: (guide: Guide) => void;
+	fields: FieldDef[];
+	// номера записей (с 1), где выделенный текст не влезает
+	overflowRecords: number[];
 }
 
 export function Inspector({
@@ -29,6 +33,8 @@ export function Inspector({
 	onElementChange,
 	selectedGuide,
 	onGuideChange,
+	fields,
+	overflowRecords,
 }: InspectorProps) {
 	return (
 		<div className={styles.inspector}>
@@ -53,10 +59,16 @@ export function Inspector({
 					key={selectedElement.id}
 					element={selectedElement}
 					onChange={onElementChange}
+					fields={fields}
+					overflowRecords={overflowRecords}
 				/>
 			)}
 			{selectedElement && selectedElement.type === "image" && (
-				<ImageInspector element={selectedElement} onChange={onElementChange} />
+				<ImageInspector
+					element={selectedElement}
+					onChange={onElementChange}
+					fields={fields}
+				/>
 			)}
 		</div>
 	);

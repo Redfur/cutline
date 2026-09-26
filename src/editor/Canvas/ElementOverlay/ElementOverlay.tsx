@@ -30,6 +30,9 @@ export interface ElementOverlayProps {
 	el: CutlineElement;
 	pxPerMm: number;
 	selected: boolean;
+	// текст не влез на текущей записи — обводим предупреждающим цветом (ui-spec,
+	// состояние «Текст не влез»)
+	overflow: boolean;
 	canDrag: boolean;
 	onSelect: () => void;
 	onStartMove: (e: React.MouseEvent) => void;
@@ -40,6 +43,7 @@ export function ElementOverlay({
 	el,
 	pxPerMm,
 	selected,
+	overflow,
 	canDrag,
 	onSelect,
 	onStartMove,
@@ -79,6 +83,7 @@ export function ElementOverlay({
 				transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
 			}}
 		>
+			{overflow && <div className={styles.overflow} />}
 			{selected && !el.locked && (
 				<>
 					<div className={styles.outline} />

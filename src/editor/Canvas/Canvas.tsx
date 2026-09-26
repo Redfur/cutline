@@ -35,6 +35,8 @@ export interface CanvasProps {
 	doc: CutlineDocument;
 	// запись, которой заполняются плейсхолдеры на карточке; выбирает её оболочка
 	record: DataRecord;
+	// id текстов, не влезших на этой записи
+	overflowIds: string[];
 	// плавающая полоса внизу холста (навигатор записей) — не прокручивается с карточкой
 	bottomBar?: ReactNode;
 	zoom: number;
@@ -60,6 +62,7 @@ const PLACEABLE_TOOLS = new Set<Tool>([
 export function Canvas({
 	doc,
 	record,
+	overflowIds,
 	bottomBar,
 	zoom,
 	tool,
@@ -283,6 +286,7 @@ export function Canvas({
 									el={el}
 									pxPerMm={pxPerMm}
 									selected={el.id === selectedId}
+									overflow={overflowIds.includes(el.id)}
 									canDrag={tool === "select" && !el.locked}
 									onSelect={() => onSelect(el.id)}
 									onStartMove={(e) => {
