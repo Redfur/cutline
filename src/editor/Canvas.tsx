@@ -3,7 +3,7 @@
 // не может разойтись с тем, что попадёт в файл. Линейки, обрез/вылет/безопасное поле —
 // поверх, отдельными слоями; render() как был, так и остаётся не в курсе редактора.
 import { useEffect, useRef, useState } from "react";
-import type { CutlineDocument, CutlineElement } from "../model/document";
+import type { CutlineDocument, CutlineElement, Guide } from "../model/document";
 import { render } from "../render/render";
 import { type HandlePos, moveElement, resizeElement } from "./resizeElement";
 import { type SnapGuide, snapMove, snapResize } from "./snap";
@@ -33,6 +33,7 @@ export interface CanvasProps {
 	onSelect: (id: string | null) => void;
 	onPlace: (at: PointMm) => void;
 	onElementChange: (element: CutlineElement) => void;
+	onGuidesChange: (guides: Guide[]) => void;
 	onViewportResize?: (size: ViewportSize) => void;
 }
 
@@ -179,6 +180,56 @@ function Ruler({
 	);
 }
 
+// Направляющая, вытянутая с линейки (как в Фигме) — тонкая видимая линия внутри более
+// широкого невидимого хитбокса (иначе за 1px мышью не попасть). Без onMouseDown — это
+// живое превью во время перетаскивания, не сама направляющая, тянуть его нельзя.
+function GuideLine({
+	axis,
+	positionMm,
+	pxPerMm,
+	onMouseDown,
+}: {
+	axis: "x" | "y";
+	positionMm: number;
+	pxPerMm: number;
+	onMouseDown?: (e: React.MouseEvent) => void;
+}) {
+	const posPx = positionMm * pxPerMm;
+	const interactive = Boolean(onMouseDown);
+	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: перетаскивание мышью, как и остальные хит-таргеты холста рядом (ElementOverlay, маркеры ресайза) — клавиатурного пути нет
+		// biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше
+		<div
+			onMouseDown={onMouseDown}
+			// mousedown выше гасит только само перетаскивание; следующий за ним click иначе
+			// всплыл бы до .canvas-card и снял выделение элемента просто от клика по линии
+			onClick={interactive ? (e) => e.stopPropagation() : undefined}
+			style={{
+				position: "absolute",
+				pointerEvents: interactive ? "auto" : "none",
+				cursor: interactive
+					? axis === "x"
+						? "ew-resize"
+						: "ns-resize"
+					: undefined,
+				...(axis === "x"
+					? { left: posPx - 3, top: 0, width: 6, height: "100%" }
+					: { top: posPx - 3, left: 0, height: 6, width: "100%" }),
+			}}
+		>
+			<div
+				style={{
+					position: "absolute",
+					background: "var(--selection)",
+					...(axis === "x"
+						? { left: 3, top: 0, width: 1, height: "100%" }
+						: { top: 3, left: 0, height: 1, width: "100%" }),
+				}}
+			/>
+		</div>
+	);
+}
+
 // Один div-оверлей на элемент документа — по нему выделяют, двигают и ресайзят. render()
 // рисует карточку одним непрозрачным SVG-блобом (архитектурное правило CLAUDE.md: он не
 // в курсе редактора), поэтому все эти взаимодействия нельзя повесить на её же SVG-узел.
@@ -305,15 +356,32 @@ export function Canvas({
 	onSelect,
 	onPlace,
 	onElementChange,
+	onGuidesChange,
 	onViewportResize,
 }: CanvasProps) {
 	const viewportRef = useRef<HTMLDivElement>(null);
+	const contentRef = useRef<HTMLDivElement>(null);
+	const rulerXStripRef = useRef<HTMLDivElement>(null);
+	const rulerYStripRef = useRef<HTMLDivElement>(null);
 	const [scroll, setScroll] = useState({ left: 0, top: 0 });
 	const [viewport, setViewport] = useState<ViewportSize | null>(null);
 	const [drag, setDrag] = useState<DragState | null>(null);
 	const [liveElement, setLiveElement] = useState<CutlineElement | null>(null);
 	const liveElementRef = useRef<CutlineElement | null>(null);
 	const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
+	const [guideDrag, setGuideDrag] = useState<{
+		id: string | null;
+		axis: "x" | "y";
+		// текущая позиция существующей направляющей на момент mousedown — нужна, чтобы
+		// отличить «отпустили без единого mousemove» (клик) от «утащили обратно на
+		// линейку» (оба дают liveGuideMm не тронутым с начала жеста)
+		startPositionMm?: number;
+	} | null>(null);
+	// null = курсор сейчас над «своей» линейкой — при отпускании отмена/удаление, а не
+	// перенос в (0,0); ref — чтобы mouseup в эффекте ниже читал актуальное значение,
+	// а не то, что было на момент подписки (тот же приём, что и у liveElementRef)
+	const [liveGuideMm, setLiveGuideMm] = useState<number | null>(null);
+	const liveGuideMmRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		const el = viewportRef.current;
@@ -426,6 +494,71 @@ export function Canvas({
 		};
 	}, [drag, pxPerMm, onElementChange, doc]);
 
+	// Тянем направляющую с линейки (новую) или двигаем существующую — тот же принцип,
+	// что и у драга элемента выше: только live-превью здесь, один onGuidesChange на mouseup.
+	useEffect(() => {
+		if (!guideDrag) return;
+		function handleMouseMove(e: MouseEvent) {
+			if (!guideDrag) return;
+			const ownRulerRect =
+				guideDrag.axis === "x"
+					? rulerXStripRef.current?.getBoundingClientRect()
+					: rulerYStripRef.current?.getBoundingClientRect();
+			const overOwnRuler =
+				guideDrag.axis === "x"
+					? ownRulerRect && e.clientY < ownRulerRect.bottom
+					: ownRulerRect && e.clientX < ownRulerRect.right;
+			if (overOwnRuler) {
+				liveGuideMmRef.current = null;
+				setLiveGuideMm(null);
+				return;
+			}
+			const contentRect = contentRef.current?.getBoundingClientRect();
+			if (!contentRect) return;
+			const mm =
+				guideDrag.axis === "x"
+					? (e.clientX - contentRect.left - originXPx) / pxPerMm
+					: (e.clientY - contentRect.top - originYPx) / pxPerMm;
+			liveGuideMmRef.current = mm;
+			setLiveGuideMm(mm);
+		}
+		function handleMouseUp() {
+			if (!guideDrag) return;
+			const positionMm = liveGuideMmRef.current;
+			if (positionMm !== null) {
+				if (guideDrag.id) {
+					// обычный клик без движения — positionMm остался равен стартовой
+					// позиции (инициализирован ею же на mousedown), реального переноса
+					// не было, лишний шаг истории не нужен
+					if (positionMm !== guideDrag.startPositionMm) {
+						onGuidesChange(
+							doc.guides.map((g) =>
+								g.id === guideDrag.id ? { ...g, positionMm } : g,
+							),
+						);
+					}
+				} else {
+					onGuidesChange([
+						...doc.guides,
+						{ id: crypto.randomUUID(), axis: guideDrag.axis, positionMm },
+					]);
+				}
+			} else if (guideDrag.id) {
+				// отпустили над своей линейкой — удаление существующей направляющей
+				onGuidesChange(doc.guides.filter((g) => g.id !== guideDrag.id));
+			}
+			liveGuideMmRef.current = null;
+			setLiveGuideMm(null);
+			setGuideDrag(null);
+		}
+		window.addEventListener("mousemove", handleMouseMove);
+		window.addEventListener("mouseup", handleMouseUp);
+		return () => {
+			window.removeEventListener("mousemove", handleMouseMove);
+			window.removeEventListener("mouseup", handleMouseUp);
+		};
+	}, [guideDrag, pxPerMm, originXPx, originYPx, onGuidesChange, doc.guides]);
+
 	const elements = liveElement
 		? doc.elements.map((el) => (el.id === liveElement.id ? liveElement : el))
 		: doc.elements;
@@ -457,13 +590,24 @@ export function Canvas({
 						borderBottom: "1px solid var(--border-1)",
 					}}
 				/>
+				{/* Тянет новую направляющую на холст, как в Фигме — не семантический
+				    контрол, клавиатурного эквивалента нет, как и у самого холста ниже */}
+				{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
 				<div
+					ref={rulerXStripRef}
+					onMouseDown={(e) => {
+						e.preventDefault();
+						liveGuideMmRef.current = null;
+						setLiveGuideMm(null);
+						setGuideDrag({ id: null, axis: "x" });
+					}}
 					style={{
 						flex: 1,
 						overflow: "hidden",
 						position: "relative",
 						background: "var(--bg-panel)",
 						borderBottom: "1px solid var(--border-1)",
+						cursor: "ew-resize",
 					}}
 				>
 					<Ruler
@@ -481,7 +625,15 @@ export function Canvas({
 				</div>
 			</div>
 			<div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+				{/* biome-ignore lint/a11y/noStaticElementInteractions: тянет новую направляющую, см. комментарий у горизонтальной линейки выше */}
 				<div
+					ref={rulerYStripRef}
+					onMouseDown={(e) => {
+						e.preventDefault();
+						liveGuideMmRef.current = null;
+						setLiveGuideMm(null);
+						setGuideDrag({ id: null, axis: "y" });
+					}}
 					style={{
 						width: RULER_SIZE,
 						flex: "none",
@@ -489,6 +641,7 @@ export function Canvas({
 						position: "relative",
 						background: "var(--bg-panel)",
 						borderRight: "1px solid var(--border-1)",
+						cursor: "ns-resize",
 					}}
 				>
 					<Ruler
@@ -515,6 +668,7 @@ export function Canvas({
 					style={{ flex: 1, overflow: "auto", position: "relative" }}
 				>
 					<div
+						ref={contentRef}
 						style={{
 							width: contentWidthPx,
 							height: contentHeightPx,
@@ -607,6 +761,37 @@ export function Canvas({
 									}}
 								/>
 							))}
+							{doc.guides
+								.filter((g) => g.id !== guideDrag?.id)
+								.map((guide) => (
+									<GuideLine
+										key={guide.id}
+										axis={guide.axis}
+										positionMm={guide.positionMm}
+										pxPerMm={pxPerMm}
+										onMouseDown={(e) => {
+											e.preventDefault();
+											e.stopPropagation();
+											// инициализируем текущей позицией, а не null — иначе
+											// обычный клик без единого mousemove неотличим от
+											// «отпустили над линейкой» и направляющая бы удалялась
+											liveGuideMmRef.current = guide.positionMm;
+											setLiveGuideMm(guide.positionMm);
+											setGuideDrag({
+												id: guide.id,
+												axis: guide.axis,
+												startPositionMm: guide.positionMm,
+											});
+										}}
+									/>
+								))}
+							{guideDrag && liveGuideMm !== null && (
+								<GuideLine
+									axis={guideDrag.axis}
+									positionMm={liveGuideMm}
+									pxPerMm={pxPerMm}
+								/>
+							)}
 							{elements.map((el) => (
 								<ElementOverlay
 									key={el.id}

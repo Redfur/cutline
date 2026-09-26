@@ -2,7 +2,7 @@
 // Добавление фигур (rect/ellipse/line), выделение и удаление — этот срез;
 // text/image, перетаскивание/resize, привязки, остальные горячие клавиши — ещё нет.
 import { useEffect, useState } from "react";
-import type { CutlineDocument, CutlineElement } from "../model/document";
+import type { CutlineDocument, CutlineElement, Guide } from "../model/document";
 import { blankDocument } from "../render/fixtures/blank";
 import {
 	BASE_PX_PER_MM,
@@ -92,6 +92,12 @@ export function EditorShell() {
 			...doc,
 			elements: doc.elements.map((el) => (el.id === updated.id ? updated : el)),
 		}));
+	};
+
+	// Создание/перенос/удаление направляющей — дискретная структурная правка, как
+	// создание/удаление элемента: не должна схлопываться по коалессингу с соседними.
+	const handleGuidesChange = (guides: Guide[]) => {
+		history.set((doc) => ({ ...doc, guides }), { boundary: true });
 	};
 
 	// Лок/видимость/переименование и реордер — дискретные структурные правки,
@@ -250,6 +256,7 @@ export function EditorShell() {
 						onSelect={setSelectedId}
 						onPlace={handlePlace}
 						onElementChange={handleElementChange}
+						onGuidesChange={handleGuidesChange}
 						onViewportResize={setViewportSize}
 					/>
 					<Inspector
