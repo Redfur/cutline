@@ -3,7 +3,8 @@
 import type { CutlineDocument, DataRecord } from "../model/document";
 import { render } from "../render/render";
 import { downloadBlob } from "./download";
-import { buildPdf, decodeDataUri, type ImageBytes } from "./pdf";
+import { layoutOptions, pageLayout } from "./imposition";
+import { buildPdf, decodeDataUri, type ImageBytes, imposeSheets } from "./pdf";
 import { pdfFontProblems, pdfFontProblemsMessage } from "./pdfPreflight";
 
 // У SVG без width/height у картинки нет своего размера — растрируем с таким запасом
@@ -84,9 +85,11 @@ export async function downloadPdf(
 	// opentype.js — отдельным чанком: вместе с pdf-lib они не влезали в лимит Vite на чанк
 	const { loadOutlineFonts } = await import("../fonts/outlineFonts");
 	const outlines = await loadOutlineFonts(doc);
-	const svg = render(doc, record, { outlines, bleed: true, marks: false });
+	const svg = render(doc, record, { outlines, bleed: true });
+	const card = { w: doc.canvas.w, h: doc.canvas.h, bleed: doc.canvas.bleed };
+	const layout = pageLayout(card, layoutOptions(card, true)[0], true);
 	const bytes = await buildPdf(
-		[{ svg, trim: { x: 0, y: 0, w: doc.canvas.w, h: doc.canvas.h } }],
+		imposeSheets(layout, [svg]),
 		resolveImageInBrowser,
 	);
 	// slice — копия на ArrayBuffer: Blob не принимает представление поверх SharedArrayBuffer

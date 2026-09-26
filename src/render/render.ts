@@ -24,7 +24,8 @@ export interface RenderOptions {
 	// шрифтом, которого тут нет, остаётся <text>: PDF такое отсекает до вызова render()
 	outlines: OutlineFonts | null;
 	bleed: boolean; // расширить холст на вылет
-	marks: boolean; // метки реза по углам обреза
+	// меток реза тут нет: это свойство листа, а не карточки — их рисует спуск полос
+	// (src/export/imposition.ts)
 }
 
 function escapeXml(text: string): string {
@@ -191,30 +192,6 @@ function renderBackground(
 	return `<rect x="${originX}" y="${originY}" width="${width}" height="${height}" fill="${canvas.background}"/>`;
 }
 
-const MARK_LENGTH_MM = 5;
-const MARK_GAP_MM = 2;
-
-// Первая версия меток реза: по два штриха на угол, от края вылета наружу.
-// Точная геометрия под типографскую печать — предмет Этапа 4, не этого шага.
-function renderCropMarks(canvas: Canvas, bleed: number): string {
-	const { w, h } = canvas;
-	const corners = [
-		{ x: 0, y: 0, dx: -1, dy: -1 },
-		{ x: w, y: 0, dx: 1, dy: -1 },
-		{ x: 0, y: h, dx: -1, dy: 1 },
-		{ x: w, y: h, dx: 1, dy: 1 },
-	];
-	const marks = corners.flatMap(({ x, y, dx, dy }) => {
-		const start = bleed + MARK_GAP_MM;
-		const end = start + MARK_LENGTH_MM;
-		return [
-			`<line x1="${x + dx * start}" y1="${y}" x2="${x + dx * end}" y2="${y}" stroke="#000000" stroke-width="0.1"/>`,
-			`<line x1="${x}" y1="${y + dy * start}" x2="${x}" y2="${y + dy * end}" stroke="#000000" stroke-width="0.1"/>`,
-		];
-	});
-	return marks.join("");
-}
-
 export interface RenderedSize {
 	widthMm: number;
 	heightMm: number;
@@ -245,11 +222,10 @@ export function render(
 	const elements = doc.elements
 		.map((el) => renderElement(el, record, opts))
 		.join("");
-	const marks = opts.marks ? renderCropMarks(canvas, bleed) : "";
 
 	return (
 		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}mm" height="${height}mm"` +
 		` viewBox="${originX} ${originY} ${width} ${height}">` +
-		`${background}${elements}${marks}</svg>`
+		`${background}${elements}</svg>`
 	);
 }

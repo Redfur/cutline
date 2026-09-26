@@ -21,7 +21,7 @@ export interface ThumbnailProps {
 	onOpen: (index: number) => void;
 }
 
-const OPTS = { outlines: null, bleed: false, marks: false };
+const OPTS = { outlines: null, bleed: false };
 
 export const Thumbnail = memo(function Thumbnail({
 	layout,

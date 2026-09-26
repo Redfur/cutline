@@ -1,10 +1,11 @@
-// Сборка PDF через pdf-lib из SVG render(). Страница — карточка с вылетом: MediaBox и
-// BleedBox — обрез плюс вылет, TrimBox — сам обрез; по TrimBox типография режет, по
-// BleedBox проверяет, что фон заходит под нож.
+// Сборка PDF через pdf-lib из SVG render(). Страница — лист из спуска полос
+// (imposition.ts): одна карточка с вылетом и метками или несколько на A4/A3. У страницы
+// на одну карточку TrimBox — обрез, BleedBox — обрез плюс вылет: по ним типография
+// режет и проверяет, что фон заходит под нож. Лист режут по меткам — там боксы не нужны.
 //
-// Координаты: команды приходят в мм системы SVG (y вниз). Одна матрица в начале
-// страницы переводит мм в пункты и переворачивает ось Y — дальше всё рисуется прямо
-// в миллиметрах модели, без пересчёта каждой точки.
+// Координаты: одна матрица в начале страницы переводит мм листа в пункты и
+// переворачивает ось Y; карточка ставится своей матрицей из спуска, и её команды идут
+// прямо в миллиметрах SVG, без пересчёта каждой точки.
 import {
 	appendBezierCurve,
 	clip,
@@ -29,8 +30,10 @@ import {
 	setStrokingRgbColor,
 	stroke,
 } from "pdf-lib";
+import { type Line, MARK_STROKE_MM, type PageLayout } from "./imposition";
 import {
 	type Box,
+	type Matrix,
 	type PdfOp,
 	placeImage,
 	type Segment,
@@ -53,10 +56,20 @@ export interface ImageBytes {
 // своя, без DOM.
 export type ImageResolver = (href: string) => Promise<ImageBytes>;
 
-export interface PdfPageSource {
+export interface PdfCard {
 	svg: string;
-	// обрез в системе координат SVG, мм; всё, что снаружи до viewBox, — вылет
-	trim: Box;
+	// из координат SVG карточки в мм листа (Slot.transform из спуска)
+	transform: Matrix;
+}
+
+export interface PdfSheet {
+	widthMm: number;
+	heightMm: number;
+	// в мм листа; без них — вся страница
+	trim?: Box;
+	bleed?: Box;
+	cards: PdfCard[];
+	marks: Line[];
 }
 
 function segmentOperators(segments: Segment[]): PDFOperator[] {
@@ -122,17 +135,7 @@ async function drawOps(
 					pushGraphicsState(),
 					// cover выходит за рамку — обрезаем по ней, как slice в SVG
 					...(op.fit === "cover"
-						? [
-								...segmentOperators([
-									{ op: "M", x: box.x, y: box.y },
-									{ op: "L", x: box.x + box.w, y: box.y },
-									{ op: "L", x: box.x + box.w, y: box.y + box.h },
-									{ op: "L", x: box.x, y: box.y + box.h },
-									{ op: "Z" },
-								]),
-								clip(),
-								endPath(),
-							]
+						? [...segmentOperators(boxSegments(box)), clip(), endPath()]
 						: []),
 					// картинка в PDF — единичный квадрат с y вверх; в нашей системе y вниз,
 					// поэтому высота с минусом и начало — у нижнего края
@@ -146,26 +149,69 @@ async function drawOps(
 	}
 }
 
+// Карточки тиража по местам листа, лист за листом; последний может быть неполным
+export function imposeSheets(layout: PageLayout, svgs: string[]): PdfSheet[] {
+	const perSheet = layout.slots.length;
+	const sheets: PdfSheet[] = [];
+	for (let i = 0; i < svgs.length; i += perSheet) {
+		sheets.push({
+			widthMm: layout.widthMm,
+			heightMm: layout.heightMm,
+			trim: layout.trim,
+			bleed: layout.bleed,
+			cards: svgs.slice(i, i + perSheet).map((svg, j) => ({
+				svg,
+				transform: layout.slots[j].transform,
+			})),
+			marks: layout.marks,
+		});
+	}
+	return sheets;
+}
+
+function boxSegments(box: Box): Segment[] {
+	return [
+		{ op: "M", x: box.x, y: box.y },
+		{ op: "L", x: box.x + box.w, y: box.y },
+		{ op: "L", x: box.x + box.w, y: box.y + box.h },
+		{ op: "L", x: box.x, y: box.y + box.h },
+		{ op: "Z" },
+	];
+}
+
+// Бокс PDF — в пунктах от нижнего левого угла страницы
+function setBox(
+	set: (x: number, y: number, w: number, h: number) => void,
+	box: Box,
+	sheetHeightMm: number,
+): void {
+	set(
+		box.x * PT_PER_MM,
+		(sheetHeightMm - box.y - box.h) * PT_PER_MM,
+		box.w * PT_PER_MM,
+		box.h * PT_PER_MM,
+	);
+}
+
 export async function buildPdf(
-	pages: PdfPageSource[],
+	sheets: PdfSheet[],
 	resolveImage: ImageResolver,
 ): Promise<Uint8Array> {
 	const pdf = await PDFDocument.create();
 	pdf.setCreator("Cutline");
 	pdf.setProducer("Cutline (pdf-lib)");
 	const images = new Map<string, PDFImage>();
-	for (const source of pages) {
-		const { viewBox, ops } = svgToPdfOps(source.svg);
-		const page = pdf.addPage([viewBox.w * PT_PER_MM, viewBox.h * PT_PER_MM]);
-		const { trim } = source;
-		page.setBleedBox(0, 0, viewBox.w * PT_PER_MM, viewBox.h * PT_PER_MM);
-		page.setTrimBox(
-			(trim.x - viewBox.x) * PT_PER_MM,
-			// TrimBox в пунктах PDF, y вверх: от нижнего края страницы
-			(viewBox.y + viewBox.h - (trim.y + trim.h)) * PT_PER_MM,
-			trim.w * PT_PER_MM,
-			trim.h * PT_PER_MM,
-		);
+	for (const sheet of sheets) {
+		const page = pdf.addPage([
+			sheet.widthMm * PT_PER_MM,
+			sheet.heightMm * PT_PER_MM,
+		]);
+		if (sheet.bleed) {
+			setBox(page.setBleedBox.bind(page), sheet.bleed, sheet.heightMm);
+		}
+		if (sheet.trim) {
+			setBox(page.setTrimBox.bind(page), sheet.trim, sheet.heightMm);
+		}
 		page.pushOperators(
 			pushGraphicsState(),
 			concatTransformationMatrix(
@@ -173,14 +219,38 @@ export async function buildPdf(
 				0,
 				0,
 				-PT_PER_MM,
-				-viewBox.x * PT_PER_MM,
-				(viewBox.y + viewBox.h) * PT_PER_MM,
+				0,
+				sheet.heightMm * PT_PER_MM,
 			),
 			PDFOperator.of(PDFOperatorNames.SetLineMiterLimit, [
 				PDFNumber.of(SVG_MITER_LIMIT),
 			]),
 		);
-		await drawOps(pdf, page, ops, resolveImage, images);
+		for (const card of sheet.cards) {
+			const { viewBox, ops } = svgToPdfOps(card.svg);
+			page.pushOperators(
+				pushGraphicsState(),
+				concatTransformationMatrix(...card.transform),
+				// SVG обрезает всё за viewBox; одиночную страницу обрезал её край, а на листе
+				// элемент, вылезший за карточку, заехал бы на соседнюю
+				...segmentOperators(boxSegments(viewBox)),
+				clip(),
+				endPath(),
+			);
+			await drawOps(pdf, page, ops, resolveImage, images);
+			page.pushOperators(popGraphicsState());
+		}
+		if (sheet.marks.length) {
+			page.pushOperators(
+				pushGraphicsState(),
+				// чистый чёрный: метки печатаются на каждом листе и не должны зависеть от цвета макета
+				setStrokingRgbColor(0, 0, 0),
+				setLineWidth(MARK_STROKE_MM),
+				...sheet.marks.flatMap((m) => [moveTo(m.x1, m.y1), lineTo(m.x2, m.y2)]),
+				stroke(),
+				popGraphicsState(),
+			);
+		}
 		page.pushOperators(popGraphicsState());
 	}
 	return pdf.save();

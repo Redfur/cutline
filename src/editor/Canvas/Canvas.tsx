@@ -203,7 +203,6 @@ export function Canvas({
 	const cardSvg = render(effectiveDoc, record, {
 		outlines: null,
 		bleed: false,
-		marks: false,
 	});
 
 	return (
