@@ -1,12 +1,17 @@
 // «Ничего не выделено» → свойства холста. Выделен rect/ellipse/line → ShapeInspector,
 // text → TextInspector. Выделен image — этот тип ещё не добавляется через тулбар, но
 // уже может прийти из открытого файла — честная заглушка вместо неверных полей.
-import type { Canvas as CanvasModel, CutlineElement } from "../model/document";
+import type {
+	Canvas as CanvasModel,
+	CutlineElement,
+	Guide,
+} from "../model/document";
 import { PanelSection } from "../ui/editor/PanelSection";
 import { PropertyRow } from "../ui/editor/PropertyRow";
 import { ColorField } from "../ui/forms/ColorField";
 import { Select } from "../ui/forms/Select";
 import { TextField } from "../ui/forms/TextField";
+import { GuideInspector } from "./GuideInspector";
 import { ImageInspector } from "./ImageInspector";
 import { ShapeInspector } from "./ShapeInspector";
 import { TextInspector } from "./TextInspector";
@@ -33,6 +38,8 @@ export interface InspectorProps {
 	onCanvasChange: (canvas: CanvasModel) => void;
 	selectedElement: CutlineElement | null;
 	onElementChange: (element: CutlineElement) => void;
+	selectedGuide: Guide | null;
+	onGuideChange: (guide: Guide) => void;
 }
 
 function CanvasInspector({
@@ -107,6 +114,8 @@ export function Inspector({
 	onCanvasChange,
 	selectedElement,
 	onElementChange,
+	selectedGuide,
+	onGuideChange,
 }: InspectorProps) {
 	return (
 		<div
@@ -118,10 +127,14 @@ export function Inspector({
 				overflowY: "auto",
 			}}
 		>
-			{!selectedElement && (
+			{selectedGuide && (
+				<GuideInspector guide={selectedGuide} onChange={onGuideChange} />
+			)}
+			{!selectedGuide && !selectedElement && (
 				<CanvasInspector canvas={canvas} onChange={onCanvasChange} />
 			)}
-			{selectedElement &&
+			{!selectedGuide &&
+				selectedElement &&
 				(selectedElement.type === "rect" ||
 					selectedElement.type === "ellipse" ||
 					selectedElement.type === "line") && (
