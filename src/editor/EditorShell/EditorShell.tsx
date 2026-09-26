@@ -8,6 +8,7 @@ import {
 	hasProblems,
 	recordProblems,
 } from "../../data/problems";
+import { ensureFontFaces } from "../../fonts/load";
 import type {
 	CutlineDocument,
 	CutlineElement,
@@ -86,6 +87,8 @@ export function EditorShell({
 	// один проход раскладки по всем записям на изменение документа — им пользуются
 	// таблица, сетка, холст и навигатор
 	const fontsVersion = useFontsVersion();
+	// шрифт выбрали в инспекторе или открыли файл — догружаем; повторы отсекает сам загрузчик
+	useEffect(() => ensureFontFaces(history.doc), [history.doc]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: fontsVersion — см. комментарий у зависимостей
 	const problems = useMemo(
 		() => documentProblems(history.doc),

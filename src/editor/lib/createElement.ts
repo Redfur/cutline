@@ -77,9 +77,7 @@ export function createText(at: PointMm): TextElement {
 		locked: false,
 		visible: true,
 		content: "Текст",
-		// JetBrains Mono уже загружен глобально для интерфейса редактора
-		// (src/ui/tokens/fonts.css) — реально отрендерится без доп. настройки.
-		// Настоящая загрузка шрифтов документа — отдельная будущая задача.
+		// встроенный (src/fonts/bundled.ts): новый текст сразу попадает в PDF
 		font: "JetBrains Mono",
 		weight: "regular",
 		size: 6,

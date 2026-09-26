@@ -2,6 +2,7 @@
 // Содержимое / Положение и размер / Шрифт и кегль / Выравнивание / Цвет / Автоподгонка.
 // Кегль в pt, межстрочный и трекинг в % — только при показе, модель в мм (lib/units.ts).
 import { useRef, useState } from "react";
+import { BUNDLED_FAMILIES, isBundledFont } from "../../../fonts/bundled";
 import type {
 	DataRecord,
 	FieldDef,
@@ -102,10 +103,10 @@ function fitHint(el: TextElement): string {
 	}
 }
 
-// Классические кросс-платформенные системные шрифты (Windows/macOS/Linux через
-// Arimo/Liberation-замены) — не веб-шрифты редактора (Golos Text и т.п. загружены
-// только для интерфейса и их не будет на машине, где откроют экспортированный SVG).
-const FONT_PRESETS = [
+// Встроенные — первыми: только они попадают в PDF (src/fonts/bundled.ts). Системные
+// остаются для экрана и SVG — классические кросс-платформенные (Windows/macOS/Linux
+// через Arimo/Liberation-замены), с пометкой, чтобы PDF-ошибка не была сюрпризом.
+const SYSTEM_FONTS = [
 	"Arial",
 	"Georgia",
 	"Times New Roman",
@@ -113,6 +114,11 @@ const FONT_PRESETS = [
 	"Courier New",
 	"Trebuchet MS",
 ];
+const FONT_PRESETS = [...BUNDLED_FAMILIES, ...SYSTEM_FONTS];
+
+function fontLabel(family: string): string {
+	return isBundledFont(family) ? family : `${family} — не для PDF`;
+}
 const CUSTOM_FONT = "custom";
 
 export function TextInspector({
@@ -129,7 +135,7 @@ export function TextInspector({
 	const contentRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 	const over = overflowRecords.length > 0;
 	// Поле для имени шрифта — только по явному «Свой…». Шрифт не из пресетов (из
-	// открытого файла, JetBrains Mono у нового текста) стоит в списке отдельным пунктом:
+	// открытого файла) стоит в списке отдельным пунктом:
 	// в селекте видно, какой шрифт на самом деле, а не безликое «Свой…».
 	// Инспектор перемонтируется на смену элемента (key={element.id} в Inspector.tsx),
 	// так что это состояние не «утечёт» на другой текстовый элемент.
@@ -215,7 +221,7 @@ export function TextInspector({
 					<Select
 						value={showCustomFontField ? CUSTOM_FONT : element.font}
 						options={[
-							...fontOptions.map((f) => ({ value: f, label: f })),
+							...fontOptions.map((f) => ({ value: f, label: fontLabel(f) })),
 							{ value: CUSTOM_FONT, label: "Свой…" },
 						]}
 						onChange={(v) => {
