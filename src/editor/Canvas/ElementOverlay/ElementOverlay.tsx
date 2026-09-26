@@ -34,6 +34,9 @@ export interface ElementOverlayProps {
 	// текст не влез на текущей записи — обводим предупреждающим цветом (ui-spec,
 	// состояние «Текст не влез»)
 	overflow: boolean;
+	// false — выбран инструмент размещения: оверлей видно (выделение, переполнение),
+	// но мышь он пропускает к холсту, чтобы новый элемент можно было начать поверх
+	interactive: boolean;
 	canDrag: boolean;
 	onSelect: () => void;
 	onStartMove: (e: React.MouseEvent) => void;
@@ -46,6 +49,7 @@ export function ElementOverlay({
 	pxPerMm,
 	selected,
 	overflow,
+	interactive,
 	canDrag,
 	onSelect,
 	onStartMove,
@@ -82,20 +86,24 @@ export function ElementOverlay({
 			]
 		: [];
 
+	const handleMouseDown = (e: React.MouseEvent) => {
+		onSelect();
+		if (canDrag) onStartMove(e);
+	};
+
 	return (
 		// Хит-таргет элемента на холсте, не отдельный фокусируемый контрол — как и в LayerRow,
 		// клавиатурная навигация по элементам принадлежит списку слоёв (там уже есть role="option").
 		// biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше
 		// biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше
 		<div
-			onMouseDown={(e) => {
-				onSelect();
-				if (canDrag) onStartMove(e);
-			}}
+			// у линии мышь ловит сама линия (ниже), а не коробка: у диагональной линии
+			// коробка накрывала бы чужие элементы — клик мимо линии выделял бы её
+			onMouseDown={isLine ? undefined : handleMouseDown}
 			// клик тоже долетел бы до карточки (место/снять выделение) — гасим здесь,
 			// само выделение уже случилось на mousedown выше
 			onClick={(e) => e.stopPropagation()}
-			className={`${styles.overlay} ${canDrag ? styles.draggable : ""}`}
+			className={`${styles.overlay} ${isLine ? styles.lineBox : ""} ${canDrag ? styles.draggable : ""} ${interactive ? "" : styles.passive}`}
 			style={{
 				left: bounds.x * pxPerMm - padX,
 				top: bounds.y * pxPerMm - padY,
@@ -105,6 +113,22 @@ export function ElementOverlay({
 			}}
 		>
 			{overflow && <div className={styles.overflow} />}
+			{isLine && (
+				<svg className={styles.lineHitArea} aria-hidden="true">
+					{/* Хит-таргет линии — прозрачная обводка шириной MIN_HIT_HEIGHT_PX; тот же
+					    случай, что и хит-таргет элемента выше, не отдельный контрол */}
+					{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
+					<line
+						className={styles.lineHit}
+						x1={lineEnds[0]?.x}
+						y1={lineEnds[0]?.y}
+						x2={lineEnds[1]?.x}
+						y2={lineEnds[1]?.y}
+						strokeWidth={MIN_HIT_HEIGHT_PX}
+						onMouseDown={handleMouseDown}
+					/>
+				</svg>
+			)}
 			{selected && !el.locked && isLine && (
 				<>
 					{/* рамка по коробке у диагональной линии выглядела бы чужой —

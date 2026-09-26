@@ -9,6 +9,7 @@ import type {
 	CutlineDocument,
 	CutlineElement,
 	DataRecord,
+	ElementType,
 	Guide,
 } from "../../model/document";
 import { render } from "../../render/render";
@@ -19,6 +20,7 @@ import { BASE_PX_PER_MM, PAD_MM } from "./constants";
 import { ElementOverlay } from "./ElementOverlay";
 import { GuideLine } from "./GuideLine";
 import { Ruler } from "./Ruler";
+import { useDrawElement } from "./useDrawElement";
 import { useElementDrag } from "./useElementDrag";
 import { useGuideDrag } from "./useGuideDrag";
 
@@ -44,7 +46,8 @@ export interface CanvasProps {
 	tool: Tool;
 	selectedId: string | null;
 	onSelect: (id: string | null) => void;
-	onPlace: (at: PointMm) => void;
+	// готовый элемент от инструмента (клик или протягивание) — добавить в документ
+	onCreate: (element: CutlineElement) => void;
 	onElementChange: (
 		element: CutlineElement,
 		options?: { boundary?: boolean },
@@ -72,7 +75,7 @@ export function Canvas({
 	tool,
 	selectedId,
 	onSelect,
-	onPlace,
+	onCreate,
 	onElementChange,
 	onGuidesChange,
 	selectedGuideId,
@@ -139,6 +142,22 @@ export function Canvas({
 			pxPerMm,
 			onElementChange,
 		});
+	// Пока выбран инструмент размещения, элементы и направляющие не ловят мышь:
+	// иначе нажатие попадало в оверлей элемента под курсором (даже заблокированного —
+	// на бейдже «Рамка карточки» накрывает карточку целиком), и создать поверх нельзя
+	const placing = PLACEABLE_TOOLS.has(tool);
+	const {
+		draft,
+		snapGuides: drawSnapGuides,
+		startDraw,
+	} = useDrawElement({
+		doc,
+		pxPerMm,
+		originXPx,
+		originYPx,
+		contentRef,
+		onCreate,
+	});
 	const { guideDrag, liveGuideMm, startNewGuide, startMoveGuide } =
 		useGuideDrag({
 			guides: doc.guides,
@@ -153,11 +172,20 @@ export function Canvas({
 		});
 
 	// у линии w/h — вектор, подсветке на линейках нужна нормализованная коробка
-	const liveBounds = liveElement ? boundsOf(liveElement) : null;
+	const activeElement = liveElement ?? draft;
+	const liveBounds = activeElement ? boundsOf(activeElement) : null;
 	const elements = liveElement
 		? doc.elements.map((el) => (el.id === liveElement.id ? liveElement : el))
 		: doc.elements;
-	const effectiveDoc = liveElement ? { ...doc, elements } : doc;
+	// черновик рисуется тем же render(), что и готовый элемент, — поверх остальных,
+	// как и ляжет после создания
+	const renderedElements = draft ? [...elements, draft] : elements;
+	const effectiveDoc =
+		renderedElements === doc.elements
+			? doc
+			: { ...doc, elements: renderedElements };
+	const guidesToShow = [...snapGuides, ...drawSnapGuides];
+	const draftBounds = draft && draft.type !== "line" ? boundsOf(draft) : null;
 
 	const cardSvg = render(effectiveDoc, record, {
 		outlines: false,
@@ -237,29 +265,26 @@ export function Canvas({
 					<div
 						ref={contentRef}
 						onClick={() => onSelect(null)}
-						className={styles.content}
+						onMouseDown={(e) => {
+							// рисовать можно и на вылете, не только на самой карточке
+							if (!placing || e.button !== 0) return;
+							e.preventDefault();
+							startDraw(tool as ElementType, e);
+						}}
+						className={`${styles.content} ${placing ? styles.placing : ""}`}
 						style={{ width: contentWidthPx, height: contentHeightPx }}
 					>
-						{/* Кликабельная поверхность холста — размещение/снятие выделения по координате клика,
-						    не семантический контрол; клавиатурного эквивалента здесь нет, как и у canvas */}
+						{/* Клик по карточке мимо элементов снимает выделение — как и по серой
+							    области; размещение инструментом — на mousedown области содержимого
+							    выше. Не семантический контрол, клавиатурного эквивалента нет, как у canvas */}
 						{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
 						{/* biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше */}
 						<div
-							className={`${styles.card} ${PLACEABLE_TOOLS.has(tool) ? styles.placing : ""}`}
+							className={styles.card}
 							onClick={(e) => {
-								// иначе всплыл бы на серую область выше и снял выделение сразу
-								// после размещения нового элемента этим же кликом
+								// иначе всплыл бы на серую область и снял выделение второй раз
 								e.stopPropagation();
-								const rect = e.currentTarget.getBoundingClientRect();
-								const atMm = {
-									x: (e.clientX - rect.left) / pxPerMm,
-									y: (e.clientY - rect.top) / pxPerMm,
-								};
-								if (PLACEABLE_TOOLS.has(tool)) {
-									onPlace(atMm);
-								} else {
-									onSelect(null);
-								}
+								onSelect(null);
 							}}
 							style={{
 								left: originXPx,
@@ -276,7 +301,20 @@ export function Canvas({
 							<div className={styles.trim} />
 							<div className={styles.bleed} style={{ inset: -bleedPx }} />
 							<div className={styles.safe} style={{ inset: safePx }} />
-							{snapGuides.map((guide) => (
+							{draftBounds && (
+								// у картинки без src render() ничего не рисует — без рамки
+								// черновик изображения был бы невидим
+								<div
+									className={styles.draft}
+									style={{
+										left: draftBounds.x * pxPerMm,
+										top: draftBounds.y * pxPerMm,
+										width: draftBounds.w * pxPerMm,
+										height: draftBounds.h * pxPerMm,
+									}}
+								/>
+							)}
+							{guidesToShow.map((guide) => (
 								<div
 									key={`${guide.axis}-${guide.positionMm}`}
 									className={`${styles.snapGuide} ${guide.axis === "x" ? styles.snapGuideX : styles.snapGuideY}`}
@@ -294,6 +332,7 @@ export function Canvas({
 									pxPerMm={pxPerMm}
 									selected={el.id === selectedId}
 									overflow={overflowIds.includes(el.id)}
+									interactive={!placing}
 									canDrag={tool === "select" && !el.locked}
 									onSelect={() => onSelect(el.id)}
 									onStartMove={(e) => {
@@ -325,12 +364,16 @@ export function Canvas({
 								pxPerMm={pxPerMm}
 								originPx={guide.axis === "x" ? originXPx : originYPx}
 								selected={guide.id === selectedGuideId}
-								onMouseDown={(e) => {
-									e.preventDefault();
-									e.stopPropagation();
-									onSelectGuide(guide.id);
-									startMoveGuide(guide);
-								}}
+								onMouseDown={
+									placing
+										? undefined
+										: (e) => {
+												e.preventDefault();
+												e.stopPropagation();
+												onSelectGuide(guide.id);
+												startMoveGuide(guide);
+											}
+								}
 							/>
 						))}
 					{guideDrag && liveGuideMm !== null && (

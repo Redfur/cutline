@@ -16,22 +16,10 @@ import type {
 import { blankDocument } from "../../render/fixtures/blank";
 import type { ViewState } from "../../storage/session";
 import { RecordNavigator } from "../../ui/editor/RecordNavigator";
-import {
-	BASE_PX_PER_MM,
-	Canvas,
-	type PointMm,
-	type ViewportSize,
-} from "../Canvas";
+import { BASE_PX_PER_MM, Canvas, type ViewportSize } from "../Canvas";
 import { DataMode } from "../DataMode";
 import { Inspector } from "../Inspector";
 import { type LayerPatch, LayersPanel } from "../LayersPanel";
-import {
-	createEllipse,
-	createImage,
-	createLine,
-	createRect,
-	createText,
-} from "../lib/createElement";
 import { useAutosave } from "../lib/useAutosave";
 import { useDocumentHistory } from "../lib/useDocumentHistory";
 import { useFontsVersion } from "../lib/useFontsVersion";
@@ -170,16 +158,8 @@ export function EditorShell({
 		handleSelectElement(null);
 	};
 
-	const handlePlace = (at: PointMm) => {
-		const factory = {
-			rect: createRect,
-			ellipse: createEllipse,
-			line: createLine,
-			text: createText,
-			image: createImage,
-		}[tool as "rect" | "ellipse" | "line" | "text" | "image"];
-		if (!factory) return;
-		const element = factory(at);
+	// Элемент от инструмента — кликом или протягиванием (Canvas/useDrawElement)
+	const handleCreate = (element: CutlineElement) => {
 		// boundary: без него быстрая печать сразу после добавления могла бы смёржиться
 		// с созданием элемента в один шаг истории — один Ctrl+Z снёс бы и то, и другое
 		history.set((doc) => ({ ...doc, elements: [...doc.elements, element] }), {
@@ -418,7 +398,7 @@ export function EditorShell({
 						tool={tool}
 						selectedId={selectedId}
 						onSelect={handleSelectElement}
-						onPlace={handlePlace}
+						onCreate={handleCreate}
 						onElementChange={handleElementChange}
 						onGuidesChange={handleGuidesChange}
 						selectedGuideId={selectedGuideId}

@@ -4,6 +4,12 @@
 	transform-origin: center;
 }
 
+/* Инструмент размещения: мышь проходит к холсту. Маркеры внутри включает только
+   .draggable, а с инструментом размещения canDrag ложен — отдельно их гасить не нужно */
+.passive {
+	pointer-events: none;
+}
+
 .draggable {
 	cursor: move;
 }
@@ -36,6 +42,35 @@
 
 .draggable .handle {
 	pointer-events: auto;
+}
+
+/* Коробка линии сама мышь не ловит — только линия внутри (.lineHit) и маркеры */
+.lineBox {
+	pointer-events: none;
+}
+
+.lineHitArea {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.lineHit {
+	stroke: transparent;
+	pointer-events: stroke;
+	cursor: pointer;
+}
+
+.draggable .lineHit {
+	cursor: move;
+}
+
+/* pointer-events у .lineHit задан явно и сам по себе не наследует passive */
+.passive .lineHit {
+	pointer-events: none;
 }
 
 .lineOutline {

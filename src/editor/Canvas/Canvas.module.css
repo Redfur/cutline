@@ -109,6 +109,13 @@
 	border: 1px dashed var(--guide-safe);
 }
 
+/* Рамка черновика при протягивании инструментом */
+.draft {
+	position: absolute;
+	outline: 1px dashed var(--border-focus);
+	pointer-events: none;
+}
+
 .snapGuide {
 	position: absolute;
 	background: var(--selection);
