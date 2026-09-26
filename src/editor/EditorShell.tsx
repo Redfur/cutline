@@ -17,7 +17,7 @@ import {
 	createText,
 } from "./createElement";
 import { Inspector } from "./Inspector";
-import { LayersPanel } from "./LayersPanel";
+import { type LayerPatch, LayersPanel } from "./LayersPanel";
 import { type Tool, Toolbar } from "./Toolbar";
 import { type Mode, TopBar } from "./TopBar";
 import { useDocumentHistory } from "./useDocumentHistory";
@@ -80,6 +80,24 @@ export function EditorShell() {
 			...doc,
 			elements: doc.elements.map((el) => (el.id === updated.id ? updated : el)),
 		}));
+	};
+
+	// Лок/видимость/переименование и реордер — дискретные структурные правки,
+	// как создание/удаление элемента: не должны схлопываться по коалессингу с соседними.
+	const handleLayerChange = (id: string, patch: LayerPatch) => {
+		history.set(
+			(doc) => ({
+				...doc,
+				elements: doc.elements.map((el) =>
+					el.id === id ? { ...el, ...patch } : el,
+				),
+			}),
+			{ boundary: true },
+		);
+	};
+
+	const handleReorder = (elements: CutlineElement[]) => {
+		history.set((doc) => ({ ...doc, elements }), { boundary: true });
 	};
 
 	useEffect(() => {
@@ -159,6 +177,8 @@ export function EditorShell() {
 						elements={history.doc.elements}
 						selectedId={selectedId}
 						onSelect={setSelectedId}
+						onLayerChange={handleLayerChange}
+						onReorder={handleReorder}
 					/>
 					<Canvas
 						doc={history.doc}
