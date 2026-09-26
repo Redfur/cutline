@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CutlineElement, Guide } from "../../model/document";
 import { LayerRow } from "../../ui/editor/LayerRow";
 import { GuideRow } from "./GuideRow";
@@ -46,6 +46,16 @@ export function LayersPanel({
 }: LayersPanelProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [drag, setDrag] = useState<DragState | null>(null);
+	// Дублирует drag для mouseup: коммитить перестановку из апдейтера setDrag нельзя —
+	// апдейтер должен быть чистым (StrictMode вызывает его дважды, и в историю ложились
+	// два одинаковых шага: первый Ctrl+Z ничего не отменял), а onReorder из него — это
+	// setState родителя посреди рендера LayersPanel. Тот же приём, что liveElementRef в Canvas.
+	const dragRef = useRef<DragState | null>(null);
+	// стабильная ссылка — эффект ниже по-прежнему подписывается на window один раз за драг
+	const updateDrag = useCallback((next: DragState | null) => {
+		dragRef.current = next;
+		setDrag(next);
+	}, []);
 
 	// последний элемент массива рисуется поверх остальных на холсте — значит, он верхний слой в списке
 	const displayed = [...elements].reverse();
@@ -71,19 +81,19 @@ export function LayersPanel({
 			const offsetY =
 				e.clientY - container.getBoundingClientRect().top + container.scrollTop;
 			const overIndex = clamp(Math.round(offsetY / ROW_HEIGHT_PX - 0.5));
-			setDrag((d) => (d ? { ...d, overIndex } : d));
+			const current = dragRef.current;
+			if (current) updateDrag({ ...current, overIndex });
 		}
 		function handleMouseUp() {
-			setDrag((current) => {
-				if (current && current.overIndex !== current.startIndex) {
-					const reordered = [...displayedRef.current];
-					const [moved] = reordered.splice(current.startIndex, 1);
-					reordered.splice(current.overIndex, 0, moved);
-					// reordered идёт в обратном порядке относительно elements — переворачиваем обратно перед коммитом
-					onReorderRef.current([...reordered].reverse());
-				}
-				return null;
-			});
+			const current = dragRef.current;
+			if (current && current.overIndex !== current.startIndex) {
+				const reordered = [...displayedRef.current];
+				const [moved] = reordered.splice(current.startIndex, 1);
+				reordered.splice(current.overIndex, 0, moved);
+				// reordered идёт в обратном порядке относительно elements — переворачиваем обратно перед коммитом
+				onReorderRef.current([...reordered].reverse());
+			}
+			updateDrag(null);
 		}
 		window.addEventListener("mousemove", handleMouseMove);
 		window.addEventListener("mouseup", handleMouseUp);
@@ -91,7 +101,7 @@ export function LayersPanel({
 			window.removeEventListener("mousemove", handleMouseMove);
 			window.removeEventListener("mouseup", handleMouseUp);
 		};
-	}, [dragId]);
+	}, [dragId, updateDrag]);
 
 	return (
 		<div ref={containerRef} className={styles.panel}>
@@ -118,7 +128,7 @@ export function LayersPanel({
 							}
 							onRename={(name) => onLayerChange(el.id, { name })}
 							onDragHandleMouseDown={() =>
-								setDrag({ id: el.id, startIndex: index, overIndex: index })
+								updateDrag({ id: el.id, startIndex: index, overIndex: index })
 							}
 							style={drag?.id === el.id ? { opacity: 0.5 } : undefined}
 						/>
