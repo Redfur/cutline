@@ -3,7 +3,7 @@
 // Грузится лениво из batch.ts вместе с pdf-lib.
 import type { CutlineDocument, DataRecord } from "../model/document";
 import { render } from "../render/render";
-import { type LayoutOption, pageLayout } from "./imposition";
+import { type ImposeSettings, pageLayout } from "./imposition";
 import { buildPdf, decodeDataUri, type ImageBytes, imposeSheets } from "./pdf";
 import { pdfFontProblems, pdfFontProblemsMessage } from "./pdfPreflight";
 
@@ -80,8 +80,7 @@ async function resolveImageInBrowser(href: string): Promise<ImageBytes> {
 export async function buildTiragePdf(
 	doc: CutlineDocument,
 	records: DataRecord[],
-	option: LayoutOption,
-	printMarks: boolean,
+	settings: ImposeSettings,
 	onProgress: (done: number) => void,
 ): Promise<Blob> {
 	const problems = pdfFontProblems(doc);
@@ -93,14 +92,14 @@ export async function buildTiragePdf(
 	const outlines = await loadOutlineFonts(doc);
 	const svgs: string[] = [];
 	for (const record of records) {
-		svgs.push(render(doc, record, { outlines, bleed: printMarks }));
+		svgs.push(render(doc, record, { outlines, bleed: settings.bleed }));
 		onProgress(svgs.length);
 		// отдать кадр: на сотне карточек иначе замирает и счётчик на кнопке
 		await nextFrame();
 	}
 	const card = { w: doc.canvas.w, h: doc.canvas.h, bleed: doc.canvas.bleed };
 	const bytes = await buildPdf(
-		imposeSheets(pageLayout(card, option, printMarks), svgs),
+		imposeSheets(pageLayout(card, settings), svgs),
 		resolveImageInBrowser,
 	);
 	// slice — копия на ArrayBuffer: Blob не принимает представление поверх SharedArrayBuffer

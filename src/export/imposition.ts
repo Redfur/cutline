@@ -4,6 +4,9 @@
 // Метки — свойство листа, а не карточки: на листе с несколькими карточками линии реза
 // общие для колонки/строки, и рисуются они снаружи всего блока, а не у каждой карточки.
 // Поэтому их нет в render().
+//
+// Как в макете экспорта, поворачивается лист (книжный/альбомный), а не карточки:
+// карточки на листе всегда стоят прямо — так лист проще проверить глазами.
 import type { Box, Matrix } from "./svgToPdfOps";
 
 export interface CardSize {
@@ -14,13 +17,15 @@ export interface CardSize {
 
 export interface SheetFormat {
 	name: string;
-	w: number;
+	w: number; // мм, в книжной ориентации
 	h: number;
 }
 
 export const SHEETS: SheetFormat[] = [
 	{ name: "A4", w: 210, h: 297 },
 	{ name: "A3", w: 297, h: 420 },
+	// SRA3 — типографский лист под A3 с запасом на вылеты и метки
+	{ name: "SRA3", w: 320, h: 450 },
 ];
 
 // Метка начинается в 2 мм за краем вылета (чтобы нож, ушедший в вылет, её не задел)
@@ -33,13 +38,26 @@ export const MARK_STROKE_MM = 0.1;
 // Домашние принтеры не печатают 3–5 мм у края листа
 export const HOME_MARGIN_MM = 5;
 
-export interface LayoutOption {
-	id: string;
-	sheet: SheetFormat | null; // null — одна карточка на странице размером с карточку
-	// поля под домашний принтер (HOME_MARGIN_MM); 0 — лист для типографии
-	margin: number;
-	perPage: number;
+export interface ImposeSettings {
+	// null — одна карточка на странице размером с карточку
+	sheet: SheetFormat | null;
+	bleed: boolean;
+	marks: boolean;
+	// поля 5 мм под домашний принтер
+	homeMargin: boolean;
+	// с полями влезает меньше, чем без них, — уменьшить карточки, чтобы уместить столько же
+	fitToMargin: boolean;
+}
+
+export interface SheetFit {
+	cols: number;
+	rows: number;
+	landscape: boolean;
 	scale: number;
+	perSheet: number;
+	// размер страницы с учётом ориентации
+	widthMm: number;
+	heightMm: number;
 }
 
 export interface Line {
@@ -50,7 +68,7 @@ export interface Line {
 }
 
 export interface Slot {
-	// обрез карточки на странице (с учётом поворота и масштаба)
+	// обрез карточки на странице (с учётом масштаба)
 	trim: Box;
 	// из координат SVG карточки (обрез от 0,0) в координаты страницы
 	transform: Matrix;
@@ -66,147 +84,120 @@ export interface PageLayout {
 	bleed?: Box;
 }
 
-interface Grid {
-	cols: number;
-	rows: number;
-	rotated: boolean;
-}
-
-// Допуск на float: A6 на A4 встык — 2 × 148 = 296 ≤ 297, но 105 · 2 = 210 ровно
+// Допуск на float: A6 на A4 встык — 2 × 148 = 296 ≤ 297, а 105 · 2 = 210 ровно
 const EPS = 1e-6;
 
-function cellOf(
-	card: CardSize,
-	bleed: number,
-	rotated: boolean,
-	scale: number,
-) {
-	const w = (card.w + 2 * bleed) * scale;
-	const h = (card.h + 2 * bleed) * scale;
-	return rotated ? { w: h, h: w } : { w, h };
+function bleedOf(card: CardSize, settings: ImposeSettings): number {
+	return settings.bleed ? card.bleed : 0;
 }
 
-function fitGrid(
+function zoneOf(settings: ImposeSettings): number {
+	return settings.marks ? MARK_ZONE_MM : 0;
+}
+
+// Лучшая ориентация листа для данных полей; при равенстве — книжная
+function bestFit(
 	card: CardSize,
+	sheet: SheetFormat,
 	bleed: number,
-	availW: number,
-	availH: number,
-): Grid {
-	let best: Grid = { cols: 0, rows: 0, rotated: false };
-	for (const rotated of [false, true]) {
-		const cell = cellOf(card, bleed, rotated, 1);
-		const cols = Math.floor(availW / cell.w + EPS);
-		const rows = Math.floor(availH / cell.h + EPS);
-		// при равенстве — без поворота: карточку на листе проще проверить глазами
-		if (cols * rows > best.cols * best.rows) best = { cols, rows, rotated };
+	zone: number,
+	margin: number,
+): SheetFit {
+	const variants = [
+		{ landscape: false, w: sheet.w, h: sheet.h },
+		{ landscape: true, w: sheet.h, h: sheet.w },
+	].map((o) => {
+		const availW = o.w - 2 * margin - 2 * zone;
+		const availH = o.h - 2 * margin - 2 * zone;
+		const cols = Math.max(0, Math.floor(availW / (card.w + 2 * bleed) + EPS));
+		const rows = Math.max(0, Math.floor(availH / (card.h + 2 * bleed) + EPS));
+		return {
+			cols,
+			rows,
+			landscape: o.landscape,
+			scale: 1,
+			perSheet: cols * rows,
+			widthMm: o.w,
+			heightMm: o.h,
+		};
+	});
+	const [portrait, landscape] = variants;
+	return landscape.perSheet > portrait.perSheet ? landscape : portrait;
+}
+
+// Уменьшение, при котором раскладка листа без полей помещается в поля
+function scaleIntoMargin(
+	card: CardSize,
+	full: SheetFit,
+	bleed: number,
+	zone: number,
+): number {
+	const availW = full.widthMm - 2 * HOME_MARGIN_MM - 2 * zone;
+	const availH = full.heightMm - 2 * HOME_MARGIN_MM - 2 * zone;
+	return Math.min(
+		availW / (full.cols * (card.w + 2 * bleed)),
+		availH / (full.rows * (card.h + 2 * bleed)),
+		1,
+	);
+}
+
+// Сколько карточек встаёт на лист и в какой ориентации. Без листа — одна на странице.
+export function sheetFit(card: CardSize, settings: ImposeSettings): SheetFit {
+	const bleed = bleedOf(card, settings);
+	const zone = zoneOf(settings);
+	const { sheet } = settings;
+	if (!sheet) {
+		const offset = zone + bleed;
+		return {
+			cols: 1,
+			rows: 1,
+			landscape: false,
+			scale: 1,
+			perSheet: 1,
+			widthMm: card.w + 2 * offset,
+			heightMm: card.h + 2 * offset,
+		};
 	}
-	return best;
+	if (!settings.homeMargin) return bestFit(card, sheet, bleed, zone, 0);
+	const withMargin = bestFit(card, sheet, bleed, zone, HOME_MARGIN_MM);
+	if (!settings.fitToMargin) return withMargin;
+	const full = bestFit(card, sheet, bleed, zone, 0);
+	if (full.perSheet <= withMargin.perSheet) return withMargin;
+	return { ...full, scale: scaleIntoMargin(card, full, bleed, zone) };
 }
 
-interface Arrangement extends Grid {
+export interface MarginHint {
+	withMargin: number;
+	withoutMargin: number;
+	// уменьшение, при котором с полями встаёт столько же, сколько без них
 	scale: number;
 }
 
-function arrange(
+// Подсказка к «Полям для домашнего принтера»: поля отняли карточки — можно вернуть их
+// уменьшением. Четыре A6 на A4 встык не оставляют места под поля (CLAUDE.md).
+export function homeMarginHint(
 	card: CardSize,
-	sheet: SheetFormat,
-	margin: number,
-	printMarks: boolean,
-): Arrangement {
-	const bleed = printMarks ? card.bleed : 0;
-	const zone = printMarks ? MARK_ZONE_MM : 0;
-	const availW = sheet.w - 2 * margin - 2 * zone;
-	const availH = sheet.h - 2 * margin - 2 * zone;
-	const grid = fitGrid(card, bleed, availW, availH);
-	if (!margin) return { ...grid, scale: 1 };
-	// С полями влезает меньше, чем на лист без полей, — уменьшаем, чтобы уместить
-	// столько же: четыре A6 на A4 встык не оставляют места под поля принтера
-	const full = arrange(card, sheet, 0, printMarks);
-	if (grid.cols * grid.rows >= full.cols * full.rows)
-		return { ...grid, scale: 1 };
-	const cell = cellOf(card, bleed, full.rotated, 1);
-	const scale = Math.min(
-		availW / (full.cols * cell.w),
-		availH / (full.rows * cell.h),
-		1,
-	);
-	return { ...full, scale };
+	settings: ImposeSettings,
+): MarginHint | null {
+	const { sheet } = settings;
+	if (!sheet || !settings.homeMargin) return null;
+	const bleed = bleedOf(card, settings);
+	const zone = zoneOf(settings);
+	const withMargin = bestFit(card, sheet, bleed, zone, HOME_MARGIN_MM);
+	const full = bestFit(card, sheet, bleed, zone, 0);
+	if (full.perSheet <= withMargin.perSheet) return null;
+	return {
+		withMargin: withMargin.perSheet,
+		withoutMargin: full.perSheet,
+		scale: scaleIntoMargin(card, full, bleed, zone),
+	};
 }
 
-// Варианты раскладки для диалога экспорта. Лист, на который не встаёт ни одной
-// карточки, не предлагается; «для домашнего принтера» — только если поля что-то меняют.
-export function layoutOptions(
-	card: CardSize,
-	printMarks: boolean,
-): LayoutOption[] {
-	const options: LayoutOption[] = [
-		{
-			id: "single",
-			sheet: null,
-			margin: 0,
-			perPage: 1,
-			scale: 1,
-		},
-	];
-	for (const sheet of SHEETS) {
-		const full = arrange(card, sheet, 0, printMarks);
-		const perSheet = full.cols * full.rows;
-		if (!perSheet) continue;
-		options.push({
-			id: sheet.name,
-			sheet,
-			margin: 0,
-			perPage: perSheet,
-			scale: 1,
-		});
-		const home = arrange(card, sheet, HOME_MARGIN_MM, printMarks);
-		const perHome = home.cols * home.rows;
-		const fitsAsIs =
-			home.scale === 1 &&
-			perHome === perSheet &&
-			blockFitsMargin(card, sheet, full, printMarks);
-		if (!perHome || fitsAsIs) continue;
-		options.push({
-			id: `${sheet.name}-home`,
-			sheet,
-			margin: HOME_MARGIN_MM,
-			perPage: perHome,
-			scale: home.scale,
-		});
-	}
-	return options;
-}
-
-// Блок, разложенный без полей, и так отстоит от края на поле принтера — отдельный
-// «домашний» вариант был бы копией
-function blockFitsMargin(
-	card: CardSize,
-	sheet: SheetFormat,
-	grid: Grid,
-	printMarks: boolean,
-): boolean {
-	const bleed = printMarks ? card.bleed : 0;
-	const zone = printMarks ? MARK_ZONE_MM : 0;
-	const cell = cellOf(card, bleed, grid.rotated, 1);
-	const freeW = (sheet.w - grid.cols * cell.w) / 2 - zone;
-	const freeH = (sheet.h - grid.rows * cell.h) / 2 - zone;
-	return freeW + EPS >= HOME_MARGIN_MM && freeH + EPS >= HOME_MARGIN_MM;
-}
-
-function slotAt(
-	card: CardSize,
-	trimX: number,
-	trimY: number,
-	rotated: boolean,
-	scale: number,
-): Slot {
-	const w = (rotated ? card.h : card.w) * scale;
-	const h = (rotated ? card.w : card.h) * scale;
-	// поворот на 90° по часовой: верх карточки уходит вправо, (0,0) — в правый верхний угол
-	const transform: Matrix = rotated
-		? [0, scale, -scale, 0, trimX + card.h * scale, trimY]
-		: [scale, 0, 0, scale, trimX, trimY];
-	return { trim: { x: trimX, y: trimY, w, h }, transform };
+function slotAt(card: CardSize, x: number, y: number, scale: number): Slot {
+	return {
+		trim: { x, y, w: card.w * scale, h: card.h * scale },
+		transform: [scale, 0, 0, scale, x, y],
+	};
 }
 
 function uniqueSorted(values: number[]): number[] {
@@ -240,60 +231,53 @@ export function cropMarks(slots: Slot[], bleed: number): Line[] {
 	];
 }
 
-// Страница для выбранного варианта: все места под карточки и метки. Последний лист
+// Страница для выбранных настроек: все места под карточки и метки. Последний лист
 // тиража может заполниться не целиком — метки на нём те же.
 export function pageLayout(
 	card: CardSize,
-	option: LayoutOption,
-	printMarks: boolean,
+	settings: ImposeSettings,
 ): PageLayout {
-	const bleed = printMarks ? card.bleed : 0;
-	const zone = printMarks ? MARK_ZONE_MM : 0;
-	if (!option.sheet) {
-		const offset = zone + bleed;
-		const slot = slotAt(card, offset, offset, false, 1);
+	const bleed = bleedOf(card, settings);
+	const fit = sheetFit(card, settings);
+	if (!settings.sheet) {
+		const offset = zoneOf(settings) + bleed;
+		const slot = slotAt(card, offset, offset, 1);
 		return {
-			widthMm: card.w + 2 * offset,
-			heightMm: card.h + 2 * offset,
+			widthMm: fit.widthMm,
+			heightMm: fit.heightMm,
 			slots: [slot],
-			marks: printMarks ? cropMarks([slot], bleed) : [],
+			marks: settings.marks ? cropMarks([slot], bleed) : [],
 			trim: slot.trim,
 			bleed: {
-				x: slot.trim.x - bleed,
-				y: slot.trim.y - bleed,
-				w: slot.trim.w + 2 * bleed,
-				h: slot.trim.h + 2 * bleed,
+				x: offset - bleed,
+				y: offset - bleed,
+				w: card.w + 2 * bleed,
+				h: card.h + 2 * bleed,
 			},
 		};
 	}
-	const { sheet } = option;
-	const { cols, rows, rotated, scale } = arrange(
-		card,
-		sheet,
-		option.margin,
-		printMarks,
-	);
-	const cell = cellOf(card, bleed, rotated, scale);
-	const originX = (sheet.w - cols * cell.w) / 2;
-	const originY = (sheet.h - rows * cell.h) / 2;
+	const { scale } = fit;
+	const cellW = (card.w + 2 * bleed) * scale;
+	const cellH = (card.h + 2 * bleed) * scale;
+	const originX = (fit.widthMm - fit.cols * cellW) / 2;
+	const originY = (fit.heightMm - fit.rows * cellH) / 2;
 	const slots: Slot[] = [];
-	for (let row = 0; row < rows; row++) {
-		for (let col = 0; col < cols; col++) {
+	for (let row = 0; row < fit.rows; row++) {
+		for (let col = 0; col < fit.cols; col++) {
 			slots.push(
 				slotAt(
 					card,
-					originX + col * cell.w + bleed * scale,
-					originY + row * cell.h + bleed * scale,
-					rotated,
+					originX + col * cellW + bleed * scale,
+					originY + row * cellH + bleed * scale,
 					scale,
 				),
 			);
 		}
 	}
 	return {
-		widthMm: sheet.w,
-		heightMm: sheet.h,
+		widthMm: fit.widthMm,
+		heightMm: fit.heightMm,
 		slots,
-		marks: printMarks ? cropMarks(slots, bleed * scale) : [],
+		marks: settings.marks ? cropMarks(slots, bleed * scale) : [],
 	};
 }

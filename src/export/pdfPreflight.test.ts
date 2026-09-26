@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { createText } from "../editor/lib/createElement";
 import type { CutlineDocument } from "../model/document";
 import { blankDocument } from "../render/fixtures/blank";
-import { pdfFontProblems, pdfFontProblemsMessage } from "./pdfPreflight";
+import {
+	pdfFontProblems,
+	pdfFontProblemsMessage,
+	systemFontTexts,
+} from "./pdfPreflight";
 
 const withTexts = (
 	...texts: Array<{ name: string; font: string; visible?: boolean }>
@@ -39,6 +43,14 @@ describe("pdfFontProblems", () => {
 		expect(problems).toHaveLength(1);
 		expect(problems[0]).toContain("«Имя»");
 		expect(problems[0]).toContain("Arial");
+	});
+
+	it("systemFontTexts — сами элементы, для подписей панели экспорта", () => {
+		const doc = withTexts(
+			{ name: "Имя", font: "Arial" },
+			{ name: "ID", font: "JetBrains Mono" },
+		);
+		expect(systemFontTexts(doc).map((el) => el.name)).toEqual(["Имя"]);
 	});
 
 	it("сообщение подсказывает встроенные шрифты", () => {

@@ -3,62 +3,131 @@ import {
 	type CardSize,
 	cropMarks,
 	HOME_MARGIN_MM,
-	type LayoutOption,
-	layoutOptions,
+	homeMarginHint,
+	type ImposeSettings,
 	MARK_GAP_MM,
 	MARK_LENGTH_MM,
 	pageLayout,
+	SHEETS,
+	sheetFit,
 } from "./imposition";
 
 const A6: CardSize = { w: 105, h: 148, bleed: 3 };
+const [A4, A3, SRA3] = SHEETS;
 
-const byId = (options: LayoutOption[]) =>
-	Object.fromEntries(options.map((o) => [o.id, o]));
+const settings = (patch: Partial<ImposeSettings>): ImposeSettings => ({
+	sheet: A4,
+	bleed: false,
+	marks: false,
+	homeMargin: false,
+	fitToMargin: false,
+	...patch,
+});
 
-const apply = ([a, b, c, d, e, f]: number[], x: number, y: number) => [
-	a * x + c * y + e,
-	b * x + d * y + f,
-];
-
-describe("layoutOptions", () => {
-	it("A6 встык: четыре на A4, восемь на A3 с поворотом", () => {
-		const options = byId(layoutOptions(A6, false));
-		expect(options.single.perPage).toBe(1);
-		expect(options.A4).toMatchObject({ perPage: 4, scale: 1, margin: 0 });
-		expect(options.A3).toMatchObject({ perPage: 8, scale: 1 });
+describe("sheetFit", () => {
+	it("A6 встык: четыре на книжном A4", () => {
+		expect(sheetFit(A6, settings({}))).toMatchObject({
+			cols: 2,
+			rows: 2,
+			perSheet: 4,
+			landscape: false,
+			widthMm: 210,
+			heightMm: 297,
+		});
 	});
 
-	it("четыре A6 на A4 не оставляют полей — домашний вариант уменьшает", () => {
-		const home = byId(layoutOptions(A6, false))["A4-home"];
-		expect(home.perPage).toBe(4);
-		expect(home.margin).toBe(HOME_MARGIN_MM);
+	it("с вылетом и метками A4 разворачивается: две карточки на альбомном", () => {
+		expect(sheetFit(A6, settings({ bleed: true, marks: true }))).toMatchObject({
+			cols: 2,
+			rows: 1,
+			perSheet: 2,
+			landscape: true,
+			widthMm: 297,
+			heightMm: 210,
+		});
+	});
+
+	it("вылет без меток — места под метки не держим", () => {
+		// книжный: 210 / 111 = 1; альбомный: 297 / 111 = 2 и 210 / 154 = 1
+		expect(sheetFit(A6, settings({ bleed: true })).perSheet).toBe(2);
+	});
+
+	it("A3 и SRA3", () => {
+		expect(
+			sheetFit(A6, settings({ sheet: A3, bleed: true, marks: true })).perSheet,
+		).toBe(4);
+		expect(sheetFit(A6, settings({ sheet: SRA3 })).perSheet).toBe(9);
+	});
+
+	it("одна на странице: страница — карточка, вылет и зона меток", () => {
+		expect(
+			sheetFit(A6, settings({ sheet: null, bleed: true, marks: true })),
+		).toMatchObject({ perSheet: 1, widthMm: 125, heightMm: 168 });
+		expect(sheetFit(A6, settings({ sheet: null }))).toMatchObject({
+			widthMm: 105,
+			heightMm: 148,
+		});
+	});
+
+	it("карточка больше листа — ноль на листе", () => {
+		expect(sheetFit({ w: 400, h: 500, bleed: 3 }, settings({})).perSheet).toBe(
+			0,
+		);
+	});
+});
+
+describe("поля для домашнего принтера", () => {
+	it("поля отняли карточки — подсказка с уменьшением", () => {
+		const home = settings({ homeMargin: true });
+		expect(sheetFit(A6, home).perSheet).toBe(2);
+		const hint = homeMarginHint(A6, home);
+		expect(hint).toMatchObject({ withMargin: 2, withoutMargin: 4 });
 		// по ширине 200 / 210, по высоте 287 / 296 — держит меньшее
-		expect(home.scale).toBeCloseTo(200 / 210, 6);
+		expect(hint?.scale).toBeCloseTo(200 / 210, 9);
 	});
 
-	it("с вылетом и метками на A4 встаёт две карточки, поворотом", () => {
-		const options = byId(layoutOptions(A6, true));
-		expect(options.A4.perPage).toBe(2);
-		expect(options.A3.perPage).toBe(4);
+	it("уменьшение уместить: снова четыре, в масштабе подсказки", () => {
+		const fit = sheetFit(A6, settings({ homeMargin: true, fitToMargin: true }));
+		expect(fit.perSheet).toBe(4);
+		expect(fit.scale).toBeCloseTo(200 / 210, 9);
 	});
 
-	it("если лист и так оставляет поля, домашнего варианта нет", () => {
-		expect(byId(layoutOptions(A6, true))["A4-home"]).toBeUndefined();
+	it("если поля ничего не отнимают — подсказки нет", () => {
+		expect(
+			homeMarginHint(
+				A6,
+				settings({ homeMargin: true, bleed: true, marks: true }),
+			),
+		).toBeNull();
+		expect(homeMarginHint(A6, settings({}))).toBeNull();
+		expect(
+			homeMarginHint(A6, settings({ sheet: null, homeMargin: true })),
+		).toBeNull();
 	});
 
-	it("карточка больше листа — лист не предлагается", () => {
-		const poster: CardSize = { w: 400, h: 500, bleed: 3 };
-		expect(layoutOptions(poster, false).map((o) => o.id)).toEqual(["single"]);
+	it("уменьшенный лист отстоит от края на поля", () => {
+		const page = pageLayout(
+			A6,
+			settings({ homeMargin: true, fitToMargin: true }),
+		);
+		expect(page.slots).toHaveLength(4);
+		for (const { trim } of page.slots) {
+			expect(trim.x).toBeGreaterThanOrEqual(HOME_MARGIN_MM - 1e-9);
+			expect(trim.y).toBeGreaterThanOrEqual(HOME_MARGIN_MM - 1e-9);
+			expect(trim.x + trim.w).toBeLessThanOrEqual(210 - HOME_MARGIN_MM + 1e-9);
+			expect(trim.y + trim.h).toBeLessThanOrEqual(297 - HOME_MARGIN_MM + 1e-9);
+			expect(trim.w).toBeCloseTo((105 * 200) / 210, 9);
+		}
 	});
 });
 
 describe("pageLayout", () => {
-	it("одна на странице с метками: страница шире на вылет и зону меток", () => {
-		const single = layoutOptions(A6, true)[0];
-		const page = pageLayout(A6, single, true);
+	it("одна на странице: обрез и вылет — боксы страницы, 8 меток до края", () => {
+		const page = pageLayout(
+			A6,
+			settings({ sheet: null, bleed: true, marks: true }),
+		);
 		const offset = 3 + MARK_GAP_MM + MARK_LENGTH_MM;
-		expect(page.widthMm).toBe(105 + 2 * offset);
-		expect(page.heightMm).toBe(148 + 2 * offset);
 		expect(page.trim).toEqual({ x: offset, y: offset, w: 105, h: 148 });
 		expect(page.bleed).toEqual({
 			x: offset - 3,
@@ -67,81 +136,41 @@ describe("pageLayout", () => {
 			h: 154,
 		});
 		expect(page.marks).toHaveLength(8);
-		// метки упираются в край страницы и не заходят в вылет
 		for (const m of page.marks) {
-			for (const [x, y] of [
-				[m.x1, m.y1],
-				[m.x2, m.y2],
-			]) {
-				expect(x).toBeGreaterThanOrEqual(0);
-				expect(y).toBeGreaterThanOrEqual(0);
-				expect(x).toBeLessThanOrEqual(page.widthMm);
-				expect(y).toBeLessThanOrEqual(page.heightMm);
-			}
+			expect(Math.min(m.x1, m.x2, m.y1, m.y2)).toBeGreaterThanOrEqual(0);
+			expect(Math.max(m.x1, m.x2)).toBeLessThanOrEqual(page.widthMm);
+			expect(Math.max(m.y1, m.y2)).toBeLessThanOrEqual(page.heightMm);
 		}
 	});
 
-	it("одна на странице без меток — страница в обрез, как карточка", () => {
-		const page = pageLayout(A6, layoutOptions(A6, false)[0], false);
-		expect(page).toMatchObject({ widthMm: 105, heightMm: 148, marks: [] });
-		expect(page.slots[0].transform).toEqual([1, 0, 0, 1, 0, 0]);
+	it("метки без вылета — от самого обреза, вылет-бокс равен обрезу", () => {
+		const page = pageLayout(A6, settings({ sheet: null, marks: true }));
+		expect(page.bleed).toEqual(page.trim);
+		expect(page.marks[0].y1).toBe(
+			page.trim?.y ? page.trim.y - MARK_GAP_MM : NaN,
+		);
 	});
 
-	it("лист: карточки внутри листа, не наезжают, вылеты соседей касаются", () => {
-		const option = byId(layoutOptions(A6, true)).A3;
-		const page = pageLayout(A6, option, true);
-		expect(page.slots).toHaveLength(4);
-		const boxes = page.slots.map((s) => s.trim);
-		for (const b of boxes) {
-			expect(b.x - 3).toBeGreaterThanOrEqual(0);
-			expect(b.x + b.w + 3).toBeLessThanOrEqual(297);
-		}
-		// соседи по строке: между обрезами ровно два вылета
-		expect(boxes[1].x - (boxes[0].x + boxes[0].w)).toBeCloseTo(6, 9);
-	});
-
-	it("поворот: верх карточки уходит вправо, размер слота переставлен", () => {
-		const page = pageLayout(A6, byId(layoutOptions(A6, true)).A4, true);
-		const { trim, transform } = page.slots[0];
-		expect(trim.w).toBe(148);
-		expect(trim.h).toBe(105);
-		const [x0, y0] = apply(transform, 0, 0);
-		expect(x0).toBeCloseTo(trim.x + trim.w, 9);
-		expect(y0).toBeCloseTo(trim.y, 9);
-		const [x1, y1] = apply(transform, 105, 148);
-		expect(x1).toBeCloseTo(trim.x, 9);
-		expect(y1).toBeCloseTo(trim.y + trim.h, 9);
-	});
-
-	it("домашний принтер: блок уменьшен и отстоит от края на поля", () => {
-		const option = byId(layoutOptions(A6, false))["A4-home"];
-		const page = pageLayout(A6, option, false);
-		expect(page.slots).toHaveLength(4);
-		for (const { trim } of page.slots) {
-			expect(trim.x).toBeGreaterThanOrEqual(HOME_MARGIN_MM - 1e-9);
-			expect(trim.y).toBeGreaterThanOrEqual(HOME_MARGIN_MM - 1e-9);
-			expect(trim.x + trim.w).toBeLessThanOrEqual(210 - HOME_MARGIN_MM + 1e-9);
-			expect(trim.y + trim.h).toBeLessThanOrEqual(297 - HOME_MARGIN_MM + 1e-9);
-			expect(trim.w).toBeCloseTo(105 * option.scale, 9);
-		}
+	it("лист: карточки прямо, по центру, вылеты соседей касаются", () => {
+		const page = pageLayout(A6, settings({ bleed: true, marks: true }));
+		expect(page).toMatchObject({ widthMm: 297, heightMm: 210 });
+		const [a, b] = page.slots;
+		// без поворота: матрица — только масштаб и сдвиг
+		expect(a.transform).toEqual([1, 0, 0, 1, a.trim.x, a.trim.y]);
+		expect(b.trim.x - (a.trim.x + a.trim.w)).toBeCloseTo(6, 9);
+		// блок 222 мм по центру 297
+		expect(a.trim.x - 3).toBeCloseTo((297 - 222) / 2, 9);
+		expect(page.trim).toBeUndefined();
 	});
 });
 
 describe("cropMarks", () => {
 	it("встык линия реза общая — одна метка на линию с каждой стороны", () => {
-		const slot = (x: number) => ({
-			trim: { x, y: 10, w: 10, h: 10 },
-			transform: [1, 0, 0, 1, x, 10] as [
-				number,
-				number,
-				number,
-				number,
-				number,
-				number,
-			],
-		});
-		// три вертикальных реза (0, 10, 20) × 2 стороны + два горизонтальных × 2
-		expect(cropMarks([slot(0), slot(10)], 0)).toHaveLength(3 * 2 + 2 * 2);
+		const page = pageLayout(A6, settings({ marks: true }));
+		// зона меток оставляет на A4 две карточки встык на альбомном листе: вертикальных
+		// резов три (средний общий), горизонтальных два — по две метки на рез
+		expect(page.slots).toHaveLength(2);
+		expect(page.marks).toHaveLength(3 * 2 + 2 * 2);
 	});
 
 	it("метка начинается за вылетом с зазором", () => {

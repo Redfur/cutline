@@ -19,7 +19,7 @@ import type { ViewState } from "../../storage/session";
 import { RecordNavigator } from "../../ui/editor/RecordNavigator";
 import { BASE_PX_PER_MM, Canvas, type ViewportSize } from "../Canvas";
 import { DataMode } from "../DataMode";
-import { ExportDialog } from "../ExportDialog";
+import { ExportPanel } from "../ExportPanel";
 import { Inspector } from "../Inspector";
 import { type LayerPatch, LayersPanel } from "../LayersPanel";
 import { documentColors } from "../lib/documentColors";
@@ -442,11 +442,14 @@ export function EditorShell({
 				</div>
 			)}
 			{exporting && (
-				<ExportDialog
+				<ExportPanel
 					doc={history.doc}
-					recordIndex={currentRecord}
 					problems={problems}
 					onClose={() => setExporting(false)}
+					onShowProblems={() => {
+						setExporting(false);
+						setMode("data");
+					}}
 				/>
 			)}
 		</div>

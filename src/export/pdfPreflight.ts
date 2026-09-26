@@ -4,17 +4,20 @@
 import { BUNDLED_FAMILIES, isBundledFont } from "../fonts/bundled";
 import type { CutlineDocument, TextElement } from "../model/document";
 
+// Видимые тексты системным шрифтом: у них нет файла, а значит, ни кривых, ни PDF.
 // Скрытые элементы не печатаются — их шрифт не важен
+export function systemFontTexts(doc: CutlineDocument): TextElement[] {
+	return doc.elements.filter(
+		(el): el is TextElement =>
+			el.type === "text" && el.visible && !isBundledFont(el.font),
+	);
+}
+
 export function pdfFontProblems(doc: CutlineDocument): string[] {
-	return doc.elements
-		.filter(
-			(el): el is TextElement =>
-				el.type === "text" && el.visible && !isBundledFont(el.font),
-		)
-		.map(
-			(el) =>
-				`«${el.name}» набран шрифтом ${el.font || "без названия"} — он системный и в PDF не попадёт`,
-		);
+	return systemFontTexts(doc).map(
+		(el) =>
+			`«${el.name}» набран шрифтом ${el.font || "без названия"} — он системный и в PDF не попадёт`,
+	);
 }
 
 export function pdfFontProblemsMessage(problems: string[]): string {

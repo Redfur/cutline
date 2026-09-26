@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { loadTestFont } from "../fonts/testFonts";
 import type { CutlineDocument } from "../model/document";
 import type { OutlineFonts } from "../render/outline";
-import { layoutOptions, pageLayout } from "./imposition";
+import { type ImposeSettings, pageLayout, SHEETS } from "./imposition";
 import {
 	buildPdf,
 	decodeDataUri,
@@ -141,27 +141,27 @@ const outlines: OutlineFonts = (family, weight) =>
 
 const card = { w: 105, h: 148, bleed: 3 };
 
-function sheets(
-	records: Record<string, string>[],
-	layoutId: string,
-	printMarks: boolean,
-) {
-	const option = layoutOptions(card, printMarks).find((o) => o.id === layoutId);
-	if (!option) throw new Error(`нет раскладки ${layoutId}`);
-	const svgs = records.map((r) =>
-		render(doc, r, { outlines, bleed: printMarks }),
-	);
-	return imposeSheets(pageLayout(card, option, printMarks), svgs);
+function settings(patch: Partial<ImposeSettings>): ImposeSettings {
+	return {
+		sheet: null,
+		bleed: true,
+		marks: true,
+		homeMargin: false,
+		fitToMargin: false,
+		...patch,
+	};
+}
+
+function sheets(records: Record<string, string>[], s: ImposeSettings) {
+	const svgs = records.map((r) => render(doc, r, { outlines, bleed: s.bleed }));
+	return imposeSheets(pageLayout(card, s), svgs);
 }
 
 async function pdfOf(
 	records: Record<string, string>[],
-	layoutId: string,
-	printMarks: boolean,
+	s: ImposeSettings,
 ): Promise<PDFDocument> {
-	return PDFDocument.load(
-		await buildPdf(sheets(records, layoutId, printMarks), resolve),
-	);
+	return PDFDocument.load(await buildPdf(sheets(records, s), resolve));
 }
 
 const raw = async (s: ReturnType<typeof sheets>) =>
@@ -169,7 +169,7 @@ const raw = async (s: ReturnType<typeof sheets>) =>
 
 describe("buildPdf", () => {
 	it("одна на странице с метками: страница — обрез + вылет + зона меток, боксы по обрезу и вылету", async () => {
-		const pdf = await pdfOf([{ name: "Тима Фахме" }], "single", true);
+		const pdf = await pdfOf([{ name: "Тима Фахме" }], settings({}));
 		const [page] = pdf.getPages();
 		const size = page.getSize();
 		// 3 мм вылета + 7 мм под метки с каждой стороны
@@ -187,7 +187,7 @@ describe("buildPdf", () => {
 
 	it("без меток и вылета — страница в обрез", async () => {
 		const [page] = (
-			await pdfOf([{ name: "Тима" }], "single", false)
+			await pdfOf([{ name: "Тима" }], settings({ bleed: false, marks: false }))
 		).getPages();
 		expect(page.getSize().width).toBeCloseTo(105 * PT, 3);
 		expect(page.getTrimBox()).toMatchObject({ x: 0, y: 0 });
@@ -196,15 +196,17 @@ describe("buildPdf", () => {
 	it("все записи одним файлом: по странице на карточку", async () => {
 		const pdf = await pdfOf(
 			[{ name: "А" }, { name: "Б" }, { name: "В" }],
-			"single",
-			true,
+			settings({}),
 		);
 		expect(pdf.getPageCount()).toBe(3);
 	});
 
 	it("спуск на A4: встык четыре на листе, пятая уходит на второй лист", async () => {
 		const records = ["А", "Б", "В", "Г", "Д"].map((name) => ({ name }));
-		const pdf = await pdfOf(records, "A4", false);
+		const pdf = await pdfOf(
+			records,
+			settings({ sheet: SHEETS[0], bleed: false, marks: false }),
+		);
 		expect(pdf.getPageCount()).toBe(2);
 		const [page] = pdf.getPages();
 		expect(page.getSize().width).toBeCloseTo(210 * PT, 3);
@@ -214,7 +216,10 @@ describe("buildPdf", () => {
 	});
 
 	it("текст — кривыми: в файле нет шрифтов", async () => {
-		const s = sheets([{ name: "Константинопольская" }], "A3", true);
+		const s = sheets(
+			[{ name: "Константинопольская" }],
+			settings({ sheet: SHEETS[1] }),
+		);
 		expect(s[0].cards[0].svg).not.toContain("<text");
 		const text = await raw(s);
 		expect(text).not.toContain("/Font");
@@ -222,11 +227,10 @@ describe("buildPdf", () => {
 	});
 
 	it("одна картинка на всём тираже вшивается один раз", async () => {
-		const one = sheets([{ name: "А" }], "single", true);
+		const one = sheets([{ name: "А" }], settings({}));
 		const many = sheets(
 			[{ name: "А" }, { name: "Б" }, { name: "В" }],
-			"A3",
-			true,
+			settings({ sheet: SHEETS[1] }),
 		);
 		// у PNG с альфой pdf-lib кладёт ещё и маску (SMask) — сравниваем с одной карточкой
 		const images = async (s: typeof one) =>
@@ -239,9 +243,7 @@ describe("imposeSheets", () => {
 	it("раскладывает по местам листа по порядку, последний лист неполный", () => {
 		const layout = pageLayout(
 			card,
-			layoutOptions(card, false).find((o) => o.id === "A4") ??
-				layoutOptions(card, false)[0],
-			false,
+			settings({ sheet: SHEETS[0], bleed: false, marks: false }),
 		);
 		const result = imposeSheets(layout, ["1", "2", "3", "4", "5", "6"]);
 		expect(result.map((s) => s.cards.map((c) => c.svg))).toEqual([
