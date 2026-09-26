@@ -201,7 +201,7 @@ export function Canvas({
 	const draftBounds = draft && draft.type !== "line" ? boundsOf(draft) : null;
 
 	const cardSvg = render(effectiveDoc, record, {
-		outlines: false,
+		outlines: null,
 		bleed: false,
 		marks: false,
 	});

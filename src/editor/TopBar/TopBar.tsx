@@ -89,7 +89,7 @@ export function TopBar({
 				onClick={() =>
 					downloadSvg(
 						render(doc, record, {
-							outlines: false,
+							outlines: null,
 							bleed: false,
 							marks: false,
 						}),
@@ -102,7 +102,7 @@ export function TopBar({
 			<Button
 				variant="ghost"
 				onClick={() => {
-					const opts = { outlines: false, bleed: false, marks: false };
+					const opts = { outlines: null, bleed: false, marks: false };
 					const svg = render(doc, record, opts);
 					const { widthMm, heightMm } = renderedSize(doc.canvas, opts);
 					downloadPng(svg, widthMm, heightMm, 300, "cutline@300dpi.png");

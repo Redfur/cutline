@@ -17,9 +17,12 @@ import type {
 	TextElement,
 } from "../model/document";
 import { firstBaselineY, layoutText } from "./layout";
+import { type OutlineFonts, textPathData } from "./outline";
 
 export interface RenderOptions {
-	outlines: boolean; // перевод текста в кривые — появится вместе с opentype.js на Этапе 4
+	// шрифты для перевода текста в кривые; null — обычный <text> (экран, SVG). Текст
+	// шрифтом, которого тут нет, остаётся <text>: PDF такое отсекает до вызова render()
+	outlines: OutlineFonts | null;
 	bleed: boolean; // расширить холст на вылет
 	marks: boolean; // метки реза по углам обреза
 }
@@ -61,10 +64,23 @@ function renderText(
 	const anchorX = anchorXOf(el);
 	const anchor = textAnchorOf(el.align);
 
-	// outlines: true задумано как перевод в контуры через opentype.js (см. Этап 4 роадмапа).
-	// Пока такого источника глифов нет — печатаем обычным <text>, отличий от превью не будет
-	// только на машине, где шрифт установлен.
-	void opts.outlines;
+	const font = opts.outlines?.(el.font, el.weight);
+	if (font) {
+		const d = lines
+			.map((line, i) =>
+				textPathData(
+					font,
+					line,
+					anchorX,
+					baseY + lineHeightMm * i,
+					sizeMm,
+					el.tracking,
+					anchor,
+				),
+			)
+			.join("");
+		return d ? `<path d="${d}" fill="${el.color}"/>` : "";
+	}
 
 	return lines
 		.map((line, i) => {
