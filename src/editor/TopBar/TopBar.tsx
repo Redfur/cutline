@@ -1,13 +1,13 @@
 import type { ChangeEvent } from "react";
-import { downloadDocument, openDocumentFile } from "../export/document";
-import { downloadPng } from "../export/png";
-import { downloadSvg } from "../export/svg";
-import type { CutlineDocument } from "../model/document";
-import { render, renderedSize } from "../render/render";
-import { SaveIndicator } from "../ui/feedback/SaveIndicator";
-import { Button } from "../ui/forms/Button";
-import { IconButton } from "../ui/forms/IconButton";
-import { SegmentedControl } from "../ui/forms/SegmentedControl";
+import { downloadDocument, openDocumentFile } from "../../export/document";
+import { downloadPng } from "../../export/png";
+import { downloadSvg } from "../../export/svg";
+import type { CutlineDocument } from "../../model/document";
+import { render, renderedSize } from "../../render/render";
+import { SaveIndicator } from "../../ui/feedback/SaveIndicator";
+import { Button } from "../../ui/forms/Button";
+import { IconButton } from "../../ui/forms/IconButton";
+import { SegmentedControl } from "../../ui/forms/SegmentedControl";
 
 export type Mode = "design" | "data";
 

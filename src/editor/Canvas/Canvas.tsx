@@ -3,11 +3,15 @@
 // не может разойтись с тем, что попадёт в файл. Линейки, обрез/вылет/безопасное поле —
 // поверх, отдельными слоями; render() как был, так и остаётся не в курсе редактора.
 import { useEffect, useRef, useState } from "react";
-import type { CutlineDocument, CutlineElement, Guide } from "../model/document";
-import { render } from "../render/render";
-import { type HandlePos, moveElement, resizeElement } from "./resizeElement";
-import { type SnapGuide, snapMove, snapResize } from "./snap";
-import type { Tool } from "./Toolbar";
+import type {
+	CutlineDocument,
+	CutlineElement,
+	Guide,
+} from "../../model/document";
+import { render } from "../../render/render";
+import { type HandlePos, moveElement, resizeElement } from "../resizeElement";
+import { type SnapGuide, snapMove, snapResize } from "../snap";
+import type { Tool } from "../Toolbar/Toolbar";
 
 const BASE_PX_PER_MM = 96 / 25.4; // 100% зума = «настоящий» CSS-пиксель при 96dpi
 const RULER_SIZE = 20; // px, совпадает с --ruler-size

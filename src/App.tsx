@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { EditorShell } from "./editor/EditorShell";
+import { EditorShell } from "./editor/EditorShell/EditorShell";
 import { badgeDocument } from "./render/fixtures/badge";
 import { Icon } from "./ui/core/Icon";
 import { FieldToken } from "./ui/editor/FieldToken";

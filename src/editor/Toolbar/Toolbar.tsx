@@ -2,8 +2,8 @@
 // его — добавление элементов на холст это отдельный будущий пункт роадмапа
 // («Добавление и удаление элементов, панель инструментов»), сюда ещё не входит.
 // Зум внизу панели работает по-настоящему — это часть чеклиста «Холст».
-import type { IconProps } from "../ui/core/Icon";
-import { IconButton } from "../ui/forms/IconButton";
+import type { IconProps } from "../../ui/core/Icon";
+import { IconButton } from "../../ui/forms/IconButton";
 
 export type Tool = "select" | "text" | "rect" | "ellipse" | "line" | "image";
 

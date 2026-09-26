@@ -4,12 +4,12 @@ import type {
 	EllipseElement,
 	LineElement,
 	RectElement,
-} from "../model/document";
-import { PanelSection } from "../ui/editor/PanelSection";
-import { PropertyRow } from "../ui/editor/PropertyRow";
-import { Checkbox } from "../ui/forms/Checkbox";
-import { ColorField } from "../ui/forms/ColorField";
-import { TextField } from "../ui/forms/TextField";
+} from "../../model/document";
+import { PanelSection } from "../../ui/editor/PanelSection";
+import { PropertyRow } from "../../ui/editor/PropertyRow";
+import { Checkbox } from "../../ui/forms/Checkbox";
+import { ColorField } from "../../ui/forms/ColorField";
+import { TextField } from "../../ui/forms/TextField";
 import { PositionSizeFields } from "./PositionSizeFields";
 
 type ShapeElement = RectElement | EllipseElement | LineElement;

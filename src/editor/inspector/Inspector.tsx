@@ -5,12 +5,12 @@ import type {
 	Canvas as CanvasModel,
 	CutlineElement,
 	Guide,
-} from "../model/document";
-import { PanelSection } from "../ui/editor/PanelSection";
-import { PropertyRow } from "../ui/editor/PropertyRow";
-import { ColorField } from "../ui/forms/ColorField";
-import { Select } from "../ui/forms/Select";
-import { TextField } from "../ui/forms/TextField";
+} from "../../model/document";
+import { PanelSection } from "../../ui/editor/PanelSection";
+import { PropertyRow } from "../../ui/editor/PropertyRow";
+import { ColorField } from "../../ui/forms/ColorField";
+import { Select } from "../../ui/forms/Select";
+import { TextField } from "../../ui/forms/TextField";
 import { GuideInspector } from "./GuideInspector";
 import { ImageInspector } from "./ImageInspector";
 import { ShapeInspector } from "./ShapeInspector";

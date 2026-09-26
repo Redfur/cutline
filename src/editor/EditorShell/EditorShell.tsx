@@ -2,26 +2,30 @@
 // Добавление фигур (rect/ellipse/line), выделение и удаление — этот срез;
 // text/image, перетаскивание/resize, привязки, остальные горячие клавиши — ещё нет.
 import { useEffect, useState } from "react";
-import type { CutlineDocument, CutlineElement, Guide } from "../model/document";
-import { blankDocument } from "../render/fixtures/blank";
+import type {
+	CutlineDocument,
+	CutlineElement,
+	Guide,
+} from "../../model/document";
+import { blankDocument } from "../../render/fixtures/blank";
 import {
 	BASE_PX_PER_MM,
 	Canvas,
 	type PointMm,
 	type ViewportSize,
-} from "./Canvas";
+} from "../Canvas/Canvas";
 import {
 	createEllipse,
 	createImage,
 	createLine,
 	createRect,
 	createText,
-} from "./createElement";
-import { Inspector } from "./Inspector";
-import { type LayerPatch, LayersPanel } from "./LayersPanel";
-import { type Tool, Toolbar } from "./Toolbar";
-import { type Mode, TopBar } from "./TopBar";
-import { useDocumentHistory } from "./useDocumentHistory";
+} from "../createElement";
+import { Inspector } from "../inspector/Inspector";
+import { type LayerPatch, LayersPanel } from "../LayersPanel/LayersPanel";
+import { type Tool, Toolbar } from "../Toolbar/Toolbar";
+import { type Mode, TopBar } from "../TopBar/TopBar";
+import { useDocumentHistory } from "../useDocumentHistory";
 
 const FIT_MARGIN_PX = 32;
 const DUPLICATE_OFFSET_MM = 5;

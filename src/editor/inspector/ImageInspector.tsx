@@ -3,13 +3,13 @@
 // но раз файл локальный и его пропорции точно известны, заодно подгоняем размер
 // рамки под них.
 import { useRef } from "react";
-import type { ImageElement, ImageFit } from "../model/document";
-import { Icon } from "../ui/core/Icon";
-import { PanelSection } from "../ui/editor/PanelSection";
-import { PropertyRow } from "../ui/editor/PropertyRow";
-import { Button } from "../ui/forms/Button";
-import { Select } from "../ui/forms/Select";
-import { TextField } from "../ui/forms/TextField";
+import type { ImageElement, ImageFit } from "../../model/document";
+import { Icon } from "../../ui/core/Icon";
+import { PanelSection } from "../../ui/editor/PanelSection";
+import { PropertyRow } from "../../ui/editor/PropertyRow";
+import { Button } from "../../ui/forms/Button";
+import { Select } from "../../ui/forms/Select";
+import { TextField } from "../../ui/forms/TextField";
 import { PositionSizeFields } from "./PositionSizeFields";
 
 export interface ImageInspectorProps {

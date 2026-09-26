@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { CutlineElement, Guide } from "../model/document";
-import { Icon } from "../ui/core/Icon";
-import { LayerRow } from "../ui/editor/LayerRow";
+import type { CutlineElement, Guide } from "../../model/document";
+import { Icon } from "../../ui/core/Icon";
+import { LayerRow } from "../../ui/editor/LayerRow";
 
 export interface LayerPatch {
 	locked?: boolean;
