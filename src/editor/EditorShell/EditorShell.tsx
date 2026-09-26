@@ -17,6 +17,7 @@ import {
 	type PointMm,
 	type ViewportSize,
 } from "../Canvas";
+import { DataMode } from "../DataMode";
 import { Inspector } from "../Inspector";
 import { type LayerPatch, LayersPanel } from "../LayersPanel";
 import {
@@ -183,6 +184,10 @@ export function EditorShell() {
 				return;
 			}
 
+			// Остальные клавиши — про элементы макета; в «Данных» макета на экране нет,
+			// и Backspace мимо ячейки удалял бы невидимый выделенный элемент
+			if (mode !== "design") return;
+
 			// Ctrl/Cmd+D — дублирование выделенного элемента. Тот же guard на фокус
 			// в поле ввода, что и у Delete ниже: иначе перехватили бы у браузера
 			// его родное Ctrl+D (добавить в закладки) прямо во время правки текста.
@@ -264,7 +269,14 @@ export function EditorShell() {
 		}
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [selectedId, selectedGuideId, history.set, history.undo, history.redo]);
+	}, [
+		mode,
+		selectedId,
+		selectedGuideId,
+		history.set,
+		history.undo,
+		history.redo,
+	]);
 
 	return (
 		<div className={styles.shell}>
@@ -280,9 +292,13 @@ export function EditorShell() {
 				onRedo={history.redo}
 			/>
 			{mode === "data" ? (
-				<div className={styles.placeholder}>
-					Режим «Данные» — Этап 3 роадмапа, ещё не реализован.
-				</div>
+				<DataMode
+					doc={history.doc}
+					onChange={history.set}
+					problems={problems}
+					selectedIndex={records.length ? currentRecord : null}
+					onSelect={setRecordIndex}
+				/>
 			) : (
 				<div className={styles.workspace}>
 					<Toolbar
