@@ -17,8 +17,29 @@ const REQUIRED_ARRAY_FIELDS = [
 	"fields",
 ] as const;
 
-// Лёгкая защита от открытия случайного файла — не полноценная валидация схемы
-// (та, что упомянута в README для model/, — отдельная, ещё не начатая задача).
+// Лёгкая защита от случайных данных — не полноценная валидация схемы (та, что
+// упомянута в README для model/, — отдельная, ещё не начатая задача). Отдельно от
+// JSON.parse: документ приходит и из файла (строка), и из IndexedDB (уже объект), и
+// проверка у обоих путей должна быть одна.
+export function validateDocument(value: unknown): CutlineDocument {
+	if (
+		!isPlainObject(value) ||
+		typeof value.version !== "number" ||
+		!isPlainObject(value.canvas)
+	) {
+		throw new Error("Файл не похож на документ Cutline");
+	}
+	for (const field of REQUIRED_ARRAY_FIELDS) {
+		if (!Array.isArray(value[field])) {
+			throw new Error(`Файл не похож на документ Cutline: нет поля "${field}"`);
+		}
+	}
+	// guides — не обязательное поле для проверки: документ, сохранённый до появления
+	// направляющих, не должен переставать открываться из-за их отсутствия
+	const guides = Array.isArray(value.guides) ? value.guides : [];
+	return { ...value, guides } as unknown as CutlineDocument;
+}
+
 export function parseDocument(json: string): CutlineDocument {
 	let parsed: unknown;
 	try {
@@ -26,22 +47,5 @@ export function parseDocument(json: string): CutlineDocument {
 	} catch {
 		throw new Error("Файл повреждён — это не JSON");
 	}
-	if (
-		!isPlainObject(parsed) ||
-		typeof parsed.version !== "number" ||
-		!isPlainObject(parsed.canvas)
-	) {
-		throw new Error("Файл не похож на документ Cutline");
-	}
-	for (const field of REQUIRED_ARRAY_FIELDS) {
-		if (!Array.isArray(parsed[field])) {
-			throw new Error(`Файл не похож на документ Cutline: нет поля "${field}"`);
-		}
-	}
-	// guides — не обязательное поле для проверки: документ, сохранённый до появления
-	// направляющих, не должен переставать открываться из-за их отсутствия
-	if (!Array.isArray(parsed.guides)) {
-		parsed.guides = [];
-	}
-	return parsed as unknown as CutlineDocument;
+	return validateDocument(parsed);
 }
