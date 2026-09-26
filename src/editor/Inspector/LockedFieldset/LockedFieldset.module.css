@@ -1,0 +1,14 @@
+.fieldset {
+	display: grid;
+	/* внутри секции — её шаг между строками, между секциями — ноль */
+	gap: inherit;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+/* порты рисуют поля инлайн-стилями и disabled от fieldset не видят — гасим целиком */
+.locked {
+	opacity: 0.55;
+}

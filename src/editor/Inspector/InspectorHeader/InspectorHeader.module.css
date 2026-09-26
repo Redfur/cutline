@@ -1,0 +1,28 @@
+.header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 32px;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--border-1);
+}
+
+.icon {
+	display: flex;
+	color: var(--fg-3);
+}
+
+.title {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font: var(--type-section);
+}
+
+.kind {
+	flex: none;
+	font: var(--type-label);
+	color: var(--fg-3);
+}

@@ -1,0 +1,4 @@
+.hint {
+	font: var(--type-label);
+	color: var(--fg-3);
+}

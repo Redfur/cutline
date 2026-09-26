@@ -5,13 +5,14 @@
 
 const MM_PER_PT = 25.4 / 72;
 
-// до сотых: в поле «12» после круга туда-обратно, а не «12.000000000000002»
-function round2(v: number): number {
-	return Math.round(v * 100) / 100;
+// До десятых: в поле «12» после круга туда-обратно, а не «12.000000000000002», и «17»
+// вместо «17.01» у кегля по умолчанию в 6 мм. Точнее десятой пункта на печати не видно.
+function round1(v: number): number {
+	return Math.round(v * 10) / 10;
 }
 
 export function mmToPt(mm: number): number {
-	return round2(mm / MM_PER_PT);
+	return round1(mm / MM_PER_PT);
 }
 
 export function ptToMm(pt: number): number {
@@ -19,7 +20,7 @@ export function ptToMm(pt: number): number {
 }
 
 export function lineHeightToPct(lineHeight: number): number {
-	return round2(lineHeight * 100);
+	return round1(lineHeight * 100);
 }
 
 export function pctToLineHeight(pct: number): number {
@@ -29,7 +30,7 @@ export function pctToLineHeight(pct: number): number {
 // Трекинг в процентах от кегля: так он не зависит от размера и читается как в макете.
 // При нулевом кегле процент не определён — показываем 0, а не NaN в поле.
 export function trackingToPct(trackingMm: number, sizeMm: number): number {
-	return sizeMm ? round2((trackingMm / sizeMm) * 100) : 0;
+	return sizeMm ? round1((trackingMm / sizeMm) * 100) : 0;
 }
 
 export function pctToTracking(pct: number, sizeMm: number): number {

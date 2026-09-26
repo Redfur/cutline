@@ -1,8 +1,9 @@
-// Свойства text — по группам из docs/ui-spec.md (Содержимое/Положение/Шрифт/
-// Выравнивание/Цвет/Автоподгонка). Рядом с содержимым — вставка плейсхолдера
-// из полей данных, у автоподгонки — пояснение, в каких записях текст не влез.
-import { useState } from "react";
+// Свойства text — секциями, как в макете дизайн-системы (ui_kits/editor/Inspector.jsx):
+// Содержимое / Положение и размер / Шрифт и кегль / Выравнивание / Цвет / Автоподгонка.
+// Кегль в pt, межстрочный и трекинг в % — только при показе, модель в мм (lib/units.ts).
+import { useRef, useState } from "react";
 import type {
+	DataRecord,
 	FieldDef,
 	TextAlign,
 	TextElement,
@@ -11,23 +12,35 @@ import type {
 } from "../../../model/document";
 import { PanelSection } from "../../../ui/editor/PanelSection";
 import { PropertyRow } from "../../../ui/editor/PropertyRow";
-import { InlineAlert } from "../../../ui/feedback/InlineAlert";
 import { Button } from "../../../ui/forms/Button";
 import { ColorField } from "../../../ui/forms/ColorField";
-import { IconButton } from "../../../ui/forms/IconButton";
 import { SegmentedControl } from "../../../ui/forms/SegmentedControl";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
+import {
+	lineHeightToPct,
+	mmToPt,
+	pctToLineHeight,
+	pctToTracking,
+	ptToMm,
+	trackingToPct,
+} from "../../lib/units";
 import { FieldMenu } from "../FieldMenu";
+import { GeometrySection } from "../GeometrySection";
+import { LockedFieldset } from "../LockedFieldset";
 import { MissingFields } from "../MissingFields";
-import { PositionSizeFields } from "../PositionSizeFields";
+import { OverflowAlert } from "../OverflowAlert";
+import styles from "./TextInspector.module.css";
 
 export interface TextInspectorProps {
 	element: TextElement;
 	onChange: (element: TextElement) => void;
 	fields: FieldDef[];
+	// текущая запись предпросмотра — для подсказок в «Вставить поле»
+	record: DataRecord;
 	// номера записей (с 1), где этот текст не влезает в рамку
 	overflowRecords: number[];
+	swatches: string[];
 }
 
 // дальше перечислять бессмысленно — полный список даёт фильтр в «Данных»
@@ -44,25 +57,50 @@ function overflowText(records: number[]): string {
 const ALIGN_OPTIONS: {
 	value: TextAlign;
 	icon: "align-left" | "align-center" | "align-right";
-	label: string;
+	title: string;
 }[] = [
-	{ value: "left", icon: "align-left", label: "По левому краю" },
-	{ value: "center", icon: "align-center", label: "По центру" },
-	{ value: "right", icon: "align-right", label: "По правому краю" },
+	{ value: "left", icon: "align-left", title: "По левому краю" },
+	{ value: "center", icon: "align-center", title: "По центру" },
+	{ value: "right", icon: "align-right", title: "По правому краю" },
 ];
 
-const VALIGN_OPTIONS: { value: TextValign; label: string }[] = [
-	{ value: "top", label: "По верху" },
-	{ value: "middle", label: "По центру" },
-	{ value: "baseline", label: "По базовой линии" },
+const VALIGN_OPTIONS: {
+	value: TextValign;
+	icon:
+		| "align-start-horizontal"
+		| "align-center-horizontal"
+		| "align-end-horizontal";
+	title: string;
+}[] = [
+	{ value: "top", icon: "align-start-horizontal", title: "По верху" },
+	{ value: "middle", icon: "align-center-horizontal", title: "По середине" },
+	// базовая линия последней строки на нижнем крае рамки (модель v2)
+	{
+		value: "baseline",
+		icon: "align-end-horizontal",
+		title: "По базовой линии",
+	},
 ];
 
 const FIT_OPTIONS: { value: TextFit; label: string }[] = [
-	{ value: "shrink", label: "Сжимать" },
-	{ value: "clip", label: "Обрезать" },
-	{ value: "wrap", label: "Переносить" },
-	{ value: "none", label: "Не трогать" },
+	{ value: "none", label: "Не менять — предупредить" },
+	{ value: "shrink", label: "Уменьшать кегль" },
+	{ value: "clip", label: "Обрезать с многоточием" },
+	{ value: "wrap", label: "Переносить строки" },
 ];
+
+function fitHint(el: TextElement): string {
+	switch (el.fit) {
+		case "shrink":
+			return `Кегль уменьшится до ${mmToPt(el.minSize)} pt, дальше — многоточие.`;
+		case "clip":
+			return "Лишний текст скроется, в тираже будет «…».";
+		case "wrap":
+			return "Строки переносятся по словам в пределах рамки.";
+		case "none":
+			return "Длинный текст выйдет за рамку и попадёт в список проблем.";
+	}
+}
 
 // Классические кросс-платформенные системные шрифты (Windows/macOS/Linux через
 // Arimo/Liberation-замены) — не веб-шрифты редактора (Golos Text и т.п. загружены
@@ -81,174 +119,205 @@ export function TextInspector({
 	element,
 	onChange,
 	fields,
+	record,
 	overflowRecords,
+	swatches,
 }: TextInspectorProps) {
 	const num = (v: string | number) => Number(v) || 0;
-	// Выбор «Свой…», когда font и так уже совпадает с одним из пресетов (частый
-	// случай — просто передумали и хотят вписать другое имя), иначе не переключил бы
-	// ничего: производное displayValue тут же снова показало бы этот же пресет.
+	const set = (patch: Partial<TextElement>) =>
+		onChange({ ...element, ...patch });
+	const contentRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+	const over = overflowRecords.length > 0;
+	// Поле для имени шрифта — только по явному «Свой…». Шрифт не из пресетов (из
+	// открытого файла, JetBrains Mono у нового текста) стоит в списке отдельным пунктом:
+	// в селекте видно, какой шрифт на самом деле, а не безликое «Свой…».
 	// Инспектор перемонтируется на смену элемента (key={element.id} в Inspector.tsx),
 	// так что это состояние не «утечёт» на другой текстовый элемент.
-	const [forceCustom, setForceCustom] = useState(
-		() => !FONT_PRESETS.includes(element.font),
-	);
-	const showCustomFontField =
-		forceCustom || !FONT_PRESETS.includes(element.font);
+	const [showCustomFontField, setShowCustomFontField] = useState(false);
+	const fontOptions =
+		FONT_PRESETS.includes(element.font) || !element.font
+			? FONT_PRESETS
+			: [element.font, ...FONT_PRESETS];
+
+	// в позицию курсора, а не в конец: «Здравствуйте, {{name}}!» собирают вставкой в середину
+	const insertField = (key: string) => {
+		const token = `{{${key}}}`;
+		const input = contentRef.current;
+		const from = input?.selectionStart ?? element.content.length;
+		const to = input?.selectionEnd ?? from;
+		set({
+			content:
+				element.content.slice(0, from) + token + element.content.slice(to),
+		});
+	};
 
 	return (
-		<PanelSection title={element.name}>
-			<PropertyRow label="Содержимое">
-				<TextField
-					mono
-					value={element.content}
-					onChange={(v) => onChange({ ...element, content: v })}
-				/>
-				<FieldMenu
-					fields={fields}
-					onPick={(key) =>
-						onChange({ ...element, content: `${element.content}{{${key}}}` })
-					}
-				/>
-			</PropertyRow>
-			<MissingFields template={element.content} fields={fields} />
-
-			<PositionSizeFields
-				x={element.x}
-				y={element.y}
-				w={element.w}
-				h={element.h}
-				onChange={(patch) => onChange({ ...element, ...patch })}
-			/>
-
-			<PropertyRow label="Шрифт">
-				<Select
-					value={showCustomFontField ? CUSTOM_FONT : element.font}
-					options={[
-						...FONT_PRESETS.map((f) => ({ value: f, label: f })),
-						{ value: CUSTOM_FONT, label: "Свой…" },
-					]}
-					onChange={(v) => {
-						if (v === CUSTOM_FONT) {
-							setForceCustom(true);
-						} else {
-							setForceCustom(false);
-							onChange({ ...element, font: v });
-						}
-					}}
-				/>
-			</PropertyRow>
-			{showCustomFontField && (
-				<PropertyRow>
-					<TextField
-						value={element.font}
-						placeholder="Название шрифта"
-						onChange={(v) => onChange({ ...element, font: v })}
-					/>
-				</PropertyRow>
-			)}
-			<PropertyRow label="Начертание">
-				<SegmentedControl
-					value={element.weight}
-					onChange={(v) =>
-						onChange({ ...element, weight: v as TextElement["weight"] })
-					}
-					options={[
-						{ value: "regular", label: "Обычное" },
-						{ value: "bold", label: "Жирное" },
-					]}
-				/>
-			</PropertyRow>
-			<PropertyRow label="Кегль" columns={2}>
-				<TextField
-					value={element.size}
-					unit="мм"
-					onChange={(v) => onChange({ ...element, size: num(v) })}
-				/>
-				<TextField
-					value={element.tracking}
-					unit="мм"
-					onChange={(v) => onChange({ ...element, tracking: num(v) })}
-				/>
-			</PropertyRow>
-			{/* Множитель кегля (render.ts: lineHeightMm = sizeMm * lineHeight), а не мм —
-			    поэтому эффект виден только когда строк больше одной (перенос/ручные \n):
-			    позиция единственной строки от lineHeight не зависит. При автоподгонке
-			    shrink интервал пересчитывается от уже уменьшенного кегля, не от исходного —
-			    строки не могут наехать друг на друга из-за фиксированного интервала. */}
-			<PropertyRow label="Межстрочный">
-				<TextField
-					value={element.lineHeight}
-					onChange={(v) => onChange({ ...element, lineHeight: num(v) })}
-				/>
-			</PropertyRow>
-
-			<PropertyRow label="Выравнивание">
-				{ALIGN_OPTIONS.map(({ value, icon, label }) => (
-					<IconButton
-						key={value}
-						icon={icon}
-						label={label}
-						active={element.align === value}
-						onClick={() => onChange({ ...element, align: value })}
-					/>
-				))}
-			</PropertyRow>
-			<PropertyRow>
-				<Select
-					value={element.valign}
-					onChange={(v) => onChange({ ...element, valign: v as TextValign })}
-					options={VALIGN_OPTIONS}
-				/>
-			</PropertyRow>
-
-			<PropertyRow label="Цвет">
-				<ColorField
-					value={element.color}
-					showOpacity={false}
-					onChange={(hex) => onChange({ ...element, color: hex })}
-				/>
-			</PropertyRow>
-
-			<PropertyRow label="Автоподгонка">
-				<Select
-					value={element.fit}
-					onChange={(v) => onChange({ ...element, fit: v as TextFit })}
-					options={FIT_OPTIONS}
-				/>
-			</PropertyRow>
-			{element.fit === "shrink" && (
-				<PropertyRow label="Мин. кегль">
-					<TextField
-						value={element.minSize}
-						unit="мм"
-						onChange={(v) => onChange({ ...element, minSize: num(v) })}
-					/>
-				</PropertyRow>
-			)}
-			{overflowRecords.length > 0 && (
-				<InlineAlert
-					tone="warning"
-					title={
-						overflowRecords.length === 1
-							? "Текст не влезает в 1 записи"
-							: `Текст не влезает в ${overflowRecords.length} записях`
-					}
+		<>
+			{over && (
+				<OverflowAlert
+					title="Текст не влезает в рамку"
 					actions={
-						// сжатие — самое частое лечение; при shrink кнопка не нужна, там
-						// помогает только меньший мин. кегль или шире рамка
-						element.fit !== "shrink" && (
+						<>
+							{/* при shrink кнопка не нужна — там помогает только меньший мин. кегль или шире рамка */}
+							{element.fit !== "shrink" && (
+								<Button
+									size="sm"
+									variant="warning"
+									icon="shrink"
+									disabled={element.locked}
+									onClick={() => set({ fit: "shrink" })}
+								>
+									Уменьшать кегль
+								</Button>
+							)}
+							{/* по строке за клик: сколько не хватает, зависит от записи */}
 							<Button
 								size="sm"
-								onClick={() => onChange({ ...element, fit: "shrink" })}
+								variant="ghost"
+								disabled={element.locked}
+								onClick={() =>
+									set({ h: element.h + element.size * element.lineHeight })
+								}
 							>
-								Уменьшать кегль
+								Увеличить рамку
 							</Button>
-						)
+						</>
 					}
 				>
 					{overflowText(overflowRecords)}
-				</InlineAlert>
+				</OverflowAlert>
 			)}
-		</PanelSection>
+
+			<LockedFieldset locked={element.locked}>
+				<PanelSection
+					title="Содержимое"
+					actions={
+						<FieldMenu fields={fields} record={record} onPick={insertField} />
+					}
+				>
+					<TextField
+						multiline
+						mono
+						rows={3}
+						inputRef={contentRef}
+						value={element.content}
+						warning={over}
+						onChange={(v) => set({ content: v })}
+					/>
+					<MissingFields template={element.content} fields={fields} />
+				</PanelSection>
+			</LockedFieldset>
+
+			<GeometrySection element={element} onChange={set} />
+
+			<LockedFieldset locked={element.locked}>
+				<PanelSection title="Шрифт и кегль">
+					<Select
+						value={showCustomFontField ? CUSTOM_FONT : element.font}
+						options={[
+							...fontOptions.map((f) => ({ value: f, label: f })),
+							{ value: CUSTOM_FONT, label: "Свой…" },
+						]}
+						onChange={(v) => {
+							setShowCustomFontField(v === CUSTOM_FONT);
+							if (v !== CUSTOM_FONT) set({ font: v });
+						}}
+					/>
+					{showCustomFontField && (
+						<TextField
+							value={element.font}
+							placeholder="Название шрифта"
+							onChange={(v) => set({ font: v })}
+						/>
+					)}
+					<PropertyRow columns={2}>
+						<Select
+							value={element.weight}
+							onChange={(v) => set({ weight: v as TextElement["weight"] })}
+							options={[
+								{ value: "regular", label: "Regular" },
+								{ value: "bold", label: "Bold" },
+							]}
+						/>
+						<TextField
+							prefixIcon="a-large-small"
+							value={mmToPt(element.size)}
+							unit="pt"
+							warning={over}
+							onChange={(v) => {
+								const size = ptToMm(num(v));
+								// трекинг в инспекторе — процент от кегля; держим процент,
+								// иначе при увеличении кегля буквы «слипались» бы
+								const pct = trackingToPct(element.tracking, element.size);
+								set({ size, tracking: pctToTracking(pct, size) });
+							}}
+						/>
+					</PropertyRow>
+					{/* Межстрочный — множитель кегля (render.ts: lineHeightMm = sizeMm * lineHeight),
+					    поэтому эффект виден только когда строк больше одной (перенос/ручные \n). */}
+					<PropertyRow columns={2}>
+						<TextField
+							prefixIcon="move-vertical"
+							value={lineHeightToPct(element.lineHeight)}
+							unit="%"
+							onChange={(v) => set({ lineHeight: pctToLineHeight(num(v)) })}
+						/>
+						<TextField
+							prefixIcon="move-horizontal"
+							value={trackingToPct(element.tracking, element.size)}
+							unit="%"
+							onChange={(v) =>
+								set({ tracking: pctToTracking(num(v), element.size) })
+							}
+						/>
+					</PropertyRow>
+				</PanelSection>
+
+				<PanelSection title="Выравнивание">
+					<PropertyRow columns={2}>
+						<SegmentedControl
+							fullWidth
+							value={element.align}
+							onChange={(v) => set({ align: v as TextAlign })}
+							options={ALIGN_OPTIONS}
+						/>
+						<SegmentedControl
+							fullWidth
+							value={element.valign}
+							onChange={(v) => set({ valign: v as TextValign })}
+							options={VALIGN_OPTIONS}
+						/>
+					</PropertyRow>
+				</PanelSection>
+
+				<PanelSection title="Цвет">
+					<ColorField
+						value={element.color}
+						showOpacity={false}
+						swatches={swatches}
+						onChange={(hex) => set({ color: hex })}
+					/>
+				</PanelSection>
+
+				<PanelSection title="Автоподгонка" warning={over}>
+					<Select
+						value={element.fit}
+						warning={over}
+						onChange={(v) => set({ fit: v as TextFit })}
+						options={FIT_OPTIONS}
+					/>
+					{element.fit === "shrink" && (
+						<PropertyRow label="Не меньше">
+							<TextField
+								value={mmToPt(element.minSize)}
+								unit="pt"
+								onChange={(v) => set({ minSize: ptToMm(num(v)) })}
+							/>
+						</PropertyRow>
+					)}
+					<div className={styles.hint}>{fitHint(element)}</div>
+				</PanelSection>
+			</LockedFieldset>
+		</>
 	);
 }

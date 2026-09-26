@@ -20,6 +20,7 @@ import { BASE_PX_PER_MM, Canvas, type ViewportSize } from "../Canvas";
 import { DataMode } from "../DataMode";
 import { Inspector } from "../Inspector";
 import { type LayerPatch, LayersPanel } from "../LayersPanel";
+import { documentColors } from "../lib/documentColors";
 import { useAutosave } from "../lib/useAutosave";
 import { useDocumentHistory } from "../lib/useDocumentHistory";
 import { useFontsVersion } from "../lib/useFontsVersion";
@@ -105,6 +106,8 @@ export function EditorShell({
 				p.overflowIds.includes(selectedId) ? [i + 1] : [],
 			)
 		: [];
+
+	const swatches = useMemo(() => documentColors(history.doc), [history.doc]);
 
 	const selectedElement =
 		history.doc.elements.find((el) => el.id === selectedId) ?? null;
@@ -415,7 +418,9 @@ export function EditorShell({
 						selectedGuide={selectedGuide}
 						onGuideChange={handleGuidePositionChange}
 						fields={fields}
+						record={previewRecord}
 						overflowRecords={selectedOverflowRecords}
+						swatches={swatches}
 					/>
 				</div>
 			)}

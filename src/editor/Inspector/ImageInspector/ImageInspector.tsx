@@ -3,7 +3,12 @@
 // но раз файл локальный и его пропорции точно известны, заодно подгоняем размер
 // рамки под них.
 import { useRef } from "react";
-import type { FieldDef, ImageElement, ImageFit } from "../../../model/document";
+import type {
+	DataRecord,
+	FieldDef,
+	ImageElement,
+	ImageFit,
+} from "../../../model/document";
 import { Icon } from "../../../ui/core/Icon";
 import { PanelSection } from "../../../ui/editor/PanelSection";
 import { PropertyRow } from "../../../ui/editor/PropertyRow";
@@ -11,14 +16,16 @@ import { Button } from "../../../ui/forms/Button";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
 import { FieldMenu } from "../FieldMenu";
+import { GeometrySection } from "../GeometrySection";
+import { LockedFieldset } from "../LockedFieldset";
 import { MissingFields } from "../MissingFields";
-import { PositionSizeFields } from "../PositionSizeFields";
 import styles from "./ImageInspector.module.css";
 
 export interface ImageInspectorProps {
 	element: ImageElement;
 	onChange: (element: ImageElement) => void;
 	fields: FieldDef[];
+	record: DataRecord;
 }
 
 const FIT_OPTIONS: { value: ImageFit; label: string }[] = [
@@ -53,6 +60,7 @@ export function ImageInspector({
 	element,
 	onChange,
 	fields,
+	record,
 }: ImageInspectorProps) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,66 +82,70 @@ export function ImageInspector({
 	}
 
 	return (
-		<PanelSection title={element.name}>
-			<PositionSizeFields
-				x={element.x}
-				y={element.y}
-				w={element.w}
-				h={element.h}
+		<>
+			<GeometrySection
+				element={element}
 				onChange={(patch) => onChange({ ...element, ...patch })}
 			/>
 
-			<PropertyRow label="Источник">
-				<TextField
-					value={element.src}
-					placeholder="https://… или {{photo}}"
-					onChange={(v) => onChange({ ...element, src: v })}
-				/>
-				{/* src целиком заменяется полем: ссылка из ячейки — это и есть весь адрес */}
-				<FieldMenu
-					fields={fields}
-					onPick={(key) => onChange({ ...element, src: `{{${key}}}` })}
-				/>
-			</PropertyRow>
-			<MissingFields template={element.src} fields={fields} />
+			<LockedFieldset locked={element.locked}>
+				<PanelSection
+					title="Источник"
+					actions={
+						// src целиком заменяется полем: ссылка из ячейки — это и есть весь адрес
+						<FieldMenu
+							fields={fields}
+							record={record}
+							onPick={(key) => onChange({ ...element, src: `{{${key}}}` })}
+						/>
+					}
+				>
+					<TextField
+						value={element.src}
+						placeholder="https://… или {{photo}}"
+						onChange={(v) => onChange({ ...element, src: v })}
+					/>
+					<MissingFields template={element.src} fields={fields} />
 
-			{HAS_PLACEHOLDER.test(element.src) ? null : element.src ? (
-				<img src={element.src} alt="" className={styles.imagePreview} />
-			) : (
-				<div className={styles.imagePlaceholder}>
-					<Icon name="image" size={20} />
-					Вставьте ссылку или загрузите файл
-				</div>
-			)}
+					{HAS_PLACEHOLDER.test(element.src) ? null : element.src ? (
+						<img src={element.src} alt="" className={styles.imagePreview} />
+					) : (
+						<div className={styles.imagePlaceholder}>
+							<Icon name="image" size={20} />
+							Вставьте ссылку или загрузите файл
+						</div>
+					)}
 
-			<Button
-				variant="ghost"
-				size="sm"
-				fullWidth
-				icon="image"
-				onClick={() => fileInputRef.current?.click()}
-			>
-				Загрузить файл
-			</Button>
-			<input
-				ref={fileInputRef}
-				type="file"
-				accept="image/*"
-				className={styles.fileInput}
-				onChange={(e) => {
-					const file = e.target.files?.[0];
-					e.target.value = ""; // разрешить повторный выбор того же файла
-					if (file) void handleFileSelected(file);
-				}}
-			/>
+					<Button
+						variant="ghost"
+						size="sm"
+						fullWidth
+						icon="image"
+						onClick={() => fileInputRef.current?.click()}
+					>
+						Загрузить файл
+					</Button>
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept="image/*"
+						className={styles.fileInput}
+						onChange={(e) => {
+							const file = e.target.files?.[0];
+							e.target.value = ""; // разрешить повторный выбор того же файла
+							if (file) void handleFileSelected(file);
+						}}
+					/>
 
-			<PropertyRow label="Вписать">
-				<Select
-					value={element.fit}
-					onChange={(v) => onChange({ ...element, fit: v as ImageFit })}
-					options={FIT_OPTIONS}
-				/>
-			</PropertyRow>
-		</PanelSection>
+					<PropertyRow label="Вписать">
+						<Select
+							value={element.fit}
+							onChange={(v) => onChange({ ...element, fit: v as ImageFit })}
+							options={FIT_OPTIONS}
+						/>
+					</PropertyRow>
+				</PanelSection>
+			</LockedFieldset>
+		</>
 	);
 }

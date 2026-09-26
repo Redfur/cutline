@@ -26,9 +26,14 @@ function presetKeyFor(w: number, h: number): string {
 export interface CanvasInspectorProps {
 	canvas: CanvasModel;
 	onChange: (canvas: CanvasModel) => void;
+	swatches: string[];
 }
 
-export function CanvasInspector({ canvas, onChange }: CanvasInspectorProps) {
+export function CanvasInspector({
+	canvas,
+	onChange,
+	swatches,
+}: CanvasInspectorProps) {
 	const presetKey = presetKeyFor(canvas.w, canvas.h);
 
 	return (
@@ -82,6 +87,7 @@ export function CanvasInspector({ canvas, onChange }: CanvasInspectorProps) {
 						canvas.background === "transparent" ? "#FFFFFF" : canvas.background
 					}
 					showOpacity={false}
+					swatches={swatches}
 					onChange={(hex) => onChange({ ...canvas, background: hex })}
 				/>
 			</PropertyRow>

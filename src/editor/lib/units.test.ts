@@ -27,6 +27,11 @@ describe("units", () => {
 		expect(trackingToPct(-0.2, 4)).toBe(-5);
 	});
 
+	it("показ округляется до десятых", () => {
+		expect(mmToPt(6)).toBe(17);
+		expect(trackingToPct(1, 3)).toBe(33.3);
+	});
+
 	it("при нулевом кегле трекинг 0, а не NaN", () => {
 		expect(trackingToPct(1, 0)).toBe(0);
 	});
