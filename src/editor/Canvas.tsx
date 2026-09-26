@@ -80,12 +80,14 @@ function Ruler({
 	pxPerMm,
 	offsetPx,
 	originPx,
+	highlightRange,
 }: {
 	axis: "x" | "y";
 	lengthMm: number;
 	pxPerMm: number;
 	offsetPx: number;
 	originPx: number;
+	highlightRange?: { fromMm: number; toMm: number } | null;
 }) {
 	const from = -PAD_MM;
 	const to = lengthMm + PAD_MM;
@@ -103,6 +105,29 @@ function Ruler({
 					: { top: -offsetPx, left: 0, width: "100%" }),
 			}}
 		>
+			{highlightRange && (
+				<div
+					style={{
+						position: "absolute",
+						background: "var(--bg-selected)",
+						...(axis === "x"
+							? {
+									left: originPx + highlightRange.fromMm * pxPerMm,
+									width:
+										(highlightRange.toMm - highlightRange.fromMm) * pxPerMm,
+									top: 0,
+									height: "100%",
+								}
+							: {
+									top: originPx + highlightRange.fromMm * pxPerMm,
+									height:
+										(highlightRange.toMm - highlightRange.fromMm) * pxPerMm,
+									left: 0,
+									width: "100%",
+								}),
+					}}
+				/>
+			)}
 			{minor.map((mm) => {
 				const posPx = originPx + mm * pxPerMm;
 				return (
@@ -419,6 +444,11 @@ export function Canvas({
 						pxPerMm={pxPerMm}
 						offsetPx={scroll.left}
 						originPx={originXPx}
+						highlightRange={
+							liveElement
+								? { fromMm: liveElement.x, toMm: liveElement.x + liveElement.w }
+								: null
+						}
 					/>
 				</div>
 			</div>
@@ -439,6 +469,11 @@ export function Canvas({
 						pxPerMm={pxPerMm}
 						offsetPx={scroll.top}
 						originPx={originYPx}
+						highlightRange={
+							liveElement
+								? { fromMm: liveElement.y, toMm: liveElement.y + liveElement.h }
+								: null
+						}
 					/>
 				</div>
 				<div
