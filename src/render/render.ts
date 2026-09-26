@@ -35,10 +35,14 @@ function substitute(template: string, record: DataRecord): string {
 }
 
 function escapeXml(text: string): string {
+	// Кавычки тоже экранируем: escapeXml подставляется и в атрибуты (href, font-family),
+	// а не только в текстовое содержимое — без этого строка с " вываливалась бы из
+	// атрибута наружу (например через свободное поле «Источник» у image-элемента).
 	return text
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;");
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;");
 }
 
 function textAnchorOf(align: TextAlign): "start" | "middle" | "end" {
