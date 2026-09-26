@@ -667,8 +667,14 @@ export function Canvas({
 					}
 					style={{ flex: 1, overflow: "auto", position: "relative" }}
 				>
+					{/* Серая область вокруг карточки — клик здесь снимает выделение, как клик по
+					    самой карточке мимо элементов; .canvas-card гасит свой click ниже,
+					    чтобы не сработать здесь же ещё раз всплытием */}
+					{/* biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше */}
+					{/* biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше */}
 					<div
 						ref={contentRef}
+						onClick={() => onSelect(null)}
 						style={{
 							width: contentWidthPx,
 							height: contentHeightPx,
@@ -682,6 +688,9 @@ export function Canvas({
 						<div
 							className="canvas-card"
 							onClick={(e) => {
+								// иначе всплыл бы на серую область выше и снял выделение сразу
+								// после размещения нового элемента этим же кликом
+								e.stopPropagation();
 								const rect = e.currentTarget.getBoundingClientRect();
 								const atMm = {
 									x: (e.clientX - rect.left) / pxPerMm,
