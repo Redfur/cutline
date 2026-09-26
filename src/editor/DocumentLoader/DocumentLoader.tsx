@@ -76,5 +76,12 @@ export function DocumentLoader() {
 	if (state.phase === "loading") {
 		return slow ? <EditorSkeleton /> : null;
 	}
-	return <EditorShell initialDoc={state.doc} initialView={state.view} />;
+	return (
+		<EditorShell
+			initialDoc={state.doc}
+			initialView={state.view}
+			storageAvailable={state.storageAvailable}
+			notice={state.notice}
+		/>
+	);
 }

@@ -15,6 +15,8 @@ export interface Autosaver<T> {
 	schedule: (snapshot: T) => void;
 	// записать отложенный снимок немедленно (вкладку прячут или закрывают)
 	flush: () => Promise<void>;
+	// есть правки, которые ещё не легли в хранилище: ждут паузы или пишутся сейчас
+	hasPending: () => boolean;
 	dispose: () => void;
 }
 
@@ -29,6 +31,7 @@ export function createAutosaver<T>({
 	// транзакции завершатся в порядке запуска, и более старый снимок мог бы лечь
 	// поверх нового.
 	let queue: Promise<void> = Promise.resolve();
+	let writing = 0;
 
 	const flush = (): Promise<void> => {
 		if (timer !== null) {
@@ -38,6 +41,7 @@ export function createAutosaver<T>({
 		if (!pending) return queue;
 		const { snapshot } = pending;
 		pending = null;
+		writing++;
 		queue = queue.then(async () => {
 			try {
 				await save(snapshot);
@@ -45,6 +49,8 @@ export function createAutosaver<T>({
 				if (!pending) onStatus("saved");
 			} catch (error) {
 				onStatus("error", error);
+			} finally {
+				writing--;
 			}
 		});
 		return queue;
@@ -58,6 +64,7 @@ export function createAutosaver<T>({
 			timer = setTimeout(() => void flush(), delayMs);
 		},
 		flush,
+		hasPending: () => pending !== null || writing > 0,
 		dispose() {
 			if (timer !== null) clearTimeout(timer);
 			timer = null;

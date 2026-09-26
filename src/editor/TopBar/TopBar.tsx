@@ -8,6 +8,7 @@ import { SaveIndicator } from "../../ui/feedback/SaveIndicator";
 import { Button } from "../../ui/forms/Button";
 import { IconButton } from "../../ui/forms/IconButton";
 import { SegmentedControl } from "../../ui/forms/SegmentedControl";
+import type { AutosaveState } from "../lib/useAutosave";
 import styles from "./TopBar.module.css";
 
 export type Mode = "design" | "data";
@@ -20,6 +21,8 @@ export interface TopBarProps {
 	mode: Mode;
 	onModeChange: (mode: Mode) => void;
 	onOpenDocument: (doc: CutlineDocument) => void;
+	onNewDocument: () => void;
+	save: AutosaveState;
 	canUndo: boolean;
 	canRedo: boolean;
 	onUndo: () => void;
@@ -32,6 +35,8 @@ export function TopBar({
 	mode,
 	onModeChange,
 	onOpenDocument,
+	onNewDocument,
+	save,
 	canUndo,
 	canRedo,
 	onUndo,
@@ -51,7 +56,9 @@ export function TopBar({
 	return (
 		<div className={styles.topBar}>
 			<span className={styles.logo}>Cutline</span>
-			<SaveIndicator status="saved" />
+			<span title={save.message ?? undefined}>
+				<SaveIndicator status={save.status} label={save.label ?? undefined} />
+			</span>
 			<div className={styles.history}>
 				<IconButton
 					icon="undo-2"
@@ -107,7 +114,12 @@ export function TopBar({
 				variant="ghost"
 				onClick={() => downloadDocument(doc, "cutline.json")}
 			>
-				Сохранить
+				Сохранить в файл
+			</Button>
+			{/* С автосохранением перезагрузка возвращает прошлый документ — к пустому
+			    листу иначе не вернуться. Отменяется Ctrl+Z, поэтому без подтверждения */}
+			<Button variant="ghost" onClick={onNewDocument}>
+				Новый
 			</Button>
 			<label className={styles.openLabel}>
 				<span className={styles.openButton}>Открыть…</span>

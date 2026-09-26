@@ -13,6 +13,7 @@ import type {
 	CutlineElement,
 	Guide,
 } from "../../model/document";
+import { blankDocument } from "../../render/fixtures/blank";
 import type { ViewState } from "../../storage/session";
 import { RecordNavigator } from "../../ui/editor/RecordNavigator";
 import {
@@ -31,6 +32,7 @@ import {
 	createRect,
 	createText,
 } from "../lib/createElement";
+import { useAutosave } from "../lib/useAutosave";
 import { useDocumentHistory } from "../lib/useDocumentHistory";
 import { useFontsVersion } from "../lib/useFontsVersion";
 import { type Tool, Toolbar } from "../Toolbar";
@@ -61,9 +63,18 @@ export interface EditorShellProps {
 	// (DocumentLoader); дальше редактор ими не управляется — это стартовые значения
 	initialDoc: CutlineDocument;
 	initialView: ViewState;
+	// IndexedDB открылся при загрузке — есть куда сохранять
+	storageAvailable: boolean;
+	// почему вместо сохранённого документа открылся пустой лист
+	notice: string | null;
 }
 
-export function EditorShell({ initialDoc, initialView }: EditorShellProps) {
+export function EditorShell({
+	initialDoc,
+	initialView,
+	storageAvailable,
+	notice,
+}: EditorShellProps) {
 	const history = useDocumentHistory(initialDoc);
 	const [mode, setMode] = useState<Mode>(initialView.mode);
 	const [tool, setTool] = useState<Tool>("select");
@@ -138,6 +149,20 @@ export function EditorShell({ initialDoc, initialView }: EditorShellProps) {
 			(viewportSize.height - FIT_MARGIN_PX * 2) / (canvas.h * BASE_PX_PER_MM),
 		);
 		setZoom(Math.max(0.1, fitZoom));
+	};
+
+	// сохраняем зажатый индекс, а не сырой: после удаления записей сырой мог уйти
+	// за конец, и после перезагрузки навигатор показал бы несуществующую запись
+	const save = useAutosave(
+		history.doc,
+		{ mode, recordIndex: currentRecord },
+		{ enabled: storageAvailable, notice },
+	);
+
+	const handleNewDocument = () => {
+		history.set(() => blankDocument, { boundary: true });
+		handleSelectElement(null);
+		setRecordIndex(0);
 	};
 
 	const handleOpenDocument = (doc: CutlineDocument) => {
@@ -326,6 +351,8 @@ export function EditorShell({ initialDoc, initialView }: EditorShellProps) {
 				mode={mode}
 				onModeChange={setMode}
 				onOpenDocument={handleOpenDocument}
+				onNewDocument={handleNewDocument}
+				save={save}
 				canUndo={history.canUndo}
 				canRedo={history.canRedo}
 				onUndo={history.undo}

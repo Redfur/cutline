@@ -1,8 +1,8 @@
 // Сохранённая сессия редактора в IndexedDB — документ и вид, чтобы перезагрузка
 // страницы ничего не теряла. IndexedDB, а не localStorage: картинки в документе
 // лежат data URI, и лимит localStorage (~5 МБ на сайт) кончился бы на первой
-// фотографии. Сам доступ — idb-keyval: одна запись по ключу, свой обёртки не нужно.
-import { createStore, get, set, type UseStore } from "idb-keyval";
+// фотографии. Сам доступ — idb-keyval: одна запись по ключу, своя обёртка не нужна.
+import { createStore, get, promisifyRequest, type UseStore } from "idb-keyval";
 import type { CutlineDocument } from "../model/document";
 import { validateDocument } from "../model/file";
 
@@ -71,8 +71,16 @@ export async function loadSession(): Promise<LoadResult> {
 	}
 }
 
+// Не idb-keyval set(), а тот же store с явным commit(): без него транзакция
+// коммитится, только когда страница вернётся в цикл событий, а при уходе со страницы
+// её держит модальный вопрос beforeunload, после которого документ выгружается и
+// транзакция прерывается. Проверено: правка за 100 мс до F5 терялась даже с вопросом.
 export function saveSession(session: StoredSession): Promise<void> {
-	return set(KEY, session, getStore());
+	return getStore()("readwrite", (store) => {
+		store.put(session, KEY);
+		store.transaction.commit();
+		return promisifyRequest(store.transaction);
+	});
 }
 
 // Человеческое объяснение для индикатора сохранения

@@ -38,6 +38,17 @@ describe("createAutosaver", () => {
 		expect(save).toHaveBeenCalledTimes(1);
 	});
 
+	it("hasPending: от правки до конца записи", async () => {
+		const { saver } = setup();
+		expect(saver.hasPending()).toBe(false);
+		saver.schedule(1);
+		expect(saver.hasPending()).toBe(true);
+		const writing = saver.flush();
+		expect(saver.hasPending()).toBe(true);
+		await writing;
+		expect(saver.hasPending()).toBe(false);
+	});
+
 	it("flush без отложенного — ничего не пишет", async () => {
 		const { save, saver } = setup();
 		await saver.flush();
