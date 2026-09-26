@@ -16,6 +16,20 @@ const ARROW_STEP_SMALL = 0.1; // Alt/Option
 // округляем результат — иначе повторные +0.1/-0.1 копят ошибку плавающей точки
 const ARROW_STEP_PRECISION = 1000;
 
+// Стрелка не прибавляет шаг к текущему значению, а подтягивает его к ближайшей
+// границе сетки шага в сторону нажатия: 33.234234234 + ArrowUp → 34, не 34.234234234
+// (например после перетаскивания мышью, откуда координаты приходят дробными).
+// Если значение уже точно на границе — сдвигает на полный шаг, как и раньше.
+function nudgeToGrid(current: number, step: number, direction: 1 | -1): number {
+	const ratio = current / step;
+	// чистим шум плавающей точки перед floor/ceil — иначе ровно граничное значение
+	// может представиться как 33.99999999996 и сетка «съедет» на шаг в сторону
+	const cleanRatio = Math.round(ratio * 1e6) / 1e6;
+	const grid =
+		direction === 1 ? Math.floor(cleanRatio) + 1 : Math.ceil(cleanRatio) - 1;
+	return Math.round(grid * step * ARROW_STEP_PRECISION) / ARROW_STEP_PRECISION;
+}
+
 export interface TextFieldProps {
 	value?: string | number;
 	defaultValue?: string | number;
@@ -188,10 +202,11 @@ export function TextField({
 											? ARROW_STEP_SMALL
 											: ARROW_STEP;
 									const current = Number(value) || 0;
-									const delta = e.key === "ArrowUp" ? step : -step;
-									const next =
-										Math.round((current + delta) * ARROW_STEP_PRECISION) /
-										ARROW_STEP_PRECISION;
+									const next = nudgeToGrid(
+										current,
+										step,
+										e.key === "ArrowUp" ? 1 : -1,
+									);
 									setDraft(String(next));
 									onChange?.(String(next));
 								}
