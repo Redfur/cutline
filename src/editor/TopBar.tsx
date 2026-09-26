@@ -6,6 +6,7 @@ import type { CutlineDocument } from "../model/document";
 import { render, renderedSize } from "../render/render";
 import { SaveIndicator } from "../ui/feedback/SaveIndicator";
 import { Button } from "../ui/forms/Button";
+import { IconButton } from "../ui/forms/IconButton";
 import { SegmentedControl } from "../ui/forms/SegmentedControl";
 
 export type Mode = "design" | "data";
@@ -15,6 +16,10 @@ export interface TopBarProps {
 	mode: Mode;
 	onModeChange: (mode: Mode) => void;
 	onOpenDocument: (doc: CutlineDocument) => void;
+	canUndo: boolean;
+	canRedo: boolean;
+	onUndo: () => void;
+	onRedo: () => void;
 }
 
 export function TopBar({
@@ -22,6 +27,10 @@ export function TopBar({
 	mode,
 	onModeChange,
 	onOpenDocument,
+	canUndo,
+	canRedo,
+	onUndo,
+	onRedo,
 }: TopBarProps) {
 	const handleOpen = (e: ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -56,6 +65,20 @@ export function TopBar({
 				Cutline
 			</span>
 			<SaveIndicator status="saved" />
+			<div style={{ display: "flex", gap: 2 }}>
+				<IconButton
+					icon="undo-2"
+					label="Отменить"
+					disabled={!canUndo}
+					onClick={onUndo}
+				/>
+				<IconButton
+					icon="redo-2"
+					label="Повторить"
+					disabled={!canRedo}
+					onClick={onRedo}
+				/>
+			</div>
 			<div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
 				<SegmentedControl
 					size="lg"
