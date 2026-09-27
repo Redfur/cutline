@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { hasProblems, type RecordProblems } from "../../../data/problems";
 import type { CutlineDocument } from "../../../model/document";
+import type { ImagePreview } from "../../../render/render";
 import { SegmentedControl } from "../../../ui/forms/SegmentedControl";
 import { records as recordsCount } from "../../lib/plural";
 import { Thumbnail } from "./Thumbnail";
@@ -15,6 +16,7 @@ export interface ThumbnailGridProps {
 	rows: number[];
 	problems: RecordProblems[];
 	fontsVersion: number;
+	preview: ImagePreview;
 	filter: RecordFilter;
 	onFilterChange: (filter: RecordFilter) => void;
 	selectedIndex: number | null;
@@ -27,6 +29,7 @@ export function ThumbnailGrid({
 	rows,
 	problems,
 	fontsVersion,
+	preview,
 	filter,
 	onFilterChange,
 	selectedIndex,
@@ -91,6 +94,7 @@ export function ThumbnailGrid({
 								<Thumbnail
 									key={index}
 									layout={layout}
+									preview={preview}
 									record={record}
 									index={index}
 									label={labelKey ? (record[labelKey] ?? "") : ""}

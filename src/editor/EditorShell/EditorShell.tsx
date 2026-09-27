@@ -6,6 +6,7 @@ import { sampleRecord } from "../../data/placeholders";
 import {
 	documentProblems,
 	hasProblems,
+	imageHrefs,
 	recordProblems,
 } from "../../data/problems";
 import { ensureFontFaces } from "../../fonts/load";
@@ -23,6 +24,7 @@ import { Inspector } from "../Inspector";
 import { type LayerPatch, LayersPanel } from "../LayersPanel";
 import { documentColors } from "../lib/documentColors";
 import { useAutosave } from "../lib/useAutosave";
+import { useBrokenImages } from "../lib/useBrokenImages";
 import { useDocumentHistory } from "../lib/useDocumentHistory";
 import { useFontsVersion } from "../lib/useFontsVersion";
 import { type Tool, Toolbar } from "../Toolbar";
@@ -105,11 +107,19 @@ export function EditorShell({
 	const fontsVersion = useFontsVersion();
 	// шрифт выбрали в инспекторе или открыли файл — догружаем; повторы отсекает сам загрузчик
 	useEffect(() => ensureFontFaces(history.doc), [history.doc]);
+	// Ссылки картинок по всем записям — браузер проверяет, какие не грузятся: заглушки
+	// на холсте и в сетке, проблемы записей. Без записей — по примеру полей, как на холсте
+	const hrefs = useMemo(
+		() => imageHrefs(history.doc, sampleRecord(history.doc.fields)),
+		[history.doc],
+	);
+	const brokenImages = useBrokenImages(hrefs);
+	const preview = useMemo(() => ({ brokenImages }), [brokenImages]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: fontsVersion — см. комментарий у зависимостей
 	const problems = useMemo(
-		() => documentProblems(history.doc),
+		() => documentProblems(history.doc, brokenImages),
 		// fontsVersion не читается внутри, но меняет результат measureText — см. хук
-		[history.doc, fontsVersion],
+		[history.doc, fontsVersion, brokenImages],
 	);
 	// без записей холст показывает примеры полей — проверяем и их, иначе макет,
 	// в который не влезает даже пример, выглядел бы исправным
@@ -117,8 +127,20 @@ export function EditorShell({
 		() =>
 			records.length
 				? problems[currentRecord]
-				: recordProblems(history.doc, { record: previewRecord, n: 1 }),
-		[records.length, problems, currentRecord, history.doc, previewRecord],
+				: recordProblems(
+						history.doc,
+						{ record: previewRecord, n: 1 },
+						undefined,
+						brokenImages,
+					),
+		[
+			records.length,
+			problems,
+			currentRecord,
+			history.doc,
+			previewRecord,
+			brokenImages,
+		],
 	);
 	const overflowIds = currentProblems?.overflowIds ?? [];
 	const selectedOverflowRecords = selectedId
@@ -381,6 +403,7 @@ export function EditorShell({
 					onChange={history.set}
 					problems={problems}
 					fontsVersion={fontsVersion}
+					preview={preview}
 					selectedIndex={records.length ? currentRecord : null}
 					onSelect={setRecordIndex}
 					onOpen={handleOpenRecord}
@@ -409,6 +432,7 @@ export function EditorShell({
 						doc={history.doc}
 						record={previewRecord}
 						recordNumber={currentRecord + 1}
+						preview={preview}
 						overflowIds={overflowIds}
 						bottomBar={
 							records.length > 0 && (

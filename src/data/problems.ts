@@ -15,8 +15,9 @@ import {
 } from "./placeholders";
 
 // error — функция в плейсхолдере не смогла посчитать значение этой записи
-// (num() от «абв»): ячейка аргумента подсвечивается, как пустая
-export type CellProblem = "empty" | "overflow" | "error";
+// (num() от «абв»): ячейка аргумента подсвечивается, как пустая;
+// broken — картинка по ссылке из этой ячейки не загрузилась
+export type CellProblem = "empty" | "overflow" | "error" | "broken";
 
 export interface ElementError {
 	elementId: string;
@@ -73,10 +74,37 @@ function imageErrors(src: string, scope: Scope): PlaceholderError[] {
 	}
 }
 
+const NONE: ReadonlySet<string> = new Set();
+
+// Ссылка в сообщении — без середины: data URI фотографии занимает мегабайт
+function shortHref(href: string): string {
+	return href.length > 60 ? `${href.slice(0, 40)}…${href.slice(-15)}` : href;
+}
+
+// Все ссылки картинок документа по всем записям (без записей — по примеру полей, как
+// их показывает холст). Их проверяет редактор (useBrokenImages): render() в сеть не ходит
+export function imageHrefs(
+	doc: CutlineDocument,
+	fallback: DataRecord,
+): Set<string> {
+	const hrefs = new Set<string>();
+	const records = doc.records.length ? doc.records : [fallback];
+	for (const el of doc.elements) {
+		if (el.type !== "image" || !el.visible) continue;
+		records.forEach((record, i) => {
+			const { source } = imageSource(el.src, { record, n: i + 1 });
+			if (source.kind === "href") hrefs.add(source.href);
+		});
+	}
+	return hrefs;
+}
+
+// broken — ссылки, которые не загрузились (useBrokenImages); по умолчанию — никаких
 export function recordProblems(
 	doc: CutlineDocument,
 	scope: Scope,
 	use: FieldUse = fieldUse(doc),
+	broken: ReadonlySet<string> = NONE,
 ): RecordProblems {
 	const { record } = scope;
 	const { used, required } = use;
@@ -100,6 +128,17 @@ export function recordProblems(
 			if (e.static) continue;
 			errors.push({ elementId: el.id, message: e.message });
 			for (const key of e.keys) if (!cells[key]) cells[key] = "error";
+		}
+		if (el.type !== "image" || !broken.size) continue;
+		const { source } = imageSource(el.src, scope);
+		if (source.kind === "href" && broken.has(source.href)) {
+			errors.push({
+				elementId: el.id,
+				message: `Картинка не загрузилась: ${shortHref(source.href)}`,
+			});
+			for (const key of placeholderKeys(el.src)) {
+				if (!cells[key]) cells[key] = "broken";
+			}
 		}
 	}
 
@@ -125,9 +164,12 @@ export function recordProblems(
 }
 
 // По индексу записи; номер записи для n() — индекс + 1
-export function documentProblems(doc: CutlineDocument): RecordProblems[] {
+export function documentProblems(
+	doc: CutlineDocument,
+	broken: ReadonlySet<string> = NONE,
+): RecordProblems[] {
 	const use = fieldUse(doc);
 	return doc.records.map((record: DataRecord, i) =>
-		recordProblems(doc, { record, n: i + 1 }, use),
+		recordProblems(doc, { record, n: i + 1 }, use, broken),
 	);
 }

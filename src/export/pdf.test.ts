@@ -156,7 +156,7 @@ function settings(patch: Partial<ImposeSettings>): ImposeSettings {
 
 function sheets(records: Record<string, string>[], s: ImposeSettings) {
 	const svgs = records.map((r, i) =>
-		render(doc, r, { outlines, bleed: s.bleed, n: i + 1 }),
+		render(doc, r, { outlines, bleed: s.bleed, n: i + 1, preview: null }),
 	);
 	return imposeSheets(pageLayout(card, s), svgs);
 }
@@ -195,7 +195,7 @@ describe("buildPdf", () => {
 		const svg = render(
 			withQr,
 			{ name: "Анна" },
-			{ outlines, bleed: false, n: 7 },
+			{ outlines, bleed: false, n: 7, preview: null },
 		);
 		expect(svg).toContain('fill="#000000"');
 		expect(svg).not.toContain("qr(");

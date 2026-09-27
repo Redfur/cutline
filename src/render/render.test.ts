@@ -26,7 +26,7 @@ const doc = (el: ImageElement): CutlineDocument => ({
 	...blankDocument,
 	elements: [el],
 });
-const opts = { outlines: null, bleed: false, n: 1 };
+const opts = { outlines: null, bleed: false, n: 1, preview: null };
 
 describe("фон картинки", () => {
 	it("прозрачный — только картинка", () => {
@@ -54,5 +54,35 @@ describe("фон картинки", () => {
 		expect(qr.indexOf('fill="#FFEEDD"')).toBeLessThan(
 			qr.indexOf('fill="#000000"'),
 		);
+	});
+});
+
+describe("заглушка картинки — только в редакторе", () => {
+	const preview = { brokenImages: new Set(["https://x.example/broken.png"]) };
+
+	it("пустой источник: в редакторе рамка с крестом, в экспорте — ничего", () => {
+		const empty = doc(image({ src: "{{photo}}" }));
+		const edited = render(empty, { photo: "" }, { ...opts, preview });
+		expect(edited).toContain('stroke="#B5B5AE"');
+		expect(edited).toContain("<line");
+		expect(render(empty, { photo: "" }, opts)).not.toContain("<line");
+	});
+
+	it("не загрузилась: оранжевая заглушка вместо <image>, в экспорте — сама ссылка", () => {
+		const broken = doc(image({ src: "https://x.example/broken.png" }));
+		const edited = render(broken, {}, { ...opts, preview });
+		expect(edited).toContain('stroke="#D97706"');
+		expect(edited).not.toContain("<image");
+		expect(render(broken, {}, opts)).toContain("<image");
+	});
+
+	it("с фоном заглушка не закрывает его заливкой", () => {
+		const svg = render(
+			doc(image({ src: "", background: "#FFEEDD" })),
+			{},
+			{ ...opts, preview },
+		);
+		expect(svg).toContain('fill="#FFEEDD"');
+		expect(svg).toContain('fill="none" stroke="#B5B5AE"');
 	});
 });

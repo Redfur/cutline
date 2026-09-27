@@ -83,6 +83,8 @@ function firstSheetPreview(
 				outlines: null,
 				bleed: pageSettings.bleed,
 				n: c.index + 1,
+				// превью листа — то, что уйдёт в файл: без заглушек
+				preview: null,
 			}),
 		),
 		"var(--guide-trim)",

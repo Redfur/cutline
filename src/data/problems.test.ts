@@ -6,7 +6,12 @@ import type {
 	TextElement,
 } from "../model/document";
 import { blankDocument } from "../render/fixtures/blank";
-import { documentProblems, hasProblems, recordProblems } from "./problems";
+import {
+	documentProblems,
+	hasProblems,
+	imageHrefs,
+	recordProblems,
+} from "./problems";
 
 const at = (record: DataRecord) => ({ record, n: 1 });
 
@@ -150,5 +155,43 @@ describe("функции в плейсхолдерах", () => {
 			records: [{}, {}],
 		};
 		expect(documentProblems(d).every((p) => !hasProblems(p))).toBe(true);
+	});
+});
+
+describe("картинки, которые не загрузились", () => {
+	const img: CutlineElement = {
+		id: "photo",
+		name: "Фото",
+		type: "image",
+		x: 0,
+		y: 0,
+		w: 10,
+		h: 10,
+		rotation: 0,
+		locked: false,
+		visible: true,
+		src: "https://x.example/{{note}}.png",
+		fit: "cover",
+		background: null,
+	};
+	const d = { ...doc([img]), records: [{ note: "a" }, { note: "b" }] };
+
+	it("ссылки по всем записям; без записей — по примеру", () => {
+		expect(imageHrefs(d, {})).toEqual(
+			new Set(["https://x.example/a.png", "https://x.example/b.png"]),
+		);
+		expect(imageHrefs({ ...d, records: [] }, { note: "z" })).toEqual(
+			new Set(["https://x.example/z.png"]),
+		);
+	});
+
+	it("сломанная — проблема записи и ячейка поля из ссылки", () => {
+		const broken = new Set(["https://x.example/b.png"]);
+		const [a, b] = documentProblems(d, broken);
+		expect(hasProblems(a)).toBe(false);
+		expect(b.cells).toEqual({ note: "broken" });
+		expect(b.errors[0].message).toBe(
+			"Картинка не загрузилась: https://x.example/b.png",
+		);
 	});
 });

@@ -3,7 +3,7 @@
 // последнего. Превью — настоящий render() первой записи, как миниатюры в «Данных».
 import { useEffect, useMemo } from "react";
 import { blankDocument } from "../../render/fixtures/blank";
-import { render } from "../../render/render";
+import { PREVIEW_NO_CHECK, render } from "../../render/render";
 import { TEMPLATES, type Template } from "../../templates/templates";
 import { Icon } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
@@ -30,7 +30,12 @@ function TemplatePreview({ template }: { template: Template }) {
 	const { doc } = template;
 	const svg = useMemo(
 		() =>
-			render(doc, doc.records[0] ?? {}, { outlines: null, bleed: false, n: 1 }),
+			render(doc, doc.records[0] ?? {}, {
+				outlines: null,
+				bleed: false,
+				n: 1,
+				preview: PREVIEW_NO_CHECK,
+			}),
 		[doc],
 	);
 	const scale = Math.min(

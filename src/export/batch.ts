@@ -55,7 +55,7 @@ async function cardFile(
 	outlines: OutlineFonts | null,
 ): Promise<{ name: string; bytes: Uint8Array }> {
 	const { doc, format } = job;
-	const opts = { outlines, bleed: false, n: card.index + 1 };
+	const opts = { outlines, bleed: false, n: card.index + 1, preview: null };
 	const svg = render(doc, card.record, opts);
 	const name = fileName(job, card, format);
 	if (format === "svg") return { name, bytes: new TextEncoder().encode(svg) };

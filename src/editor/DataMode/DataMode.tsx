@@ -7,6 +7,7 @@ import { usedFields } from "../../data/placeholders";
 import { hasProblems, type RecordProblems } from "../../data/problems";
 import { downloadCsv } from "../../export/csv";
 import type { CutlineDocument } from "../../model/document";
+import type { ImagePreview } from "../../render/render";
 import { Icon } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
 import {
@@ -32,6 +33,8 @@ export interface DataModeProps {
 	problems: RecordProblems[];
 	// меняется, когда догрузился шрифт, — миниатюры надо перемерить (useFontsVersion)
 	fontsVersion: number;
+	// заглушки пустых и не загрузившихся картинок в миниатюрах
+	preview: ImagePreview;
 	// выделенная строка — она же текущая запись предпросмотра в «Дизайне»
 	selectedIndex: number | null;
 	onSelect: (index: number) => void;
@@ -55,6 +58,7 @@ export function DataMode({
 	onChange,
 	problems,
 	fontsVersion,
+	preview,
 	selectedIndex,
 	onSelect,
 	onOpen,
@@ -273,6 +277,7 @@ export function DataMode({
 				rows={rows}
 				problems={problems}
 				fontsVersion={fontsVersion}
+				preview={preview}
 				filter={filter}
 				onFilterChange={setFilter}
 				selectedIndex={selectedIndex}

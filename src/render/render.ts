@@ -28,9 +28,22 @@ export interface RenderOptions {
 	// номер записи с 1 — для {{ n() }}; у холста — текущая запись, у экспорта — номер
 	// в таблице, а не в выборке
 	n: number;
+	// редактор (холст, миниатюры): пустой слот картинки и не загрузившаяся ссылка
+	// рисуются заглушкой, чтобы их было видно. У экспорта — null: заглушка не печатается.
+	// Что сломано, render() узнать не может (он синхронный и не ходит в сеть) — набор
+	// приходит аргументом, как шрифты для кривых
+	preview: ImagePreview | null;
 	// меток реза тут нет: это свойство листа, а не карточки — их рисует спуск полос
 	// (src/export/imposition.ts)
 }
+
+export interface ImagePreview {
+	brokenImages: ReadonlySet<string>;
+}
+
+// Заглушки пустых слотов без проверки ссылок — для превью, где загрузку не ждём
+// (стартовый экран, список документов)
+export const PREVIEW_NO_CHECK: ImagePreview = { brokenImages: new Set() };
 
 function escapeXml(text: string): string {
 	// Кавычки тоже экранируем: escapeXml подставляется и в атрибуты (href, font-family),
@@ -168,13 +181,44 @@ function renderImageBackground(el: ImageElement): string {
 	return `<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" fill="${el.background}"/>`;
 }
 
-function renderImageContent(el: ImageElement, scope: Scope): string {
+// Заглушка: пунктирная рамка с крестом, как «нет картинки» в любом редакторе.
+// Пустой слот — серая, не загрузилась — оранжевая, как предупреждения в интерфейсе.
+// Заливку не кладём поверх заданного фона: его цвет тоже надо видеть
+const PLACEHOLDER = {
+	empty: { stroke: "#B5B5AE", fill: "#F2F2EF" },
+	broken: { stroke: "#D97706", fill: "#FFF4E5" },
+};
+
+function renderPlaceholder(
+	el: ImageElement,
+	kind: keyof typeof PLACEHOLDER,
+): string {
+	const { stroke, fill } = PLACEHOLDER[kind];
+	// линия — от размера рамки, но не толще миллиметра: на визитке и на плакате одинаково
+	const width = Math.min(0.3, Math.max(0.1, Math.min(el.w, el.h) / 100));
+	const { x, y, w, h } = el;
+	const paint = `stroke="${stroke}" stroke-width="${width}"`;
+	return (
+		`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${el.background ? "none" : fill}" ${paint} stroke-dasharray="${width * 4} ${width * 3}"/>` +
+		`<line x1="${x}" y1="${y}" x2="${x + w}" y2="${y + h}" ${paint}/>` +
+		`<line x1="${x + w}" y1="${y}" x2="${x}" y2="${y + h}" ${paint}/>`
+	);
+}
+
+function renderImageContent(
+	el: ImageElement,
+	scope: Scope,
+	preview: ImagePreview | null,
+): string {
 	const { source } = imageSource(el.src, scope);
 	if (source.kind === "qr") {
 		return renderQr(el, source.text);
 	}
 	if (source.kind !== "href") {
-		return "";
+		return preview ? renderPlaceholder(el, "empty") : "";
+	}
+	if (preview?.brokenImages.has(source.href)) {
+		return renderPlaceholder(el, "broken");
 	}
 	const preserveAspectRatio = IMAGE_FIT_TO_PRESERVE_ASPECT_RATIO[el.fit];
 	return (
@@ -183,8 +227,12 @@ function renderImageContent(el: ImageElement, scope: Scope): string {
 	);
 }
 
-function renderImage(el: ImageElement, scope: Scope): string {
-	return renderImageBackground(el) + renderImageContent(el, scope);
+function renderImage(
+	el: ImageElement,
+	scope: Scope,
+	preview: ImagePreview | null,
+): string {
+	return renderImageBackground(el) + renderImageContent(el, scope, preview);
 }
 
 function renderElement(
@@ -206,7 +254,7 @@ function renderElement(
 			case "line":
 				return renderLine(el);
 			case "image":
-				return renderImage(el, scope);
+				return renderImage(el, scope, opts.preview);
 		}
 	})();
 	if (!inner) {

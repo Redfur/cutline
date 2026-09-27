@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { sampleRecord } from "../../../../data/placeholders";
 import type { CutlineDocument } from "../../../../model/document";
-import { render } from "../../../../render/render";
+import { PREVIEW_NO_CHECK, render } from "../../../../render/render";
 import { Icon } from "../../../../ui/core/Icon";
 import { Button } from "../../../../ui/forms/Button";
 import styles from "./DocRow.module.css";
@@ -37,6 +37,7 @@ export function DocRow({
 						outlines: null,
 						bleed: false,
 						n: 1,
+						preview: PREVIEW_NO_CHECK,
 					})
 				: "",
 		[doc],

@@ -12,7 +12,7 @@ import type {
 	ElementType,
 	Guide,
 } from "../../model/document";
-import { render } from "../../render/render";
+import { type ImagePreview, render } from "../../render/render";
 import { boundsOf } from "../lib/geometry";
 import type { BorderVisibility } from "../lib/snap";
 import type { Tool } from "../Toolbar";
@@ -41,6 +41,8 @@ export interface CanvasProps {
 	record: DataRecord;
 	// номер записи с 1 — для {{ n() }}
 	recordNumber: number;
+	// какие картинки не загрузились — заглушки на карточке
+	preview: ImagePreview;
 	// id текстов, не влезших на этой записи
 	overflowIds: string[];
 	// плавающая полоса внизу холста (навигатор записей) — не прокручивается с карточкой
@@ -75,6 +77,7 @@ export function Canvas({
 	doc,
 	record,
 	recordNumber,
+	preview,
 	overflowIds,
 	bottomBar,
 	zoom,
@@ -207,6 +210,7 @@ export function Canvas({
 		outlines: null,
 		bleed: false,
 		n: recordNumber,
+		preview,
 	});
 
 	return (

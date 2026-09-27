@@ -2,7 +2,7 @@
 // переполнение на миниатюре должно выглядеть так же, как в экспортированном файле.
 import { memo, useEffect, useMemo, useRef } from "react";
 import type { CutlineDocument, DataRecord } from "../../../../model/document";
-import { render } from "../../../../render/render";
+import { type ImagePreview, render } from "../../../../render/render";
 import { Icon } from "../../../../ui/core/Icon";
 import styles from "./Thumbnail.module.css";
 
@@ -11,6 +11,8 @@ export interface ThumbnailProps {
 	// поэтому набор в ячейке перерисовывает одну миниатюру, а не все
 	layout: CutlineDocument;
 	record: DataRecord;
+	// один объект на всю сетку, пока не пришёл ответ о новой сломанной картинке — memo держится
+	preview: ImagePreview;
 	index: number;
 	label: string;
 	problem: boolean;
@@ -26,6 +28,7 @@ const OPTS = { outlines: null, bleed: false };
 export const Thumbnail = memo(function Thumbnail({
 	layout,
 	record,
+	preview,
 	index,
 	label,
 	problem,
@@ -35,8 +38,8 @@ export const Thumbnail = memo(function Thumbnail({
 }: ThumbnailProps) {
 	const ref = useRef<HTMLButtonElement>(null);
 	const svg = useMemo(
-		() => render(layout, record, { ...OPTS, n: index + 1 }),
-		[layout, record, index],
+		() => render(layout, record, { ...OPTS, n: index + 1, preview }),
+		[layout, record, index, preview],
 	);
 
 	// выделили строку в таблице — миниатюра подъезжает в видимую часть сетки;

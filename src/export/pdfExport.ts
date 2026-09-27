@@ -98,6 +98,7 @@ export async function buildTiragePdf(
 				outlines,
 				bleed: settings.bleed,
 				n: card.index + 1,
+				preview: null,
 			}),
 		);
 		onProgress(svgs.length);
