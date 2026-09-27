@@ -15,7 +15,7 @@ import type {
 	Guide,
 } from "../../model/document";
 import { blankDocument } from "../../render/fixtures/blank";
-import type { ViewState } from "../../storage/session";
+import type { ViewState } from "../../storage/documents";
 import { RecordNavigator } from "../../ui/editor/RecordNavigator";
 import { BASE_PX_PER_MM, Canvas, type ViewportSize } from "../Canvas";
 import { DataMode } from "../DataMode";
@@ -50,6 +50,8 @@ function isTextEntryTarget(el: EventTarget | null): boolean {
 }
 
 export interface EditorShellProps {
+	// ключ документа в хранилище — туда пишет автосохранение
+	docId: string;
 	// документ и вид, с которых начинается сессия: сохранённые в IndexedDB или пустые
 	// (DocumentLoader); дальше редактор ими не управляется — это стартовые значения
 	initialDoc: CutlineDocument;
@@ -61,6 +63,7 @@ export interface EditorShellProps {
 }
 
 export function EditorShell({
+	docId,
 	initialDoc,
 	initialView,
 	storageAvailable,
@@ -151,6 +154,7 @@ export function EditorShell({
 	// сохраняем зажатый индекс, а не сырой: после удаления записей сырой мог уйти
 	// за конец, и после перезагрузки навигатор показал бы несуществующую запись
 	const save = useAutosave(
+		docId,
 		history.doc,
 		{ mode, recordIndex: currentRecord, borders },
 		{ enabled: storageAvailable, notice },

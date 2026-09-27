@@ -10,10 +10,10 @@ import {
 } from "../../storage/autosave";
 import {
 	describeSaveError,
-	type StoredSession,
-	saveSession,
+	type StoredDocument,
+	saveDocument,
 	type ViewState,
-} from "../../storage/session";
+} from "../../storage/documents";
 
 // Короче — IndexedDB дёргается на каждый символ в ячейке; длиннее — дольше окно,
 // в которое уход со страницы спрашивает «изменения могут не сохраниться»
@@ -53,18 +53,21 @@ function initialState({ enabled, notice }: AutosaveOptions): AutosaveState {
 }
 
 export function useAutosave(
+	// ключ документа в хранилище; у каждого документа свой редактор (key={id}),
+	// поэтому за время жизни хука id не меняется
+	id: string,
 	doc: CutlineDocument,
 	view: ViewState,
 	options: AutosaveOptions,
 ): AutosaveState {
 	const [state, setState] = useState(() => initialState(options));
-	const saverRef = useRef<Autosaver<StoredSession> | null>(null);
+	const saverRef = useRef<Autosaver<StoredDocument> | null>(null);
 	const { enabled } = options;
 
 	useEffect(() => {
 		if (!enabled) return;
-		const saver = createAutosaver<StoredSession>({
-			save: saveSession,
+		const saver = createAutosaver<StoredDocument>({
+			save: saveDocument,
 			delayMs: SAVE_DELAY_MS,
 			onStatus: (status, error) =>
 				setState({
@@ -116,11 +119,12 @@ export function useAutosave(
 		}
 		touchedRef.current = true;
 		saverRef.current?.schedule({
+			id,
 			doc,
 			view: { mode, recordIndex, borders },
 			savedAt: Date.now(),
 		});
-	}, [doc, mode, recordIndex, borders]);
+	}, [id, doc, mode, recordIndex, borders]);
 
 	return state;
 }

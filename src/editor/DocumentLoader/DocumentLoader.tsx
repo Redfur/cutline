@@ -4,7 +4,13 @@
 import { useEffect, useState } from "react";
 import type { CutlineDocument } from "../../model/document";
 import { blankDocument } from "../../render/fixtures/blank";
-import { loadSession, type ViewState } from "../../storage/session";
+import {
+	lastOpenedId,
+	listDocuments,
+	loadDocument,
+	newDocumentId,
+	type ViewState,
+} from "../../storage/documents";
 import { EditorShell } from "../EditorShell";
 import { EditorSkeleton } from "../EditorSkeleton";
 import { ALL_BORDERS } from "../lib/snap";
@@ -23,12 +29,48 @@ type LoaderState =
 	| { phase: "loading" }
 	| {
 			phase: "ready";
+			id: string;
 			doc: CutlineDocument;
 			view: ViewState;
 			storageAvailable: boolean;
 			// почему открылся пустой лист вместо сохранённого — показывается в индикаторе
 			notice: string | null;
 	  };
+
+interface Opened {
+	id: string;
+	doc: CutlineDocument;
+	view: ViewState;
+	notice: string | null;
+}
+
+// Последний открытый документ; не открылся — самый свежий из тех, что открываются;
+// документов нет — новый пустой лист
+async function openLastDocument(): Promise<Opened> {
+	const list = await listDocuments();
+	const last = await lastOpenedId();
+	const order = [
+		...(last ? [last] : []),
+		...list.map((d) => d.id).filter((id) => id !== last),
+	];
+	let notice: string | null = null;
+	for (const id of order) {
+		const result = await loadDocument(id);
+		if (result.status === "ok") {
+			const { doc, view } = result.stored;
+			return { id, doc, view, notice };
+		}
+		if (result.status === "invalid" && id === last) {
+			notice = `Сохранённый документ не открылся: ${result.reason}`;
+		}
+	}
+	return {
+		id: newDocumentId(),
+		doc: blankDocument,
+		view: DEFAULT_VIEW,
+		notice,
+	};
+}
 
 export function DocumentLoader() {
 	const [state, setState] = useState<LoaderState>({ phase: "loading" });
@@ -37,34 +79,16 @@ export function DocumentLoader() {
 	useEffect(() => {
 		let cancelled = false;
 		const timer = setTimeout(() => setSlow(true), SKELETON_DELAY_MS);
-		loadSession()
+		openLastDocument()
 			.then((result) => {
 				if (cancelled) return;
-				if (result.status === "ok") {
-					setState({
-						phase: "ready",
-						doc: result.session.doc,
-						view: result.session.view,
-						storageAvailable: true,
-						notice: null,
-					});
-				} else {
-					setState({
-						phase: "ready",
-						doc: blankDocument,
-						view: DEFAULT_VIEW,
-						storageAvailable: true,
-						notice:
-							result.status === "invalid"
-								? `Сохранённый документ не открылся: ${result.reason}`
-								: null,
-					});
-				}
+				setState({ phase: "ready", storageAvailable: true, ...result });
 			})
 			.catch(() => {
 				if (cancelled) return;
 				setState({
 					phase: "ready",
+					id: newDocumentId(),
 					doc: blankDocument,
 					view: DEFAULT_VIEW,
 					storageAvailable: false,
@@ -83,6 +107,8 @@ export function DocumentLoader() {
 	}
 	return (
 		<EditorShell
+			key={state.id}
+			docId={state.id}
 			initialDoc={state.doc}
 			initialView={state.view}
 			storageAvailable={state.storageAvailable}
