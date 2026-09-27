@@ -32,6 +32,7 @@ import {
 	ptToMm,
 	trackingToPct,
 } from "../../lib/units";
+import { ElementErrors, type RecordError } from "../ElementErrors";
 import { FieldMenu } from "../FieldMenu";
 import { GeometrySection } from "../GeometrySection";
 import { LockedFieldset } from "../LockedFieldset";
@@ -48,6 +49,8 @@ export interface TextInspectorProps {
 	// номера записей (с 1), где этот текст не влезает в рамку
 	overflowRecords: number[];
 	swatches: string[];
+	// ошибки функций в content по записям
+	recordErrors: RecordError[];
 }
 
 // дальше перечислять бессмысленно — полный список даёт фильтр в «Данных»
@@ -133,6 +136,7 @@ export function TextInspector({
 	fields,
 	record,
 	overflowRecords,
+	recordErrors,
 	swatches,
 }: TextInspectorProps) {
 	const num = (v: string | number) => Number(v) || 0;
@@ -159,8 +163,7 @@ export function TextInspector({
 	});
 
 	// в позицию курсора, а не в конец: «Здравствуйте, {{name}}!» собирают вставкой в середину
-	const insertField = (key: string) => {
-		const token = `{{${key}}}`;
+	const insertField = (token: string) => {
 		const input = contentRef.current;
 		const from = input?.selectionStart ?? element.content.length;
 		const to = input?.selectionEnd ?? from;
@@ -211,7 +214,12 @@ export function TextInspector({
 				<PanelSection
 					title="Содержимое"
 					actions={
-						<FieldMenu fields={fields} record={record} onPick={insertField} />
+						<FieldMenu
+							fields={fields}
+							record={record}
+							target="text"
+							onInsert={insertField}
+						/>
 					}
 				>
 					<TextField
@@ -224,6 +232,11 @@ export function TextInspector({
 						onChange={(v) => set({ content: v })}
 					/>
 					<MissingFields template={element.content} fields={fields} />
+					<ElementErrors
+						template={element.content}
+						kind="text"
+						recordErrors={recordErrors}
+					/>
 				</PanelSection>
 			</LockedFieldset>
 

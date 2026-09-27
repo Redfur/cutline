@@ -143,6 +143,14 @@ export function EditorShell({
 		],
 	);
 	const overflowIds = currentProblems?.overflowIds ?? [];
+	// ошибки функций и сломанные картинки выделенного элемента — по записям, для инспектора
+	const selectedErrors = selectedId
+		? problems.flatMap((p, i) =>
+				p.errors
+					.filter((e) => e.elementId === selectedId)
+					.map((e) => ({ n: i + 1, message: e.message })),
+			)
+		: [];
 	const selectedOverflowRecords = selectedId
 		? problems.flatMap((p, i) =>
 				p.overflowIds.includes(selectedId) ? [i + 1] : [],
@@ -470,6 +478,7 @@ export function EditorShell({
 						fields={fields}
 						record={previewRecord}
 						overflowRecords={selectedOverflowRecords}
+						elementErrors={selectedErrors}
 						swatches={swatches}
 						borders={borders}
 						onBordersChange={setBorders}

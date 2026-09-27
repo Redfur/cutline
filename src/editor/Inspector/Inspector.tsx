@@ -14,6 +14,7 @@ import { Button } from "../../ui/forms/Button";
 import { plural } from "../lib/plural";
 import type { BorderVisibility } from "../lib/snap";
 import { CanvasInspector } from "./CanvasInspector";
+import type { RecordError } from "./ElementErrors";
 import { GuideInspector } from "./GuideInspector";
 import { ImageInspector } from "./ImageInspector";
 import styles from "./Inspector.module.css";
@@ -36,6 +37,8 @@ export interface InspectorProps {
 	record: DataRecord;
 	// номера записей (с 1), где выделенный текст не влезает
 	overflowRecords: number[];
+	// ошибки функций и не загрузившиеся картинки выделенного элемента по записям
+	elementErrors: RecordError[];
 	// цвета документа — быстрый выбор у каждого поля цвета
 	swatches: string[];
 	// видимость границ холста — галочки «Направляющие»
@@ -73,6 +76,7 @@ export function Inspector({
 	fields,
 	record,
 	overflowRecords,
+	elementErrors,
 	swatches,
 	borders,
 	onBordersChange,
@@ -113,6 +117,7 @@ export function Inspector({
 							fields={fields}
 							record={record}
 							overflowRecords={overflowRecords}
+							recordErrors={elementErrors}
 							swatches={swatches}
 						/>
 					)}
@@ -122,6 +127,7 @@ export function Inspector({
 							onChange={onElementChange}
 							fields={fields}
 							record={record}
+							recordErrors={elementErrors}
 							swatches={swatches}
 						/>
 					)}

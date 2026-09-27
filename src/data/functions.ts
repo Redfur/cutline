@@ -14,9 +14,12 @@ export interface FunctionContext {
 export interface BuiltinFunction {
 	minArgs: number;
 	maxArgs: number;
-	// для меню «Вставить поле»: что вставить и что это делает
+	// для меню «Вставить поле»: что вставить и что это делает. «поле» в заготовке
+	// меню заменяет ключом первого поля документа — чтобы вставка сразу работала
 	snippet: string;
 	hint: string;
+	// где имеет смысл: qr — только источник картинки, остальные — текст
+	target: "text" | "image";
 	// нет — функция не для текста (qr)
 	call?: (args: string[], ctx: FunctionContext) => string;
 }
@@ -52,14 +55,16 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 	qr: {
 		minArgs: 1,
 		maxArgs: 10,
-		snippet: '{{ qr("https://", id) }}',
-		hint: "QR-код из текста — в источнике картинки; аргументы склеиваются",
+		snippet: '{{ qr("https://", поле) }}',
+		hint: "QR-код",
+		target: "image",
 	},
 	pad: {
 		minArgs: 2,
 		maxArgs: 3,
-		snippet: "{{ pad(id, 3) }}",
-		hint: "Ведущие нули: 7 → 007",
+		snippet: "{{ pad(n(), 3) }}",
+		hint: "Нули: 7 → 007",
+		target: "text",
 		call: ([value, width, fill = "0"]) => {
 			const w = toInt(width, "pad()");
 			if (w < 0 || w > 50) {
@@ -74,42 +79,48 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		minArgs: 0,
 		maxArgs: 0,
 		snippet: "{{ n() }}",
-		hint: "Номер записи: 1, 2, 3…",
+		hint: "Номер записи",
+		target: "text",
 		call: (_args, ctx) => String(ctx.n),
 	},
 	default: {
 		minArgs: 2,
 		maxArgs: 2,
 		snippet: '{{ default(поле, "—") }}',
-		hint: "Запасной текст, если ячейка пустая",
+		hint: "Запасное",
+		target: "text",
 		call: ([value, fallback]) => (value.trim() ? value : fallback),
 	},
 	upper: {
 		minArgs: 1,
 		maxArgs: 1,
 		snippet: "{{ upper(поле) }}",
-		hint: "ВСЕ ПРОПИСНЫЕ",
+		hint: "ПРОПИСНЫЕ",
+		target: "text",
 		call: ([value]) => value.toLocaleUpperCase("ru"),
 	},
 	lower: {
 		minArgs: 1,
 		maxArgs: 1,
 		snippet: "{{ lower(поле) }}",
-		hint: "все строчные",
+		hint: "строчные",
+		target: "text",
 		call: ([value]) => value.toLocaleLowerCase("ru"),
 	},
 	capitalize: {
 		minArgs: 1,
 		maxArgs: 1,
 		snippet: "{{ capitalize(поле) }}",
-		hint: "Первая буква заглавная",
+		hint: "Заглавная",
+		target: "text",
 		call: ([value]) => value.charAt(0).toLocaleUpperCase("ru") + value.slice(1),
 	},
 	num: {
 		minArgs: 1,
 		maxArgs: 1,
 		snippet: "{{ num(поле) }}",
-		hint: "Разряды: 12500 → 12 500",
+		hint: "12 500",
+		target: "text",
 		call: ([value]) => formatNumber(value),
 	},
 };

@@ -2,7 +2,7 @@
 // src это ссылка в текстовом поле, загрузка файла (data URI) — второстепенный,
 // но раз файл локальный и его пропорции точно известны, заодно подгоняем размер
 // рамки под них.
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type {
 	DataRecord,
 	FieldDef,
@@ -17,6 +17,7 @@ import { Checkbox } from "../../../ui/forms/Checkbox";
 import { ColorField } from "../../../ui/forms/ColorField";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
+import { ElementErrors, type RecordError } from "../ElementErrors";
 import { FieldMenu } from "../FieldMenu";
 import { GeometrySection } from "../GeometrySection";
 import { LockedFieldset } from "../LockedFieldset";
@@ -30,6 +31,8 @@ export interface ImageInspectorProps {
 	record: DataRecord;
 	// цвета документа для быстрого выбора фона
 	swatches: string[];
+	// ошибки функций и не загрузившиеся ссылки по записям
+	recordErrors: RecordError[];
 }
 
 // белый — самый частый фон под QR-кодом и логотипом с прозрачностью
@@ -69,7 +72,11 @@ export function ImageInspector({
 	fields,
 	record,
 	swatches,
+	recordErrors,
 }: ImageInspectorProps) {
+	// ссылка, превью которой не загрузилось: вместо значка «битой» картинки браузера —
+	// понятная подпись. По значению src, а не флагом: новая ссылка проверяется заново
+	const [failedSrc, setFailedSrc] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	async function handleFileSelected(file: File) {
@@ -104,7 +111,8 @@ export function ImageInspector({
 						<FieldMenu
 							fields={fields}
 							record={record}
-							onPick={(key) => onChange({ ...element, src: `{{${key}}}` })}
+							target="image"
+							onInsert={(text) => onChange({ ...element, src: text })}
 						/>
 					}
 				>
@@ -114,9 +122,25 @@ export function ImageInspector({
 						onChange={(v) => onChange({ ...element, src: v })}
 					/>
 					<MissingFields template={element.src} fields={fields} />
+					<ElementErrors
+						template={element.src}
+						kind="image"
+						recordErrors={recordErrors}
+					/>
 
-					{HAS_PLACEHOLDER.test(element.src) ? null : element.src ? (
-						<img src={element.src} alt="" className={styles.imagePreview} />
+					{HAS_PLACEHOLDER.test(element.src) ? null : element.src &&
+						failedSrc !== element.src ? (
+						<img
+							src={element.src}
+							alt=""
+							className={styles.imagePreview}
+							onError={() => setFailedSrc(element.src)}
+						/>
+					) : element.src ? (
+						<div className={styles.imagePlaceholder}>
+							<Icon name="triangle-alert" size={20} />
+							Не загрузилась — проверьте ссылку
+						</div>
 					) : (
 						<div className={styles.imagePlaceholder}>
 							<Icon name="image" size={20} />

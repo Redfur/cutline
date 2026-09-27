@@ -1,0 +1,24 @@
+.list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font: var(--type-label);
+	overflow-wrap: anywhere;
+}
+
+/* ошибка шаблона ломает элемент на всех карточках — красным */
+.error {
+	color: var(--fg-danger);
+}
+
+/* ошибка одной записи — как предупреждение о переполнении */
+.recordError {
+	color: var(--fg-warning);
+}
+
+.more {
+	color: var(--fg-3);
+}
