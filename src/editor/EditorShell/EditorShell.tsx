@@ -57,6 +57,9 @@ export interface EditorShellProps {
 	// (Workspace); дальше редактор ими не управляется — это стартовые значения
 	initialDoc: CutlineDocument;
 	initialView: ViewState;
+	// режим — из адреса (#/doc/<id>/data), чтобы «Назад» в браузере возвращал и его
+	mode: Mode;
+	onModeChange: (mode: Mode) => void;
 	// IndexedDB открылся при загрузке — есть куда сохранять
 	storageAvailable: boolean;
 	// почему вместо сохранённого документа открылся пустой лист
@@ -74,6 +77,8 @@ export function EditorShell({
 	docId,
 	initialDoc,
 	initialView,
+	mode,
+	onModeChange,
 	storageAvailable,
 	notice,
 	onSwitchDocument,
@@ -83,7 +88,6 @@ export function EditorShell({
 	onDeleteDocument,
 }: EditorShellProps) {
 	const history = useDocumentHistory(initialDoc);
-	const [mode, setMode] = useState<Mode>(initialView.mode);
 	const [tool, setTool] = useState<Tool>("select");
 	const [zoom, setZoom] = useState(1);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -177,10 +181,13 @@ export function EditorShell({
 
 	// стабильная ссылка: сетка миниатюр мемоизирована и не должна перерисовываться
 	// из-за новой функции на каждый рендер оболочки
-	const handleOpenRecord = useCallback((index: number) => {
-		setRecordIndex(index);
-		setMode("design");
-	}, []);
+	const handleOpenRecord = useCallback(
+		(index: number) => {
+			setRecordIndex(index);
+			onModeChange("design");
+		},
+		[onModeChange],
+	);
 
 	const handleFitToWindow = () => {
 		if (!viewportSize) return;
@@ -391,7 +398,7 @@ export function EditorShell({
 				docId={docId}
 				doc={history.doc}
 				mode={mode}
-				onModeChange={setMode}
+				onModeChange={onModeChange}
 				onRename={handleRename}
 				onSwitchDocument={onSwitchDocument}
 				onOpenDocument={onOpenDocument}
@@ -496,7 +503,7 @@ export function EditorShell({
 					onClose={() => setExporting(false)}
 					onShowProblems={() => {
 						setExporting(false);
-						setMode("data");
+						onModeChange("data");
 					}}
 				/>
 			)}
