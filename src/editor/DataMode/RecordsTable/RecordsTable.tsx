@@ -12,6 +12,7 @@ import styles from "./RecordsTable.module.css";
 const PROBLEM_TITLE = {
 	empty: "Пусто, а поле используется в макете",
 	overflow: "Текст не влезает в рамку на карточке",
+	error: "Функция в плейсхолдере не смогла посчитать значение",
 } as const;
 
 export interface RecordsTableProps {

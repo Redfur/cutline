@@ -34,7 +34,10 @@ export const Thumbnail = memo(function Thumbnail({
 	onOpen,
 }: ThumbnailProps) {
 	const ref = useRef<HTMLButtonElement>(null);
-	const svg = useMemo(() => render(layout, record, OPTS), [layout, record]);
+	const svg = useMemo(
+		() => render(layout, record, { ...OPTS, n: index + 1 }),
+		[layout, record, index],
+	);
 
 	// выделили строку в таблице — миниатюра подъезжает в видимую часть сетки;
 	// nearest не дёргает прокрутку, если она и так видна

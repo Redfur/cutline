@@ -39,6 +39,8 @@ export interface CanvasProps {
 	doc: CutlineDocument;
 	// запись, которой заполняются плейсхолдеры на карточке; выбирает её оболочка
 	record: DataRecord;
+	// номер записи с 1 — для {{ n() }}
+	recordNumber: number;
 	// id текстов, не влезших на этой записи
 	overflowIds: string[];
 	// плавающая полоса внизу холста (навигатор записей) — не прокручивается с карточкой
@@ -72,6 +74,7 @@ const PLACEABLE_TOOLS = new Set<Tool>([
 export function Canvas({
 	doc,
 	record,
+	recordNumber,
 	overflowIds,
 	bottomBar,
 	zoom,
@@ -203,6 +206,7 @@ export function Canvas({
 	const cardSvg = render(effectiveDoc, record, {
 		outlines: null,
 		bleed: false,
+		n: recordNumber,
 	});
 
 	return (

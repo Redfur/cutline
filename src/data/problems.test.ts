@@ -2,10 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import type {
 	CutlineDocument,
 	CutlineElement,
+	DataRecord,
 	TextElement,
 } from "../model/document";
 import { blankDocument } from "../render/fixtures/blank";
 import { documentProblems, hasProblems, recordProblems } from "./problems";
+
+const at = (record: DataRecord) => ({ record, n: 1 });
 
 // символ = 0.5 кегля, как в fit.test.ts
 vi.mock("../render/measure", () => ({
@@ -60,20 +63,23 @@ describe("recordProblems", () => {
 	const d = doc([text("title", "{{name}}"), text("place", "{{city}}")]);
 
 	it("всё влезло и заполнено — проблем нет", () => {
-		const p = recordProblems(d, { name: "Анна", city: "Казань" });
-		expect(p).toEqual({ cells: {}, overflowIds: [] });
+		const p = recordProblems(d, at({ name: "Анна", city: "Казань" }));
+		expect(p).toEqual({ cells: {}, overflowIds: [], errors: [] });
 		expect(hasProblems(p)).toBe(false);
 	});
 
 	it("пустое поле, которое есть в макете, — проблема; не используемое — нет", () => {
-		const p = recordProblems(d, { name: "Анна", city: "  ", note: "" });
+		const p = recordProblems(d, at({ name: "Анна", city: "  ", note: "" }));
 		expect(p.cells).toEqual({ city: "empty" });
 		expect(hasProblems(p)).toBe(true);
 	});
 
 	it("переполнение помечает элемент и все его поля", () => {
 		const two = doc([text("line", "{{name}}, {{city}}")]);
-		const p = recordProblems(two, { name: "Анна", city: "Санкт-Петербург" });
+		const p = recordProblems(
+			two,
+			at({ name: "Анна", city: "Санкт-Петербург" }),
+		);
 		expect(p.overflowIds).toEqual(["line"]);
 		expect(p.cells).toEqual({ name: "overflow", city: "overflow" });
 	});
@@ -81,20 +87,22 @@ describe("recordProblems", () => {
 	it("«пусто» не перетирается «переполнением»", () => {
 		const two = doc([text("line", "{{name}}{{city}}")]);
 		expect(
-			recordProblems(two, { name: "Константинопольская", city: "" }).cells,
+			recordProblems(two, at({ name: "Константинопольская", city: "" })).cells,
 		).toEqual({ name: "overflow", city: "empty" });
 	});
 
 	it("скрытые элементы не проверяются", () => {
 		const hidden = doc([text("title", "{{name}}", false)]);
-		expect(hasProblems(recordProblems(hidden, { name: "" }))).toBe(false);
+		expect(hasProblems(recordProblems(hidden, at({ name: "" })))).toBe(false);
 	});
 
 	it("плейсхолдер без колонки не даёт ячейку-проблему", () => {
 		const unknown = doc([text("x", "{{nope}}{{name}}")]);
-		expect(recordProblems(unknown, { name: "a".repeat(20) }).cells).toEqual({
-			name: "overflow",
-		});
+		expect(recordProblems(unknown, at({ name: "a".repeat(20) })).cells).toEqual(
+			{
+				name: "overflow",
+			},
+		);
 	});
 });
 
@@ -105,5 +113,42 @@ describe("documentProblems", () => {
 			records: [{ name: "Анна" }, { name: "" }],
 		};
 		expect(documentProblems(d).map(hasProblems)).toEqual([false, true]);
+	});
+});
+
+describe("функции в плейсхолдерах", () => {
+	it("поле в первом аргументе default() не обязательное", () => {
+		const d = doc([text("note", '{{ default(note, "Гость") }}')]);
+		expect(recordProblems(d, at({ note: "" })).cells).toEqual({});
+	});
+
+	it("во втором аргументе default() — обязательное, как обычно", () => {
+		const d = doc([text("note", "{{ default(note, name) }}")]);
+		expect(recordProblems(d, at({ note: "", name: "" })).cells).toEqual({
+			name: "empty",
+		});
+	});
+
+	it("ошибка значения — проблема записи и ячейка аргумента", () => {
+		const d = doc([text("price", "{{ num(note) }}")]);
+		const p = recordProblems(d, at({ note: "дорого" }));
+		expect(p.cells).toEqual({ note: "error" });
+		expect(p.errors).toEqual([
+			{ elementId: "price", message: "num(): «дорого» — не число" },
+		]);
+		expect(hasProblems(p)).toBe(true);
+	});
+
+	it("ошибка шаблона (нет такой функции) — не проблема каждой записи", () => {
+		const d = doc([text("x", "{{ nope(name) }}")]);
+		expect(recordProblems(d, at({ name: "Анна" })).errors).toEqual([]);
+	});
+
+	it("n() в documentProblems — номер записи", () => {
+		const d = {
+			...doc([text("n", "{{ pad(n(), 3) }}")]),
+			records: [{}, {}],
+		};
+		expect(documentProblems(d).every((p) => !hasProblems(p))).toBe(true);
 	});
 });

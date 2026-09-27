@@ -122,12 +122,17 @@ describe("подсказка о вылете и метках", () => {
 });
 
 describe("проблемы", () => {
-	const none: RecordProblems = { cells: {}, overflowIds: [] };
+	const none: RecordProblems = { cells: {}, overflowIds: [], errors: [] };
 	const overflow: RecordProblems = {
 		cells: { name: "overflow" },
 		overflowIds: ["t"],
+		errors: [],
 	};
-	const empty: RecordProblems = { cells: { role: "empty" }, overflowIds: [] };
+	const empty: RecordProblems = {
+		cells: { role: "empty" },
+		overflowIds: [],
+		errors: [],
+	};
 	const cards = records.map((record, index) => ({ record, index }));
 
 	it("номера с 1 среди уходящих в файл", () => {

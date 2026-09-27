@@ -55,7 +55,7 @@ async function cardFile(
 	outlines: OutlineFonts | null,
 ): Promise<{ name: string; bytes: Uint8Array }> {
 	const { doc, format } = job;
-	const opts = { outlines, bleed: false };
+	const opts = { outlines, bleed: false, n: card.index + 1 };
 	const svg = render(doc, card.record, opts);
 	const name = fileName(job, card, format);
 	if (format === "svg") return { name, bytes: new TextEncoder().encode(svg) };
@@ -69,7 +69,7 @@ export async function runExport(job: ExportJob): Promise<void> {
 		const { buildTiragePdf } = await import("./pdfExport");
 		const blob = await buildTiragePdf(
 			job.doc,
-			job.cards.map((c) => c.record),
+			job.cards,
 			job.impose,
 			job.onProgress,
 		);

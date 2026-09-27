@@ -1,8 +1,9 @@
 // Экспорт PDF из редактора: проверка шрифтов → кривые → спуск → PDF. Всё, что
 // требует браузера (fetch, canvas), — здесь; сборка страниц в pdf.ts от DOM не зависит.
 // Грузится лениво из batch.ts вместе с pdf-lib.
-import type { CutlineDocument, DataRecord } from "../model/document";
+import type { CutlineDocument } from "../model/document";
 import { render } from "../render/render";
+import type { ExportCard } from "./batch";
 import { type ImposeSettings, pageLayout } from "./imposition";
 import { buildPdf, decodeDataUri, type ImageBytes, imposeSheets } from "./pdf";
 import { pdfFontProblems, pdfFontProblemsMessage } from "./pdfPreflight";
@@ -79,7 +80,7 @@ async function resolveImageInBrowser(href: string): Promise<ImageBytes> {
 // непонятной ошибкой разбора.
 export async function buildTiragePdf(
 	doc: CutlineDocument,
-	records: DataRecord[],
+	cards: ExportCard[],
 	settings: ImposeSettings,
 	onProgress: (done: number) => void,
 ): Promise<Blob> {
@@ -91,8 +92,14 @@ export async function buildTiragePdf(
 	const { loadOutlineFonts } = await import("../fonts/outlineFonts");
 	const outlines = await loadOutlineFonts(doc);
 	const svgs: string[] = [];
-	for (const record of records) {
-		svgs.push(render(doc, record, { outlines, bleed: settings.bleed }));
+	for (const card of cards) {
+		svgs.push(
+			render(doc, card.record, {
+				outlines,
+				bleed: settings.bleed,
+				n: card.index + 1,
+			}),
+		);
 		onProgress(svgs.length);
 		// отдать кадр: на сотне карточек иначе замирает и счётчик на кнопке
 		await nextFrame();

@@ -36,6 +36,7 @@ export function DocRow({
 				? render(doc, doc.records[0] ?? sampleRecord(doc.fields), {
 						outlines: null,
 						bleed: false,
+						n: 1,
 					})
 				: "",
 		[doc],

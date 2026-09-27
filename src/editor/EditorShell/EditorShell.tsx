@@ -117,7 +117,7 @@ export function EditorShell({
 		() =>
 			records.length
 				? problems[currentRecord]
-				: recordProblems(history.doc, previewRecord),
+				: recordProblems(history.doc, { record: previewRecord, n: 1 }),
 		[records.length, problems, currentRecord, history.doc, previewRecord],
 	);
 	const overflowIds = currentProblems?.overflowIds ?? [];
@@ -408,6 +408,7 @@ export function EditorShell({
 					<Canvas
 						doc={history.doc}
 						record={previewRecord}
+						recordNumber={currentRecord + 1}
 						overflowIds={overflowIds}
 						bottomBar={
 							records.length > 0 && (

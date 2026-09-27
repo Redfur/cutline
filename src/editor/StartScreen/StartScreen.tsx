@@ -29,7 +29,8 @@ const PREVIEW_MAX_H = 160;
 function TemplatePreview({ template }: { template: Template }) {
 	const { doc } = template;
 	const svg = useMemo(
-		() => render(doc, doc.records[0] ?? {}, { outlines: null, bleed: false }),
+		() =>
+			render(doc, doc.records[0] ?? {}, { outlines: null, bleed: false, n: 1 }),
 		[doc],
 	);
 	const scale = Math.min(

@@ -3,7 +3,7 @@
 // запись данных и опции на входе, строка SVG на выходе. На ней держатся превью, сетка
 // миниатюр и все виды экспорта.
 
-import { substitute } from "../data/placeholders";
+import { imageSource, type Scope } from "../data/placeholders";
 import type {
 	Canvas,
 	CutlineDocument,
@@ -24,6 +24,9 @@ export interface RenderOptions {
 	// шрифтом, которого тут нет, остаётся <text>: PDF такое отсекает до вызова render()
 	outlines: OutlineFonts | null;
 	bleed: boolean; // расширить холст на вылет
+	// номер записи с 1 — для {{ n() }}; у холста — текущая запись, у экспорта — номер
+	// в таблице, а не в выборке
+	n: number;
 	// меток реза тут нет: это свойство листа, а не карточки — их рисует спуск полос
 	// (src/export/imposition.ts)
 }
@@ -53,10 +56,10 @@ function anchorXOf(el: TextElement): number {
 
 function renderText(
 	el: TextElement,
-	record: DataRecord,
+	scope: Scope,
 	opts: RenderOptions,
 ): string {
-	const layout = layoutText(el, record);
+	const layout = layoutText(el, scope);
 	if (!layout) {
 		return "";
 	}
@@ -136,11 +139,12 @@ const IMAGE_FIT_TO_PRESERVE_ASPECT_RATIO: Record<ImageElement["fit"], string> =
 		fill: "none",
 	};
 
-function renderImage(el: ImageElement, record: DataRecord): string {
-	const src = substitute(el.src, record);
-	if (!src) {
+function renderImage(el: ImageElement, scope: Scope): string {
+	const { source } = imageSource(el.src, scope);
+	if (source.kind !== "href") {
 		return "";
 	}
+	const src = source.href;
 	const preserveAspectRatio = IMAGE_FIT_TO_PRESERVE_ASPECT_RATIO[el.fit];
 	return (
 		`<image x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}"` +
@@ -150,7 +154,7 @@ function renderImage(el: ImageElement, record: DataRecord): string {
 
 function renderElement(
 	el: CutlineElement,
-	record: DataRecord,
+	scope: Scope,
 	opts: RenderOptions,
 ): string {
 	if (!el.visible) {
@@ -159,7 +163,7 @@ function renderElement(
 	const inner = (() => {
 		switch (el.type) {
 			case "text":
-				return renderText(el, record, opts);
+				return renderText(el, scope, opts);
 			case "rect":
 				return renderRect(el);
 			case "ellipse":
@@ -167,7 +171,7 @@ function renderElement(
 			case "line":
 				return renderLine(el);
 			case "image":
-				return renderImage(el, record);
+				return renderImage(el, scope);
 		}
 	})();
 	if (!inner) {
@@ -219,8 +223,9 @@ export function render(
 	const { widthMm: width, heightMm: height } = renderedSize(canvas, opts);
 
 	const background = renderBackground(canvas, originX, originY, width, height);
+	const scope: Scope = { record, n: opts.n };
 	const elements = doc.elements
-		.map((el) => renderElement(el, record, opts))
+		.map((el) => renderElement(el, scope, opts))
 		.join("");
 
 	return (

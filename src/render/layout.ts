@@ -2,8 +2,8 @@
 // автоподгонка и признак переполнения. Одна функция и для render(), и для подсветки
 // проблем в данных — иначе «не влезло» на экране и в сетке миниатюр считалось бы
 // не тем же измерением, что попадает в SVG (CLAUDE.md, «Измерение текста»).
-import { substitute } from "../data/placeholders";
-import type { DataRecord, TextElement, TextValign } from "../model/document";
+import { type Scope, substitute } from "../data/placeholders";
+import type { TextElement, TextValign } from "../model/document";
 import { applyFit } from "./fit";
 import { measureText } from "./measure";
 
@@ -32,11 +32,8 @@ function applyTextTransform(
 }
 
 // null — после подстановки текста нет (пустое поле), рисовать нечего.
-export function layoutText(
-	el: TextElement,
-	record: DataRecord,
-): TextLayout | null {
-	const substituted = substitute(el.content, record);
+export function layoutText(el: TextElement, scope: Scope): TextLayout | null {
+	const substituted = substitute(el.content, scope);
 	if (!substituted) {
 		return null;
 	}

@@ -79,7 +79,11 @@ function firstSheetPreview(
 	return sheetPreviewSvg(
 		layout,
 		cards.map((c) =>
-			render(doc, c.record, { outlines: null, bleed: pageSettings.bleed }),
+			render(doc, c.record, {
+				outlines: null,
+				bleed: pageSettings.bleed,
+				n: c.index + 1,
+			}),
 		),
 		"var(--guide-trim)",
 	);

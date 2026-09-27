@@ -154,7 +154,9 @@ function settings(patch: Partial<ImposeSettings>): ImposeSettings {
 }
 
 function sheets(records: Record<string, string>[], s: ImposeSettings) {
-	const svgs = records.map((r) => render(doc, r, { outlines, bleed: s.bleed }));
+	const svgs = records.map((r, i) =>
+		render(doc, r, { outlines, bleed: s.bleed, n: i + 1 }),
+	);
 	return imposeSheets(pageLayout(card, s), svgs);
 }
 

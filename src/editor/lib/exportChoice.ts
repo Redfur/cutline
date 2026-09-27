@@ -132,10 +132,12 @@ export function problemsTitle(
 ): string {
 	const n = numbers.length;
 	const where = `${n} ${plural(n, "записи", "записях", "записях")}`;
-	const onlyOverflow = numbers.every((num) =>
-		Object.values(problems[num - 1]?.cells ?? {}).every(
-			(c) => c === "overflow",
-		),
+	const onlyOverflow = numbers.every(
+		(num) =>
+			!problems[num - 1]?.errors.length &&
+			Object.values(problems[num - 1]?.cells ?? {}).every(
+				(c) => c === "overflow",
+			),
 	);
 	return onlyOverflow ? `Текст не влезает в ${where}` : `Проблемы в ${where}`;
 }
