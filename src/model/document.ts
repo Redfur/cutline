@@ -113,6 +113,8 @@ export interface Guide {
 
 export interface CutlineDocument {
 	version: number;
+	// имя в шапке и в списке документов; едет с файлом и проходит undo/redo, как любая правка
+	name: string;
 	canvas: Canvas;
 	fonts: FontRef[];
 	elements: CutlineElement[];

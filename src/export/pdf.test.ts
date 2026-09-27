@@ -52,7 +52,8 @@ const base = {
 };
 
 const doc: CutlineDocument = {
-	version: 2,
+	version: 3,
+	name: "Тест",
 	canvas: { w: 105, h: 148, bleed: 3, safe: 5, background: "#FFFFFF" },
 	fonts: [],
 	fields: [{ key: "name", label: "Имя", sample: "" }],

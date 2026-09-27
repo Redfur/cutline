@@ -26,6 +26,7 @@ const BORDER = "#DDDCD6";
 // линия); в текущую схему документ приводит та же миграция, что и старые файлы
 const badgeV1: CutlineDocument = {
 	version: 1,
+	name: "",
 	canvas: {
 		w: CANVAS_W,
 		h: CANVAS_H,
@@ -537,4 +538,7 @@ const badgeV1: CutlineDocument = {
 	guides: [],
 };
 
-export const badgeDocument = migrateDocument(badgeV1);
+export const badgeDocument: CutlineDocument = {
+	...migrateDocument(badgeV1),
+	name: "Бейдж участника",
+};

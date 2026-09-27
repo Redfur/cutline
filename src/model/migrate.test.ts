@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { blankDocument } from "../render/fixtures/blank";
 import type { CutlineDocument, TextElement } from "./document";
 import { validateDocument } from "./file";
-import { CURRENT_VERSION, migrateDocument } from "./migrate";
+import { CURRENT_VERSION, migrateDocument, UNTITLED } from "./migrate";
 
 function text(valign: TextElement["valign"]): TextElement {
 	return {
@@ -39,9 +39,21 @@ const v1: CutlineDocument = {
 
 describe("migrateDocument", () => {
 	it("v1 → v2: у текстов «по базовой» y −= h, остальные не трогаем", () => {
-		const v2 = migrateDocument(v1);
-		expect(v2.version).toBe(2);
-		expect(v2.elements.map((el) => el.y)).toEqual([45, 50, 50]);
+		const migrated = migrateDocument(v1);
+		expect(migrated.version).toBe(CURRENT_VERSION);
+		expect(migrated.elements.map((el) => el.y)).toEqual([45, 50, 50]);
+	});
+
+	it("v2 → v3: появляется имя «Без названия», остальное не трогаем", () => {
+		const v2 = {
+			...blankDocument,
+			version: 2,
+			name: undefined,
+		} as unknown as CutlineDocument;
+		const v3 = migrateDocument(v2);
+		expect(v3.version).toBe(3);
+		expect(v3.name).toBe(UNTITLED);
+		expect(v3.elements).toBe(v2.elements);
 	});
 
 	it("текущая версия — без изменений", () => {

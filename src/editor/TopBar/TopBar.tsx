@@ -3,6 +3,7 @@
 // экспорта — отдельные кнопки под каждый формат в шапке не держим.
 import { type ChangeEvent, useRef } from "react";
 import { downloadDocument, openDocumentFile } from "../../export/document";
+import { documentFileName } from "../../export/fileName";
 import type { CutlineDocument } from "../../model/document";
 import { SaveIndicator } from "../../ui/feedback/SaveIndicator";
 import { Button } from "../../ui/forms/Button";
@@ -106,7 +107,8 @@ export function TopBar({
 					{
 						label: "Сохранить в файл",
 						icon: "download",
-						onSelect: () => downloadDocument(doc, "cutline.json"),
+						onSelect: () =>
+							downloadDocument(doc, documentFileName(doc.name, "json")),
 					},
 				]}
 			/>

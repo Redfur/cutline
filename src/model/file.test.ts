@@ -12,6 +12,17 @@ describe("validateDocument", () => {
 		expect(validateDocument(old).guides).toEqual([]);
 	});
 
+	it("v3 без имени или с пустым именем — «Без названия»", () => {
+		const { name: _name, ...noName } = blankDocument;
+		expect(validateDocument(noName).name).toBe("Без названия");
+		expect(validateDocument({ ...blankDocument, name: "  " }).name).toBe(
+			"Без названия",
+		);
+		expect(validateDocument({ ...blankDocument, name: "Ценники" }).name).toBe(
+			"Ценники",
+		);
+	});
+
 	it("не трогает входной объект", () => {
 		const { guides: _guides, ...old } = blankDocument;
 		validateDocument(old);

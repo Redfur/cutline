@@ -4,7 +4,10 @@
 // render() о старых версиях не знают.
 import type { CutlineDocument } from "./document";
 
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
+
+// Имя документа, которого не назвали: новый пустой лист, старые файлы до v3
+export const UNTITLED = "Без названия";
 
 // v1 → v2: «по базовой линии» раньше значило «y — базовая линия первой строки»: текст
 // рисовался над y, а рамка y..y+h лежала под ним. Теперь базовая линия последней
@@ -23,8 +26,15 @@ function v1toV2(doc: CutlineDocument): CutlineDocument {
 	};
 }
 
+// v2 → v3: у документа появилось имя — для шапки и списка документов (Этап 5).
+// Старый документ получает «Без названия»: угадывать имя по содержимому ненадёжно.
+function v2toV3(doc: CutlineDocument): CutlineDocument {
+	return { ...doc, version: 3, name: UNTITLED };
+}
+
 const STEPS: Record<number, (doc: CutlineDocument) => CutlineDocument> = {
 	1: v1toV2,
+	2: v2toV3,
 };
 
 export function migrateDocument(doc: CutlineDocument): CutlineDocument {

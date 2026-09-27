@@ -41,6 +41,9 @@ export function ThumbnailGrid({
 	const layout = useMemo<CutlineDocument>(
 		() => ({
 			version,
+			// render() имя не читает; не берём его из doc, чтобы переименование не
+			// пересобирало миниатюры
+			name: "",
 			canvas,
 			fonts,
 			elements,

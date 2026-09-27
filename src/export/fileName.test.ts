@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardFileName } from "./fileName";
+import { cardFileName, documentFileName } from "./fileName";
 
 const fields = [{ key: "name", label: "Имя", sample: "" }];
 
@@ -31,5 +31,20 @@ describe("cardFileName", () => {
 	it("без полей и с пустым значением — только номер", () => {
 		expect(cardFileName(1, 3, {}, [], "png")).toBe("002.png");
 		expect(cardFileName(1, 3, { name: "  " }, fields, "png")).toBe("002.png");
+	});
+});
+
+describe("documentFileName", () => {
+	it("имя документа — имя файла", () => {
+		expect(documentFileName("Бейдж участника", "json")).toBe(
+			"Бейдж участника.json",
+		);
+		expect(documentFileName("Ценники: ярмарка/осень", "pdf")).toBe(
+			"Ценники ярмарка осень.pdf",
+		);
+	});
+
+	it("от имени ничего не осталось — cutline", () => {
+		expect(documentFileName("///", "json")).toBe("cutline.json");
 	});
 });
