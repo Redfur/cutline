@@ -1,4 +1,6 @@
 .topBar {
+	position: relative;
+	z-index: 20;
 	height: var(--topbar-h);
 	flex: none;
 	display: flex;
@@ -20,15 +22,38 @@
 	background: var(--border-1);
 }
 
+/* длинное имя обрезается раньше, чем наедет на переключатель режимов по центру.
+   Отступ −8 px — у контейнера, а не у кнопки: текст имени встаёт ровно после
+   разделителя, а фон наведения выходит левее. На кнопке он сжимал её на те же 8 px,
+   и короткое имя обрезалось многоточием при свободном месте */
+.docName {
+	position: relative;
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	max-width: calc(50% - 380px);
+	margin-left: -8px;
+}
+
+.save {
+	display: flex;
+	flex: none;
+}
+
 .history {
 	display: flex;
 	gap: 2px;
 }
 
+/* по центру шапки, а не оставшегося места: иначе прыгал бы вместе с длиной имени */
 .modeSwitch {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.spacer {
 	flex: 1;
-	display: flex;
-	justify-content: center;
 }
 
 .fileInput {

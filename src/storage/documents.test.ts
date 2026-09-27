@@ -68,6 +68,14 @@ describe("документы", () => {
 		expect((await listDocuments()).map((d) => d.id)).toEqual(["b"]);
 	});
 
+	it("запись в удалённый документ не воскрешает его (поздний flush автосохранения)", async () => {
+		await saveDocument(stored("z", "Черновик", 1));
+		await deleteDocument("z");
+		await saveDocument(stored("z", "Черновик", 2));
+		expect(await loadDocument("z")).toEqual({ status: "missing" });
+		expect(await listDocuments()).toEqual([]);
+	});
+
 	it("документ с картинкой на несколько МБ проходит круг", async () => {
 		const photo = `data:image/png;base64,${"A".repeat(6 * 1024 * 1024)}`;
 		const big = stored("big", "Фото", 1);

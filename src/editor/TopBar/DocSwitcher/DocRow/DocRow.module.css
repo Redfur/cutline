@@ -1,0 +1,89 @@
+.row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	height: 52px;
+	padding: 0 8px 0 6px;
+	border-radius: var(--radius-1);
+	cursor: pointer;
+	transition: background var(--duration-fast);
+	outline: none;
+}
+
+.row:hover,
+.row:focus-visible {
+	background: var(--bg-hover);
+}
+
+.broken,
+.broken:hover {
+	background: transparent;
+	cursor: default;
+}
+
+.thumb {
+	width: 32px;
+	height: 44px;
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--bg-canvas);
+	border-radius: 2px;
+}
+
+/* карточка вписывается в 26×38 по своим пропорциям: у SVG из render() есть viewBox */
+.art {
+	display: flex;
+	width: 26px;
+	height: 38px;
+}
+
+.art svg {
+	width: 100%;
+	height: 100%;
+	filter: drop-shadow(0 0.5px 1px rgba(27, 29, 32, 0.2));
+}
+
+.warn {
+	display: flex;
+	color: var(--fg-warning);
+}
+
+.text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.name,
+.time {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.name {
+	font: var(--type-body);
+	color: var(--fg-1);
+}
+
+.broken .name {
+	color: var(--fg-2);
+}
+
+.time {
+	font: var(--type-label);
+	color: var(--fg-3);
+}
+
+.broken .time {
+	color: var(--fg-warning);
+}
+
+.check {
+	display: flex;
+	color: var(--fg-accent);
+}

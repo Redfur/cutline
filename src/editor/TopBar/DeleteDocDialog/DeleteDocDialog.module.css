@@ -1,0 +1,9 @@
+.text {
+	font: var(--type-body);
+	color: var(--fg-1);
+	text-wrap: pretty;
+}
+
+.name {
+	font-weight: 600;
+}

@@ -1,0 +1,58 @@
+.name {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: var(--control-md);
+	max-width: 100%;
+	min-width: 0;
+	padding: 0 6px 0 8px;
+	border: 0;
+	border-radius: var(--radius-control);
+	background: transparent;
+	font: var(--type-title);
+	color: var(--fg-1);
+	cursor: pointer;
+	transition: background var(--duration-fast);
+}
+
+.name:hover {
+	background: var(--bg-hover);
+}
+
+.open,
+.open:hover {
+	background: var(--bg-pressed);
+}
+
+.text {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.chevron {
+	display: flex;
+	flex: none;
+	color: var(--fg-3);
+}
+
+.open .chevron {
+	color: var(--fg-1);
+}
+
+.name:hover .chevron {
+	color: var(--fg-1);
+}
+
+.input {
+	height: var(--control-md);
+	max-width: 100%;
+	padding: 0 8px;
+	border: 1px solid var(--border-focus);
+	border-radius: var(--radius-control);
+	box-shadow: var(--focus-ring);
+	background: var(--bg-input);
+	font: var(--type-title);
+	color: var(--fg-1);
+	outline: none;
+}

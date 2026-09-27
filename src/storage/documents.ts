@@ -192,6 +192,7 @@ export async function lastOpenedId(): Promise<string | null> {
 // модальный вопрос beforeunload, после которого документ выгружается и транзакция
 // прерывается. Проверено: правка за 100 мс до F5 терялась даже с вопросом.
 export function saveDocument(stored: StoredDocument): Promise<void> {
+	if (deletedIds.has(stored.id)) return Promise.resolve();
 	return getStore()("readwrite", (s) => {
 		const indexRequest = s.get(INDEX);
 		indexRequest.onsuccess = () => {
@@ -211,7 +212,13 @@ export function saveDocument(stored: StoredDocument): Promise<void> {
 	});
 }
 
+// Удалённые за эту сессию. Редактор удаляемого документа при размонтировании
+// дописывает отложенные правки — асинхронно, и запись могла бы лечь уже после
+// удаления и воскресить документ. id — UUID и не переиспользуются.
+const deletedIds = new Set<string>();
+
 export function deleteDocument(id: string): Promise<void> {
+	deletedIds.add(id);
 	return getStore()("readwrite", (s) => {
 		const indexRequest = s.get(INDEX);
 		indexRequest.onsuccess = () => {

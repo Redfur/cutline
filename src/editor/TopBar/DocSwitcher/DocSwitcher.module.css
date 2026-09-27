@@ -1,0 +1,35 @@
+.switcher {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 0;
+	z-index: var(--z-popover);
+	width: 320px;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--bg-panel);
+	border-radius: var(--radius-popover);
+	box-shadow: var(--shadow-popover);
+}
+
+.search {
+	padding: 8px;
+	border-bottom: 1px solid var(--border-1);
+}
+
+/* четыре строки по 52 px и половина пятой — видно, что список прокручивается */
+.list {
+	max-height: calc(4 * 52px + 8px + 26px);
+	overflow: auto;
+	padding: 4px;
+}
+
+.empty {
+	padding: 14px 10px;
+	font: var(--type-body);
+	color: var(--fg-3);
+}
+
+.footer {
+	border-top: 1px solid var(--border-1);
+}

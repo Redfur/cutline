@@ -1,7 +1,7 @@
-import { DocumentLoader } from "./editor/DocumentLoader";
+import { Workspace } from "./editor/Workspace";
 
 function App() {
-	return <DocumentLoader />;
+	return <Workspace />;
 }
 
 export default App;

@@ -14,7 +14,6 @@ import type {
 	CutlineElement,
 	Guide,
 } from "../../model/document";
-import { blankDocument } from "../../render/fixtures/blank";
 import type { ViewState } from "../../storage/documents";
 import { RecordNavigator } from "../../ui/editor/RecordNavigator";
 import { BASE_PX_PER_MM, Canvas, type ViewportSize } from "../Canvas";
@@ -52,14 +51,20 @@ function isTextEntryTarget(el: EventTarget | null): boolean {
 export interface EditorShellProps {
 	// ключ документа в хранилище — туда пишет автосохранение
 	docId: string;
-	// документ и вид, с которых начинается сессия: сохранённые в IndexedDB или пустые
-	// (DocumentLoader); дальше редактор ими не управляется — это стартовые значения
+	// документ и вид, с которых начинается сессия: сохранённые в IndexedDB или новые
+	// (Workspace); дальше редактор ими не управляется — это стартовые значения
 	initialDoc: CutlineDocument;
 	initialView: ViewState;
 	// IndexedDB открылся при загрузке — есть куда сохранять
 	storageAvailable: boolean;
 	// почему вместо сохранённого документа открылся пустой лист
 	notice: string | null;
+	// документы — дело Workspace: у каждого свой редактор (key={id}) и своя история
+	onSwitchDocument: (id: string) => void;
+	onNewDocument: () => void;
+	onOpenDocument: (doc: CutlineDocument) => void;
+	onDuplicateDocument: (doc: CutlineDocument) => void;
+	onDeleteDocument: () => void;
 }
 
 export function EditorShell({
@@ -68,6 +73,11 @@ export function EditorShell({
 	initialView,
 	storageAvailable,
 	notice,
+	onSwitchDocument,
+	onNewDocument,
+	onOpenDocument,
+	onDuplicateDocument,
+	onDeleteDocument,
 }: EditorShellProps) {
 	const history = useDocumentHistory(initialDoc);
 	const [mode, setMode] = useState<Mode>(initialView.mode);
@@ -160,15 +170,9 @@ export function EditorShell({
 		{ enabled: storageAvailable, notice },
 	);
 
-	const handleNewDocument = () => {
-		history.set(() => blankDocument, { boundary: true });
-		handleSelectElement(null);
-		setRecordIndex(0);
-	};
-
-	const handleOpenDocument = (doc: CutlineDocument) => {
-		history.set(() => doc, { boundary: true });
-		handleSelectElement(null);
+	// Имя — часть документа: переименование отменяется Ctrl+Z, как любая правка
+	const handleRename = (name: string) => {
+		history.set((doc) => ({ ...doc, name }), { boundary: true });
 	};
 
 	// Элемент от инструмента — кликом или протягиванием (Canvas/useDrawElement)
@@ -354,11 +358,16 @@ export function EditorShell({
 	return (
 		<div className={styles.shell}>
 			<TopBar
+				docId={docId}
 				doc={history.doc}
 				mode={mode}
 				onModeChange={setMode}
-				onOpenDocument={handleOpenDocument}
-				onNewDocument={handleNewDocument}
+				onRename={handleRename}
+				onSwitchDocument={onSwitchDocument}
+				onOpenDocument={onOpenDocument}
+				onNewDocument={onNewDocument}
+				onDuplicate={() => onDuplicateDocument(history.doc)}
+				onDelete={onDeleteDocument}
 				onExport={() => setExporting(true)}
 				save={save}
 				canUndo={history.canUndo}
