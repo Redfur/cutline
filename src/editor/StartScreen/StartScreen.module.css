@@ -41,6 +41,35 @@
 	gap: 24px;
 }
 
+.howto {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-bottom: 24px;
+	border-bottom: 1px solid var(--border-1);
+}
+
+.howtoHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.howtoTitle {
+	margin: 0;
+	font: var(--type-heading);
+}
+
+.steps {
+	margin: 4px 0 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 12px;
+}
+
 .intro {
 	display: flex;
 	flex-direction: column;

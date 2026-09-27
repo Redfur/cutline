@@ -1,5 +1,5 @@
 import type { HelpItem as HelpItemData } from "../../../help/content";
-import { RichText } from "../RichText";
+import { RichText } from "../../RichText";
 import styles from "./HelpItem.module.css";
 
 export interface HelpItemProps {

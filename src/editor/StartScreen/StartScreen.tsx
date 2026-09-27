@@ -2,6 +2,7 @@
 // макет. Показывается, когда документов нет, по «Новый документ» и после удаления
 // последнего. Превью — настоящий render() первой записи, как миниатюры в «Данных».
 import { useEffect, useMemo } from "react";
+import { INTRO, STEPS } from "../../help/content";
 import { blankDocument } from "../../render/fixtures/blank";
 import { PREVIEW_NO_CHECK, render } from "../../render/render";
 import { TEMPLATES, type Template } from "../../templates/templates";
@@ -9,7 +10,9 @@ import { Icon } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
 import { IconButton } from "../../ui/forms/IconButton";
 import { useHelp } from "../lib/help";
+import { RichText } from "../RichText";
 import styles from "./StartScreen.module.css";
+import { Step } from "./Step";
 import { TemplateCard } from "./TemplateCard";
 
 export interface StartScreenProps {
@@ -87,6 +90,33 @@ export function StartScreen({ onPick, onBack, backName }: StartScreenProps) {
 			</header>
 			<main className={styles.main}>
 				<div className={styles.content}>
+					{/* онбординг: что это и с чего начать — до выбора шаблона, коротко */}
+					<section className={styles.howto} aria-label="Как это работает">
+						<div className={styles.howtoHead}>
+							<h2 className={styles.howtoTitle}>Как это работает</h2>
+							<Button
+								size="sm"
+								variant="ghost"
+								icon="circle-help"
+								onClick={() => help.open("start")}
+							>
+								Подробнее в справке
+							</Button>
+						</div>
+						<p className={styles.subtitle}>
+							<RichText text={INTRO} />
+						</p>
+						<ol className={styles.steps}>
+							{STEPS.map((step, i) => (
+								<Step
+									key={step.title}
+									number={i + 1}
+									title={step.title}
+									text={step.text}
+								/>
+							))}
+						</ol>
+					</section>
 					<div className={styles.intro}>
 						<h1 className={styles.title}>Новый макет</h1>
 						<p className={styles.subtitle}>

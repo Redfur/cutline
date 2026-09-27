@@ -7,10 +7,10 @@ import { filterSections } from "../../help/search";
 import { PanelSection } from "../../ui/editor/PanelSection";
 import { IconButton } from "../../ui/forms/IconButton";
 import { TextField } from "../../ui/forms/TextField";
+import { RichText } from "../RichText";
 import { HelpItem } from "./HelpItem";
 import { HelpKeys } from "./HelpKeys";
 import styles from "./HelpPanel.module.css";
-import { RichText } from "./RichText";
 
 // что показать: раздел или пункт справки. nonce — чтобы повторный клик по той же
 // кнопке ещё раз прокрутил и подсветил пункт

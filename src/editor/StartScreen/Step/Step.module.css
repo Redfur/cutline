@@ -1,0 +1,39 @@
+.step {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	padding: 12px;
+	background: var(--bg-panel);
+	border: 1px solid var(--border-1);
+	border-radius: var(--radius-3);
+}
+
+.number {
+	flex: none;
+	width: 20px;
+	height: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--bg-selected);
+	color: var(--fg-accent);
+	font: var(--type-label);
+	font-weight: 600;
+}
+
+.body {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.title {
+	font: var(--type-title);
+}
+
+.text {
+	font: var(--type-label);
+	color: var(--fg-2);
+}
