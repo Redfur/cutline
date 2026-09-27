@@ -3,12 +3,13 @@
 // Как и драг элемента, в историю уходит один коммит на mouseup, а до него — только
 // черновик для превью.
 import { type RefObject, useEffect, useRef, useState } from "react";
-import type {
-	CutlineDocument,
-	CutlineElement,
-	ElementType,
-} from "../../model/document";
-import { drawElement, placeElement } from "../lib/createElement";
+import type { CutlineDocument, CutlineElement } from "../../model/document";
+import {
+	alwaysSquare,
+	drawElement,
+	type PlaceType,
+	placeElement,
+} from "../lib/createElement";
 import { cleanGeometry, roundMouseMm } from "../lib/geometry";
 import {
 	type BorderVisibility,
@@ -28,7 +29,7 @@ interface PointMm {
 }
 
 interface DrawState {
-	type: ElementType;
+	type: PlaceType;
 	startClientX: number;
 	startClientY: number;
 	from: PointMm;
@@ -101,7 +102,7 @@ export function useDrawElement({
 			if (!draftRef.current && moved < DRAG_THRESHOLD_PX) return;
 			const raw = toMm(e.clientX, e.clientY);
 			if (!raw) return;
-			const constrain = e.shiftKey;
+			const constrain = e.shiftKey || alwaysSquare(draw.type);
 			// начало привязываем всегда, конец — только без Shift: привязка сдвинула бы
 			// угол и сломала квадрат или 45°
 			const from = snapPoint(draw.from);
@@ -166,7 +167,7 @@ export function useDrawElement({
 	return {
 		draft,
 		snapGuides,
-		startDraw(type: ElementType, e: { clientX: number; clientY: number }) {
+		startDraw(type: PlaceType, e: { clientX: number; clientY: number }) {
 			const from = toMm(e.clientX, e.clientY);
 			if (!from) return;
 			setDraw({

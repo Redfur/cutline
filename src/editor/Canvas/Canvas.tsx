@@ -9,10 +9,10 @@ import type {
 	CutlineDocument,
 	CutlineElement,
 	DataRecord,
-	ElementType,
 	Guide,
 } from "../../model/document";
 import { type ImagePreview, render } from "../../render/render";
+import type { PlaceType } from "../lib/createElement";
 import { boundsOf } from "../lib/geometry";
 import type { BorderVisibility } from "../lib/snap";
 import type { Tool } from "../Toolbar";
@@ -71,6 +71,7 @@ const PLACEABLE_TOOLS = new Set<Tool>([
 	"line",
 	"text",
 	"image",
+	"qr",
 ]);
 
 export function Canvas({
@@ -289,7 +290,7 @@ export function Canvas({
 							// рисовать можно и на вылете, не только на самой карточке
 							if (!placing || e.button !== 0) return;
 							e.preventDefault();
-							startDraw(tool as ElementType, e);
+							startDraw(tool as PlaceType, e);
 						}}
 						className={`${styles.content} ${placing ? styles.placing : ""}`}
 						style={{ width: contentWidthPx, height: contentHeightPx }}

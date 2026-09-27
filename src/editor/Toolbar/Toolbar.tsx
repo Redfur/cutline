@@ -6,7 +6,14 @@ import type { IconProps } from "../../ui/core/Icon";
 import { IconButton } from "../../ui/forms/IconButton";
 import styles from "./Toolbar.module.css";
 
-export type Tool = "select" | "text" | "rect" | "ellipse" | "line" | "image";
+export type Tool =
+	| "select"
+	| "text"
+	| "rect"
+	| "ellipse"
+	| "line"
+	| "image"
+	| "qr";
 
 const TOOLS: { tool: Tool; icon: IconProps["name"]; label: string }[] = [
 	{ tool: "select", icon: "mouse-pointer-2", label: "Выделение" },
@@ -15,6 +22,7 @@ const TOOLS: { tool: Tool; icon: IconProps["name"]; label: string }[] = [
 	{ tool: "ellipse", icon: "circle", label: "Эллипс" },
 	{ tool: "line", icon: "slash", label: "Линия" },
 	{ tool: "image", icon: "image", label: "Изображение" },
+	{ tool: "qr", icon: "qr-code", label: "QR-код" },
 ];
 
 const MIN_ZOOM = 0.25;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isQrSource } from "../../data/placeholders";
 import { drawElement, placeElement } from "./createElement";
 
 function geometry(el: { x: number; y: number; w: number; h: number }) {
@@ -81,5 +82,21 @@ describe("drawElement", () => {
 		);
 		expect(vertical.w).toBe(0);
 		expect(vertical.h).toBeCloseTo(-Math.hypot(2, 40), 9);
+	});
+});
+
+describe("QR", () => {
+	it("клик — картинка с qr() в src, квадратом с центром в точке", () => {
+		const el = placeElement("qr", { x: 50, y: 50 });
+		expect(el.type).toBe("image");
+		if (el.type !== "image") return;
+		expect(isQrSource(el.src)).toBe(true);
+		expect(geometry(el)).toEqual({ x: 37.5, y: 37.5, w: 25, h: 25 });
+	});
+
+	it("протягивание — всегда квадрат, без Shift", () => {
+		const el = drawElement("qr", { x: 10, y: 20 }, { x: 50, y: 30 });
+		expect(el.w).toBe(el.h);
+		expect(el.w).toBe(40);
 	});
 });

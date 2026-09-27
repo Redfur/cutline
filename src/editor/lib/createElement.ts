@@ -23,6 +23,10 @@ const LINE_LENGTH_MM = 30;
 const TEXT_W_MM = 40;
 const TEXT_H_MM = 10;
 const IMAGE_SIZE_MM = 40;
+// у бейджа A6 код 25 мм читается с расстояния вытянутой руки и не съедает макет
+const QR_SIZE_MM = 25;
+// n() есть в любой записи — вставленный код рисуется сразу, даже без полей в «Данных»
+const QR_SAMPLE_SRC = '{{ qr("https://example.com/", n()) }}';
 
 function id(): string {
 	return crypto.randomUUID();
@@ -114,6 +118,18 @@ export function createImage(at: PointMm): ImageElement {
 	};
 }
 
+export function createQr(at: PointMm): ImageElement {
+	return {
+		...createImage(at),
+		name: "QR-код",
+		x: at.x - QR_SIZE_MM / 2,
+		y: at.y - QR_SIZE_MM / 2,
+		w: QR_SIZE_MM,
+		h: QR_SIZE_MM,
+		src: QR_SAMPLE_SRC,
+	};
+}
+
 export function createLine(at: PointMm): LineElement {
 	return {
 		id: id(),
@@ -131,16 +147,27 @@ export function createLine(at: PointMm): LineElement {
 	};
 }
 
-const FACTORIES: Record<ElementType, (at: PointMm) => CutlineElement> = {
+// Что умеет ставить инструмент: типы элементов и QR — картинка с qr() в src,
+// у которой свой инструмент, чтобы о QR можно было узнать, не читая справку
+export type PlaceType = ElementType | "qr";
+
+const FACTORIES: Record<PlaceType, (at: PointMm) => CutlineElement> = {
 	rect: createRect,
 	ellipse: createEllipse,
 	line: createLine,
 	text: createText,
 	image: createImage,
+	qr: createQr,
 };
 
-export function placeElement(type: ElementType, at: PointMm): CutlineElement {
+export function placeElement(type: PlaceType, at: PointMm): CutlineElement {
 	return FACTORIES[type](at);
+}
+
+// QR render() всё равно вписывает квадратом — неквадратная рамка вокруг него
+// выглядела бы как ошибка, поэтому тянется всегда как с Shift
+export function alwaysSquare(type: PlaceType): boolean {
+	return type === "qr";
 }
 
 // Протягивание, которое по одной оси почти не сдвинулось, не должно давать
@@ -165,13 +192,14 @@ function constrainLine(dx: number, dy: number): { dx: number; dy: number } {
 }
 
 export function drawElement(
-	type: ElementType,
+	type: PlaceType,
 	from: PointMm,
 	to: PointMm,
-	{ constrain = false }: DrawOptions = {},
+	{ constrain: shift = false }: DrawOptions = {},
 ): CutlineElement {
 	let dx = to.x - from.x;
 	let dy = to.y - from.y;
+	const constrain = shift || alwaysSquare(type);
 	const base = placeElement(type, from);
 
 	// линия — вектор от начала к концу, без нормализации: направление и есть смысл
