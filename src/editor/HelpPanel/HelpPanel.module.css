@@ -1,11 +1,12 @@
-/* По макету: 340 px справа под шапкой, поверх инспектора, без затемнения */
+/* Справа под шапкой, поверх инспектора, без затемнения — по макету. Ширина шире
+   макетных 340 px: в них строка текста выходила слишком короткой */
 .panel {
 	position: fixed;
 	top: var(--topbar-h);
 	right: 0;
 	bottom: 0;
 	z-index: 40;
-	width: 340px;
+	width: 420px;
 	max-width: 100vw;
 	display: flex;
 	flex-direction: column;
