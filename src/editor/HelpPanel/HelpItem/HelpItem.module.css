@@ -1,0 +1,48 @@
+.item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	/* поля под подсветку: фон выходит за текст, а сам текст стоит на месте */
+	margin: -4px -6px;
+	padding: 4px 6px;
+	border-radius: var(--radius-3);
+	scroll-margin-top: 8px;
+}
+
+.title {
+	font: var(--type-body);
+	font-weight: 600;
+}
+
+.text {
+	color: var(--fg-2);
+	text-wrap: pretty;
+}
+
+.example {
+	align-self: flex-start;
+	margin-top: 4px;
+	padding: 3px 6px;
+	border-radius: var(--radius-2);
+	background: var(--bg-app);
+	font: 11px / 1.4 var(--font-mono);
+	color: var(--fg-1);
+	overflow-wrap: anywhere;
+}
+
+/* открыли кнопкой «i» — пункт вспыхивает и плавно гаснет */
+.flash {
+	animation: flash 1.5s ease-out;
+}
+
+@keyframes flash {
+	0%,
+	40% {
+		background: var(--bg-selected);
+		box-shadow: inset 0 0 0 1px var(--border-focus);
+	}
+	100% {
+		background: transparent;
+		box-shadow: inset 0 0 0 1px transparent;
+	}
+}

@@ -7,7 +7,14 @@
 //
 // Документ читается до монтирования EditorShell: смонтированный с пустым листом
 // редактор успел бы записать его поверх того, что человек делал до перезагрузки.
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useHashLocation } from "wouter/use-hash-location";
 import type { CutlineDocument } from "../../model/document";
 import { blankDocument } from "../../render/fixtures/blank";
@@ -24,6 +31,8 @@ import {
 import { documentFromTemplate } from "../../templates/templates";
 import { EditorShell } from "../EditorShell";
 import { EditorSkeleton } from "../EditorSkeleton";
+import { type HelpFocus, HelpPanel } from "../HelpPanel";
+import { type HelpApi, HelpContext } from "../lib/help";
 import { docPath, type EditorMode, NEW_PATH, parseRoute } from "../lib/routes";
 import { ALL_BORDERS } from "../lib/snap";
 import { StartScreen } from "../StartScreen";
@@ -52,6 +61,20 @@ function fresh(doc: CutlineDocument): Opened {
 
 // Первый открывающийся: сначала preferred (последний открытый), потом свежие сверху;
 // открыть нечего — null, стартовый экран
+// Esc закрывает справку, только если он не нужен чему-то ещё: диалогу, открытому
+// меню или полю ввода вне справки (там Esc отменяет правку)
+function escBelongsElsewhere(target: EventTarget | null): boolean {
+	if (document.querySelector('[role="dialog"], [role="menu"]')) return true;
+	if (!(target instanceof HTMLElement)) return false;
+	if (target.closest('aside[aria-label="Справка"]')) return false;
+	return (
+		target.tagName === "INPUT" ||
+		target.tagName === "TEXTAREA" ||
+		target.tagName === "SELECT" ||
+		target.isContentEditable
+	);
+}
+
 async function openFirstAvailable(
 	preferred: string | null,
 	exclude: string | null = null,
@@ -94,6 +117,53 @@ export function Workspace() {
 	// с какого документа пришли на стартовый экран — к нему «Вернуться»
 	const [back, setBack] = useState<Opened | null>(null);
 	const [slow, setSlow] = useState(false);
+	const [helpOpen, setHelpOpen] = useState(false);
+	const [helpHidden, setHelpHidden] = useState(false);
+	const [helpFocus, setHelpFocus] = useState<HelpFocus | null>(null);
+
+	const help = useMemo<HelpApi>(
+		() => ({
+			open: (topic) => {
+				setHelpOpen(true);
+				setHelpFocus((f) =>
+					topic ? { topic, nonce: (f?.nonce ?? 0) + 1 } : null,
+				);
+			},
+			toggle: () => {
+				setHelpOpen((o) => !o);
+				setHelpFocus(null);
+			},
+			close: () => setHelpOpen(false),
+			setHidden: setHelpHidden,
+		}),
+		[],
+	);
+	const helpShown = helpOpen && !helpHidden;
+
+	// F1 — везде, как в макете; браузерную справку по F1 гасим
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key !== "F1") return;
+			e.preventDefault();
+			help.toggle();
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [help]);
+
+	// Esc — в фазе перехвата: на стартовом экране тот же Esc значит «Вернуться к
+	// документу», и закрыть справку он должен вместо этого, а не вместе с этим
+	useEffect(() => {
+		if (!helpShown) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key !== "Escape" || escBelongsElsewhere(e.target)) return;
+			e.preventDefault();
+			e.stopPropagation();
+			help.close();
+		};
+		window.addEventListener("keydown", onKey, true);
+		return () => window.removeEventListener("keydown", onKey, true);
+	}, [helpShown, help]);
 
 	useEffect(() => {
 		lastOpenedId()
@@ -222,8 +292,9 @@ export function Workspace() {
 		alert(error instanceof Error ? error.message : String(error));
 	};
 
+	let screen: ReactNode;
 	if (route.kind === "new" && storageAvailable !== null) {
-		return (
+		screen = (
 			<StartScreen
 				backName={back?.doc.name}
 				onBack={back ? () => show(back, back.view.mode, false) : undefined}
@@ -234,50 +305,68 @@ export function Workspace() {
 				}
 			/>
 		);
-	}
-
-	if (loading || !opened || route.kind !== "doc") {
-		return slow ? <EditorSkeleton /> : null;
+	} else if (loading || !opened || route.kind !== "doc") {
+		screen = slow ? <EditorSkeleton /> : null;
+	} else {
+		screen = (
+			<EditorShell
+				key={opened.id}
+				docId={opened.id}
+				initialDoc={opened.doc}
+				initialView={opened.view}
+				mode={route.mode}
+				onModeChange={handleModeChange}
+				storageAvailable={storageAvailable === true}
+				notice={opened.notice}
+				onSwitchDocument={(id) => navigate(docPath(id))}
+				onNewDocument={(current) => {
+					// документ берём из редактора, а не opened.doc: тот — снимок на момент
+					// открытия, без правок; вернёмся — откроется таким, каким его оставили
+					const left = { ...opened, ...current, notice: null };
+					setBack(left);
+					// и для «Назад» в браузере, а не только для кнопки «Вернуться»
+					memory.current.set(left.id, left);
+					setOpened(null);
+					navigate(NEW_PATH);
+				}}
+				onOpenDocument={(doc) => void create(doc).catch(report)}
+				onDuplicateDocument={(doc) =>
+					void create({ ...doc, name: `${doc.name} — копия` }).catch(report)
+				}
+				onDeleteDocument={() => {
+					// отложенные правки удаляемого редактора, дописанные при размонтировании,
+					// хранилище отбросит (deleteDocument помнит удалённые id)
+					const id = opened.id;
+					setBack((b) => (b?.id === id ? null : b));
+					deleteDocument(id)
+						.then(() => openFirstAvailable(null, id))
+						.then((next) => {
+							if (next) show(next, next.view.mode, true);
+							else navigate(NEW_PATH, { replace: true });
+						})
+						.catch(report);
+				}}
+			/>
+		);
 	}
 
 	return (
-		<EditorShell
-			key={opened.id}
-			docId={opened.id}
-			initialDoc={opened.doc}
-			initialView={opened.view}
-			mode={route.mode}
-			onModeChange={handleModeChange}
-			storageAvailable={storageAvailable === true}
-			notice={opened.notice}
-			onSwitchDocument={(id) => navigate(docPath(id))}
-			onNewDocument={(current) => {
-				// документ берём из редактора, а не opened.doc: тот — снимок на момент
-				// открытия, без правок; вернёмся — откроется таким, каким его оставили
-				const left = { ...opened, ...current, notice: null };
-				setBack(left);
-				// и для «Назад» в браузере, а не только для кнопки «Вернуться»
-				memory.current.set(left.id, left);
-				setOpened(null);
-				navigate(NEW_PATH);
-			}}
-			onOpenDocument={(doc) => void create(doc).catch(report)}
-			onDuplicateDocument={(doc) =>
-				void create({ ...doc, name: `${doc.name} — копия` }).catch(report)
-			}
-			onDeleteDocument={() => {
-				// отложенные правки удаляемого редактора, дописанные при размонтировании,
-				// хранилище отбросит (deleteDocument помнит удалённые id)
-				const id = opened.id;
-				setBack((b) => (b?.id === id ? null : b));
-				deleteDocument(id)
-					.then(() => openFirstAvailable(null, id))
-					.then((next) => {
-						if (next) show(next, next.view.mode, true);
-						else navigate(NEW_PATH, { replace: true });
-					})
-					.catch(report);
-			}}
-		/>
+		<HelpContext.Provider value={help}>
+			{screen}
+			{helpShown && (
+				<HelpPanel
+					// раскрыт раздел про то, что сейчас на экране
+					context={
+						route.kind === "doc"
+							? route.mode === "data"
+								? "data"
+								: "design"
+							: "start"
+					}
+					focus={helpFocus}
+					onClose={help.close}
+				/>
+			)}
+		</HelpContext.Provider>
 	);
 }

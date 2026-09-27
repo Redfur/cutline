@@ -6,7 +6,7 @@ import { FUNCTIONS } from "../../../data/functions";
 import type { DataRecord, FieldDef } from "../../../model/document";
 import { Button } from "../../../ui/forms/Button";
 import { Menu, type MenuItem } from "../../../ui/overlays/Menu";
-import { openHelp } from "../../lib/help";
+import { useHelp } from "../../lib/help";
 
 export interface FieldMenuProps {
 	fields: FieldDef[];
@@ -36,6 +36,7 @@ export function FieldMenu({
 		: [{ label: "Полей нет — добавьте их в «Данных»", disabled: true }];
 	// «поле» в заготовке — первое поле документа: вставленное сразу работает, а
 	// не показывает «нет поля»
+	const help = useHelp();
 	const sampleKey = fields[0]?.key ?? "поле";
 	const functionItems: MenuItem[] = Object.values(FUNCTIONS)
 		.filter((fn) => fn.target === target)
@@ -69,7 +70,7 @@ export function FieldMenu({
 				{
 					label: "Все функции — в справке",
 					icon: "circle-help",
-					onSelect: () => openHelp("functions"),
+					onSelect: () => help.open("functions"),
 				},
 			]}
 		/>

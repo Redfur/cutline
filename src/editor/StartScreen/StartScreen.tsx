@@ -7,6 +7,8 @@ import { PREVIEW_NO_CHECK, render } from "../../render/render";
 import { TEMPLATES, type Template } from "../../templates/templates";
 import { Icon } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
+import { IconButton } from "../../ui/forms/IconButton";
+import { useHelp } from "../lib/help";
 import styles from "./StartScreen.module.css";
 import { TemplateCard } from "./TemplateCard";
 
@@ -54,6 +56,7 @@ function TemplatePreview({ template }: { template: Template }) {
 
 export function StartScreen({ onPick, onBack, backName }: StartScreenProps) {
 	const { w, h } = blankDocument.canvas;
+	const help = useHelp();
 
 	// Esc — как «закрыть»: зашёл посмотреть шаблоны и передумал
 	useEffect(() => {
@@ -79,6 +82,8 @@ export function StartScreen({ onPick, onBack, backName }: StartScreenProps) {
 						{`Вернуться к «${backName ?? "документу"}»`}
 					</Button>
 				)}
+				<span className={styles.spacer} />
+				<IconButton icon="circle-help" label="Справка" onClick={help.toggle} />
 			</header>
 			<main className={styles.main}>
 				<div className={styles.content}>

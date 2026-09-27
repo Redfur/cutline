@@ -11,7 +11,7 @@ import { Button } from "../../ui/forms/Button";
 import { IconButton } from "../../ui/forms/IconButton";
 import { SegmentedControl } from "../../ui/forms/SegmentedControl";
 import { Menu } from "../../ui/overlays/Menu";
-import { openHelp } from "../lib/help";
+import { useHelp } from "../lib/help";
 import type { AutosaveState } from "../lib/useAutosave";
 import { DeleteDocDialog } from "./DeleteDocDialog";
 import { DocName } from "./DocName";
@@ -59,6 +59,7 @@ export function TopBar({
 	onRedo,
 }: TopBarProps) {
 	// пункт меню — кнопка, а файловый диалог открывает только клик по input[type=file]
+	const help = useHelp();
 	const fileInput = useRef<HTMLInputElement>(null);
 	const nameBox = useRef<HTMLDivElement>(null);
 	const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -186,11 +187,7 @@ export function TopBar({
 			</div>
 			<span className={styles.spacer} />
 			{/* в макете шапки справки нет — вход в неё нужен на виду, а не только в «…» */}
-			<IconButton
-				icon="circle-help"
-				label="Справка"
-				onClick={() => openHelp()}
-			/>
+			<IconButton icon="circle-help" label="Справка" onClick={help.toggle} />
 			<Button variant="primary" icon="download" onClick={onExport}>
 				Экспорт
 			</Button>
@@ -226,7 +223,12 @@ export function TopBar({
 							downloadDocument(doc, documentFileName(doc.name, "json")),
 					},
 					{ separator: true },
-					{ label: "Справка", icon: "circle-help", onSelect: () => openHelp() },
+					{
+						label: "Справка",
+						icon: "circle-help",
+						shortcut: "F1",
+						onSelect: help.toggle,
+					},
 					{ separator: true },
 					{
 						label: "Удалить документ",

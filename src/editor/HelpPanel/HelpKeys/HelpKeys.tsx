@@ -1,13 +1,13 @@
-import styles from "./Keys.module.css";
+import styles from "./HelpKeys.module.css";
 
-export interface KeysProps {
+export interface HelpKeysProps {
 	// клавиши через пробел; «Mod» — ⌘ на Mac, Ctrl на остальных, как в EditorShell
 	keys: string;
 }
 
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform);
 
-export function Keys({ keys }: KeysProps) {
+export function HelpKeys({ keys }: HelpKeysProps) {
 	return (
 		<span className={styles.keys}>
 			{keys.split(" ").map((key, i) => (

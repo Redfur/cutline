@@ -1,13 +1,26 @@
-// Справка — отдельная страница help.html рядом с редактором (src/help/). Путь — от
-// BASE_URL, а не «/help.html»: на GitHub Pages сайт живёт в подкаталоге /cutline/
-export function helpUrl(
-	anchor?: string,
-	base: string = import.meta.env.BASE_URL,
-): string {
-	return `${base}help.html${anchor ? `#${anchor}` : ""}`;
+// Справка — панель поверх любого экрана (HelpPanel). Её состояние живёт в Workspace,
+// над стартовым экраном и редактором: при смене документа она не закрывается.
+// Остальным компонентам — только этот контекст, без пропов через всё дерево.
+import { createContext, useContext } from "react";
+
+export interface HelpApi {
+	// topic — раздел или пункт справки: панель раскроет и подсветит его
+	open: (topic?: string) => void;
+	toggle: () => void;
+	close: () => void;
+	// пока открыта панель экспорта, справки не видно (как в макете): она ушла бы под затемнение
+	setHidden: (hidden: boolean) => void;
 }
 
-// в новой вкладке: редактор остаётся открытым там, где был
-export function openHelp(anchor?: string): void {
-	window.open(helpUrl(anchor), "_blank", "noopener");
+const noop = () => {};
+
+export const HelpContext = createContext<HelpApi>({
+	open: noop,
+	toggle: noop,
+	close: noop,
+	setHidden: noop,
+});
+
+export function useHelp(): HelpApi {
+	return useContext(HelpContext);
 }

@@ -23,6 +23,7 @@ import { ExportPanel } from "../ExportPanel";
 import { Inspector } from "../Inspector";
 import { type LayerPatch, LayersPanel } from "../LayersPanel";
 import { documentColors } from "../lib/documentColors";
+import { useHelp } from "../lib/help";
 import { useAutosave } from "../lib/useAutosave";
 import { useBrokenImages } from "../lib/useBrokenImages";
 import { useDocumentHistory } from "../lib/useDocumentHistory";
@@ -98,6 +99,14 @@ export function EditorShell({
 	const [recordIndex, setRecordIndex] = useState(initialView.recordIndex);
 	const [borders, setBorders] = useState(initialView.borders);
 	const [exporting, setExporting] = useState(false);
+	const help = useHelp();
+
+	// панель экспорта с затемнением — справка ушла бы под него; после экспорта
+	// возвращается, если была открыта
+	useEffect(() => {
+		help.setHidden(exporting);
+		return () => help.setHidden(false);
+	}, [exporting, help]);
 
 	const { records, fields } = history.doc;
 	// после удаления записей или undo индекс мог уйти за конец — не храним исправленное
