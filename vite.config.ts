@@ -5,6 +5,12 @@ import { defineConfig } from "vite";
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [react()],
+	build: {
+		rollupOptions: {
+			// справка — отдельная страница рядом с редактором (src/help/)
+			input: { main: "index.html", help: "help.html" },
+		},
+	},
 	test: {
 		// тестируется только чистая логика (геометрия, fit, история) — DOM не нужен;
 		// где модулю нужен canvas (measure.ts), он стабится в самом тесте

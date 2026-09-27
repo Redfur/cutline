@@ -6,6 +6,7 @@ import { FUNCTIONS } from "../../../data/functions";
 import type { DataRecord, FieldDef } from "../../../model/document";
 import { Button } from "../../../ui/forms/Button";
 import { Menu, type MenuItem } from "../../../ui/overlays/Menu";
+import { openHelp } from "../../lib/help";
 
 export interface FieldMenuProps {
 	fields: FieldDef[];
@@ -63,6 +64,13 @@ export function FieldMenu({
 				...fieldItems,
 				{ section: "Функции" },
 				...functionItems,
+				{ separator: true },
+				// подсказка в строке меню — пара слов; что делает функция и пример — в справке
+				{
+					label: "Все функции — в справке",
+					icon: "circle-help",
+					onSelect: () => openHelp("functions"),
+				},
 			]}
 		/>
 	);

@@ -1,0 +1,17 @@
+.keys {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.key {
+	min-width: 20px;
+	padding: 2px 6px;
+	border: 1px solid var(--border-2);
+	border-radius: var(--radius-2);
+	background: var(--bg-app);
+	font: var(--type-mono);
+	color: var(--fg-2);
+	text-align: center;
+}

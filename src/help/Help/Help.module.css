@@ -1,0 +1,225 @@
+:global(html) {
+	scroll-behavior: smooth;
+	/* заголовок раздела не должен уходить под липкую шапку */
+	scroll-padding-top: calc(var(--topbar-h) + 16px);
+}
+
+.page {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.header {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	height: var(--topbar-h);
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 0 14px;
+	background: var(--bg-panel);
+	border-bottom: 1px solid var(--border-1);
+}
+
+.brand {
+	font: 700 14px / 1 var(--font-ui);
+	letter-spacing: -0.01em;
+}
+
+.divider {
+	width: 1px;
+	height: 20px;
+	background: var(--border-1);
+}
+
+.title {
+	font: var(--type-title);
+}
+
+.spacer {
+	flex: 1;
+}
+
+.back {
+	display: flex;
+	align-items: center;
+	height: var(--control-md);
+	padding: 0 10px;
+	border: 1px solid var(--border-2);
+	border-radius: var(--radius-control);
+	background: var(--bg-panel);
+	color: var(--fg-1);
+}
+
+.back:hover {
+	background: var(--bg-hover);
+	color: var(--fg-1);
+	text-decoration: none;
+}
+
+.layout {
+	width: 100%;
+	max-width: 1040px;
+	margin: 0 auto;
+	padding: 40px 24px 80px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 48px;
+	align-items: flex-start;
+}
+
+.nav {
+	flex: 0 0 200px;
+	position: sticky;
+	top: calc(var(--topbar-h) + 40px);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.navLabel {
+	font: var(--type-label);
+	color: var(--fg-3);
+	padding: 0 8px 6px;
+}
+
+.navLink {
+	display: block;
+	padding: 6px 8px;
+	border-radius: var(--radius-control);
+	color: var(--fg-2);
+}
+
+.navLink:hover {
+	background: var(--bg-hover);
+	color: var(--fg-1);
+	text-decoration: none;
+}
+
+.main {
+	flex: 1 1 480px;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 40px;
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.h1 {
+	margin: 0;
+	font: 600 20px / 1.25 var(--font-ui);
+}
+
+.h2 {
+	margin: 0;
+	font: var(--type-heading);
+}
+
+.intro {
+	margin: 0;
+	max-width: 620px;
+	color: var(--fg-2);
+	text-wrap: pretty;
+}
+
+.steps {
+	margin: 4px 0 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+}
+
+.step {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 12px;
+	background: var(--bg-panel);
+	border: 1px solid var(--border-1);
+	border-radius: var(--radius-3);
+}
+
+.stepNumber {
+	font: var(--type-label);
+	color: var(--fg-3);
+}
+
+.stepText {
+	font: var(--type-label);
+	color: var(--fg-2);
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	background: var(--bg-panel);
+	border: 1px solid var(--border-1);
+	border-radius: var(--radius-3);
+}
+
+.item {
+	padding: 12px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.itemTitle {
+	font: var(--type-title);
+}
+
+.itemText {
+	color: var(--fg-2);
+	text-wrap: pretty;
+}
+
+.example {
+	align-self: flex-start;
+	margin-top: 4px;
+	padding: 4px 8px;
+	border-radius: var(--radius-2);
+	background: var(--bg-app);
+	font: var(--type-mono);
+	font-size: 12px;
+	color: var(--fg-1);
+	overflow-wrap: anywhere;
+}
+
+.keyRow {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 36px;
+	padding: 6px 16px;
+}
+
+.keyAction {
+	flex: 1;
+}
+
+.item + .item,
+.keyRow + .keyRow {
+	border-top: 1px solid var(--border-1);
+}
+
+@media (max-width: 720px) {
+	.layout {
+		padding: 24px 16px 64px;
+		gap: 24px;
+	}
+
+	.nav {
+		position: static;
+		flex-basis: 100%;
+	}
+}

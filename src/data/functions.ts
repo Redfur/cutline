@@ -62,7 +62,7 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		minArgs: 1,
 		maxArgs: 10,
 		snippet: '{{ qr("https://", поле) }}',
-		hint: "QR по ссылке",
+		hint: "QR-код",
 		title: "QR-код",
 		description:
 			"Рисует QR-код из склеенных аргументов: адрес и поле записи. Ставится в источник картинки или инструментом «QR-код».",
