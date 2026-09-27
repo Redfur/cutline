@@ -2,10 +2,11 @@
 // над стартовым экраном и редактором: при смене документа она не закрывается.
 // Остальным компонентам — только этот контекст, без пропов через всё дерево.
 import { createContext, useContext } from "react";
+import type { HelpTopic } from "../../help/content";
 
 export interface HelpApi {
 	// topic — раздел или пункт справки: панель раскроет и подсветит его
-	open: (topic?: string) => void;
+	open: (topic?: HelpTopic) => void;
 	toggle: () => void;
 	close: () => void;
 	// пока открыта панель экспорта, справки не видно (как в макете): она ушла бы под затемнение

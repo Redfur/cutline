@@ -18,6 +18,7 @@ import { Checkbox } from "../../../ui/forms/Checkbox";
 import { ColorField } from "../../../ui/forms/ColorField";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
+import { HelpButton } from "../../HelpButton";
 import { ElementErrors, type RecordError } from "../ElementErrors";
 import { FieldMenu } from "../FieldMenu";
 import { GeometrySection } from "../GeometrySection";
@@ -113,13 +114,16 @@ export function ImageInspector({
 				<PanelSection
 					title="Источник"
 					actions={
-						// src целиком заменяется полем: ссылка из ячейки — это и есть весь адрес
-						<FieldMenu
-							fields={fields}
-							record={record}
-							target="image"
-							onInsert={(text) => onChange({ ...element, src: text })}
-						/>
+						<>
+							<HelpButton topic="image-source" />
+							{/* src целиком заменяется полем: ссылка из ячейки — это и есть весь адрес */}
+							<FieldMenu
+								fields={fields}
+								record={record}
+								target="image"
+								onInsert={(text) => onChange({ ...element, src: text })}
+							/>
+						</>
 					}
 				>
 					<TextField

@@ -24,6 +24,7 @@ import { ColorField } from "../../../ui/forms/ColorField";
 import { SegmentedControl } from "../../../ui/forms/SegmentedControl";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
+import { HelpButton } from "../../HelpButton";
 import {
 	lineHeightToPct,
 	mmToPt,
@@ -334,7 +335,11 @@ export function TextInspector({
 					/>
 				</PanelSection>
 
-				<PanelSection title="Автоподгонка" warning={over}>
+				<PanelSection
+					title="Автоподгонка"
+					warning={over}
+					actions={<HelpButton topic="fit" />}
+				>
 					<Select
 						value={element.fit}
 						warning={over}

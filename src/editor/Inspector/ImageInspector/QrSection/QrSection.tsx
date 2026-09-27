@@ -5,6 +5,7 @@ import type { QrStyle } from "../../../../model/document";
 import { PanelSection } from "../../../../ui/editor/PanelSection";
 import { ColorField } from "../../../../ui/forms/ColorField";
 import { SegmentedControl } from "../../../../ui/forms/SegmentedControl";
+import { HelpButton } from "../../../HelpButton";
 import { qrContrastWarning } from "../../../lib/contrast";
 import styles from "./QrSection.module.css";
 
@@ -36,7 +37,7 @@ export function QrSection({
 }: QrSectionProps) {
 	const warning = qrContrastWarning(style.color, background);
 	return (
-		<PanelSection title="QR-код">
+		<PanelSection title="QR-код" actions={<HelpButton topic="qr" />}>
 			<ColorField
 				value={style.color}
 				showOpacity={false}

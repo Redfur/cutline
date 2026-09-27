@@ -5,6 +5,7 @@ import { hasProblems, type RecordProblems } from "../../../data/problems";
 import type { CutlineDocument } from "../../../model/document";
 import type { ImagePreview } from "../../../render/render";
 import { SegmentedControl } from "../../../ui/forms/SegmentedControl";
+import { HelpButton } from "../../HelpButton";
 import { records as recordsCount } from "../../lib/plural";
 import { Thumbnail } from "./Thumbnail";
 import styles from "./ThumbnailGrid.module.css";
@@ -77,6 +78,7 @@ export function ThumbnailGrid({
 						},
 					]}
 				/>
+				<HelpButton topic="problems" />
 				<span className={styles.count}>
 					{filter === "all"
 						? recordsCount(records.length)

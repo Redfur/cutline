@@ -27,6 +27,23 @@ export interface HelpSection {
 	keys?: HelpKey[];
 }
 
+// Разделы и пункты, на которые ссылается интерфейс (кнопки «i», «Вставить поле»,
+// стартовый экран). Отдельный список, а не тип из SECTIONS: так опечатка в topic
+// не соберётся, а тест проверяет, что каждый есть в справке
+export const LINKED_TOPICS = [
+	"start",
+	"functions",
+	"qr",
+	"fit",
+	"image-source",
+	"bleed-safe",
+	"guides",
+	"csv",
+	"problems",
+] as const;
+
+export type HelpTopic = (typeof LINKED_TOPICS)[number];
+
 export interface HelpStep {
 	title: string;
 	text: string;
@@ -246,3 +263,13 @@ export const SECTIONS: HelpSection[] = [
 		],
 	},
 ];
+
+// заголовок раздела или пункта — подпись кнопки «i»
+export function topicTitle(topic: string): string | undefined {
+	for (const s of SECTIONS) {
+		if (s.id === topic) return s.title;
+		const item = s.items?.find((i) => i.id === topic);
+		if (item) return item.title;
+	}
+	return undefined;
+}

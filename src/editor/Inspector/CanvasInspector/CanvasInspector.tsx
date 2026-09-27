@@ -7,6 +7,7 @@ import { ColorField } from "../../../ui/forms/ColorField";
 import { SegmentedControl } from "../../../ui/forms/SegmentedControl";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
+import { HelpButton } from "../../HelpButton";
 import type { BorderVisibility } from "../../lib/snap";
 import { GuideToggle } from "./GuideToggle";
 
@@ -95,7 +96,10 @@ export function CanvasInspector({
 				/>
 			</PanelSection>
 
-			<PanelSection title="Поля печати">
+			<PanelSection
+				title="Поля печати"
+				actions={<HelpButton topic="bleed-safe" />}
+			>
 				<PropertyRow label="Вылет">
 					<TextField
 						value={canvas.bleed}
@@ -125,7 +129,10 @@ export function CanvasInspector({
 				/>
 			</PanelSection>
 
-			<PanelSection title="Направляющие">
+			<PanelSection
+				title="Направляющие"
+				actions={<HelpButton topic="guides" />}
+			>
 				<GuideToggle
 					label="Линия обреза"
 					kind="trim"

@@ -10,6 +10,7 @@ import type { CutlineDocument } from "../../model/document";
 import type { ImagePreview } from "../../render/render";
 import { Icon } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
+import { HelpButton } from "../HelpButton";
 import {
 	addField,
 	addRecord,
@@ -251,6 +252,7 @@ export function DataMode({
 					<Button size="sm" variant="ghost" icon="file-text" onClick={pickCsv}>
 						Импорт CSV
 					</Button>
+					<HelpButton topic="csv" />
 					<Button
 						size="sm"
 						variant="ghost"
