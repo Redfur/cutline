@@ -11,6 +11,7 @@ import {
 	pageLayout,
 	SHEETS,
 	sheetFit,
+	spaceHint,
 } from "../../export/imposition";
 import { systemFontTexts } from "../../export/pdfPreflight";
 import { sheetPreviewSvg } from "../../export/sheetPreview";
@@ -40,6 +41,8 @@ import {
 	problemsText,
 	problemsTitle,
 	sheetLabel,
+	spaceHintAction,
+	spaceHintText,
 } from "../lib/exportChoice";
 import styles from "./ExportPanel.module.css";
 
@@ -133,9 +136,7 @@ export function ExportPanel({
 	};
 	const fit = sheetFit(canvas, settings);
 	const hint = homeMarginHint(canvas, settings);
-	const perNoBleed = settings.bleed
-		? sheetFit(canvas, { ...settings, bleed: false }).perSheet
-		: fit.perSheet;
+	const space = spaceHint(canvas, settings);
 
 	const cards = chooseCards(records, fields, what);
 	const n = cards.length;
@@ -394,12 +395,21 @@ export function ExportPanel({
 														Карточка не помещается на лист {sheet.name}
 													</span>
 												)}
-												{perNoBleed > fit.perSheet && (
-													<span className={styles.muted}>
-														без вылета — {perNoBleed}
-													</span>
-												)}
 											</div>
+											{space && (
+												<div className={styles.spaceHint}>
+													<span>{spaceHintText(space)}</span>
+													<Button
+														size="sm"
+														onClick={() => {
+															if (space.drop !== "marks") setBleed(false);
+															if (space.drop !== "bleed") setMarks(false);
+														}}
+													>
+														{spaceHintAction(space)}
+													</Button>
+												</div>
+											)}
 										</>
 									)}
 								</div>

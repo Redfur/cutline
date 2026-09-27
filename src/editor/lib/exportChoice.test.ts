@@ -13,6 +13,8 @@ import {
 	problemsText,
 	problemsTitle,
 	sheetLabel,
+	spaceHintAction,
+	spaceHintText,
 	tokenRecord,
 } from "./exportChoice";
 
@@ -92,6 +94,30 @@ describe("подписи", () => {
 		const hint = { withMargin: 2, withoutMargin: 4, scale: 0.9523 };
 		expect(marginHintText(hint)).toBe("С полями встаёт 2 из 4.");
 		expect(fitToMarginLabel(hint)).toBe("Уменьшить до 95%, чтобы уместить 4");
+	});
+});
+
+describe("подсказка о вылете и метках", () => {
+	it("называет, что мешает, сколько встанет и как резать", () => {
+		expect(spaceHintText({ drop: "both", perSheet: 4 })).toBe(
+			"Вылет и метки реза занимают место на листе. Без них встанет 4 карточки встык — резать по общим линиям.",
+		);
+		expect(spaceHintText({ drop: "bleed", perSheet: 4 })).toBe(
+			"Вылет занимает место на листе. Без него встанет 4 карточки встык — резать по общим линиям.",
+		);
+		// без меток вылет остаётся — карточки не встык
+		expect(spaceHintText({ drop: "marks", perSheet: 8 })).toBe(
+			"Метки реза занимают место на листе. Без них встанет 8 карточек.",
+		);
+	});
+
+	it("кнопка", () => {
+		expect(spaceHintAction({ drop: "both", perSheet: 4 })).toBe(
+			"Убрать вылет и метки",
+		);
+		expect(spaceHintAction({ drop: "marks", perSheet: 4 })).toBe(
+			"Убрать метки",
+		);
 	});
 });
 

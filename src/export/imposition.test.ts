@@ -10,6 +10,7 @@ import {
 	pageLayout,
 	SHEETS,
 	sheetFit,
+	spaceHint,
 } from "./imposition";
 
 const A6: CardSize = { w: 105, h: 148, bleed: 3 };
@@ -189,5 +190,54 @@ describe("cropMarks", () => {
 			x2: 20,
 			y2: 20 - 3 - MARK_GAP_MM - MARK_LENGTH_MM,
 		});
+	});
+});
+
+describe("spaceHint", () => {
+	it("A6 на A4: вылет и метки отнимают две карточки из четырёх", () => {
+		expect(spaceHint(A6, settings({ bleed: true, marks: true }))).toEqual({
+			drop: "both",
+			perSheet: 4,
+		});
+	});
+
+	it("A3: без вылета и меток — восемь вместо четырёх", () => {
+		expect(
+			spaceHint(A6, settings({ sheet: A3, bleed: true, marks: true })),
+		).toEqual({ drop: "both", perSheet: 8 });
+	});
+
+	it("включено одно — его и называет", () => {
+		expect(spaceHint(A6, settings({ bleed: true }))).toEqual({
+			drop: "bleed",
+			perSheet: 4,
+		});
+		expect(spaceHint(A6, settings({ marks: true }))).toEqual({
+			drop: "marks",
+			perSheet: 4,
+		});
+	});
+
+	it("из равных вариантов — где выключить меньше", () => {
+		// без меток встаёт столько же, сколько без меток и вылета: вылет можно оставить
+		const card = { w: 100, h: 140, bleed: 0.5 };
+		expect(spaceHint(card, settings({ bleed: true, marks: true }))).toEqual({
+			drop: "marks",
+			perSheet: 4,
+		});
+	});
+
+	it("без листа, без вылета и меток или без выигрыша — подсказки нет", () => {
+		expect(
+			spaceHint(A6, settings({ sheet: null, bleed: true, marks: true })),
+		).toBeNull();
+		expect(spaceHint(A6, settings({}))).toBeNull();
+		// 90×90 с вылетом 1 мм: шесть на A4 и так, и без вылета с метками
+		expect(
+			spaceHint(
+				{ w: 90, h: 90, bleed: 1 },
+				settings({ bleed: true, marks: true }),
+			),
+		).toBeNull();
 	});
 });

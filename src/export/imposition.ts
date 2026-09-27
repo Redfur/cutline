@@ -193,6 +193,50 @@ export function homeMarginHint(
 	};
 }
 
+export type SpaceTaker = "bleed" | "marks" | "both";
+
+export interface SpaceHint {
+	// что убрать, чтобы на лист встало больше
+	drop: SpaceTaker;
+	perSheet: number;
+}
+
+// Вылет и метки занимают место на листе: четыре A6 встают на A4 только встык, без
+// единого миллиметра между ними. Подсказка называет, что именно мешает, — из вариантов
+// с наибольшим числом карточек берётся тот, где выключить нужно меньше.
+export function spaceHint(
+	card: CardSize,
+	settings: ImposeSettings,
+): SpaceHint | null {
+	if (!settings.sheet || !(settings.bleed || settings.marks)) return null;
+	const current = sheetFit(card, settings).perSheet;
+	const variants: { drop: SpaceTaker; perSheet: number }[] = [];
+	if (settings.bleed && settings.marks) {
+		variants.push(
+			{
+				drop: "bleed",
+				perSheet: sheetFit(card, { ...settings, bleed: false }).perSheet,
+			},
+			{
+				drop: "marks",
+				perSheet: sheetFit(card, { ...settings, marks: false }).perSheet,
+			},
+		);
+	}
+	variants.push({
+		drop:
+			settings.bleed && settings.marks
+				? "both"
+				: settings.bleed
+					? "bleed"
+					: "marks",
+		perSheet: sheetFit(card, { ...settings, bleed: false, marks: false })
+			.perSheet,
+	});
+	const best = variants.reduce((a, b) => (b.perSheet > a.perSheet ? b : a));
+	return best.perSheet > current ? best : null;
+}
+
 function slotAt(card: CardSize, x: number, y: number, scale: number): Slot {
 	return {
 		trim: { x, y, w: card.w * scale, h: card.h * scale },

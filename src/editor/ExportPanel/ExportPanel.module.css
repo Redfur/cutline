@@ -86,6 +86,20 @@
 	color: var(--fg-1);
 }
 
+/* Почему на лист встало меньше карточек, чем кажется, и как это изменить одним кликом */
+.spaceHint {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
+	padding: 8px 10px;
+	border-radius: var(--radius-control);
+	background: var(--bg-subtle);
+	font: var(--type-label);
+	color: var(--fg-2);
+	text-wrap: pretty;
+}
+
 .summary {
 	display: flex;
 	align-items: baseline;

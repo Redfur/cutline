@@ -7,6 +7,7 @@ import type {
 	MarginHint,
 	SheetFit,
 	SheetFormat,
+	SpaceHint,
 } from "../../export/imposition";
 import type { DataRecord, FieldDef } from "../../model/document";
 import { plural } from "./plural";
@@ -74,6 +75,39 @@ export function pagesText(format: ExportFormat, count: number): string {
 
 export function marginHintText(hint: MarginHint): string {
 	return `С полями встаёт ${hint.withMargin} из ${hint.withoutMargin}.`;
+}
+
+const SPACE_TAKERS: Record<
+	SpaceHint["drop"],
+	{ takes: string; without: string; action: string }
+> = {
+	bleed: {
+		takes: "Вылет занимает",
+		without: "Без него",
+		action: "Убрать вылет",
+	},
+	marks: {
+		takes: "Метки реза занимают",
+		without: "Без них",
+		action: "Убрать метки",
+	},
+	both: {
+		takes: "Вылет и метки реза занимают",
+		without: "Без них",
+		action: "Убрать вылет и метки",
+	},
+};
+
+// Почему на лист встало меньше, чем кажется: A6 — четверть A4, но только встык
+export function spaceHintText(hint: SpaceHint): string {
+	const { takes, without } = SPACE_TAKERS[hint.drop];
+	// без вылета карточки стоят вплотную — это стоит сказать, иначе непонятно, как резать
+	const butted = hint.drop === "marks" ? "" : " встык — резать по общим линиям";
+	return `${takes} место на листе. ${without} встанет ${cardsCount(hint.perSheet)}${butted}.`;
+}
+
+export function spaceHintAction(hint: SpaceHint): string {
+	return SPACE_TAKERS[hint.drop].action;
 }
 
 export function fitToMarginLabel(hint: MarginHint): string {
