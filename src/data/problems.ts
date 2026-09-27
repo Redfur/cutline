@@ -3,9 +3,12 @@
 // render(), поэтому «подсвечено» и «обрезано в файле» — одно и то же.
 import type { CutlineDocument, DataRecord } from "../model/document";
 import { layoutText } from "../render/layout";
+import { qrModules } from "../render/qr";
 import {
 	evaluate,
 	imageSource,
+	type PlaceholderError,
+	placeholderKeys,
 	requiredFields,
 	type Scope,
 	usedFields,
@@ -50,6 +53,26 @@ export function fieldUse(doc: CutlineDocument): FieldUse {
 	return { used: usedFields(doc), required: requiredFields(doc) };
 }
 
+// Ошибки источника картинки: функции плюс QR, в который текст не влез, — render() его
+// просто не нарисует, и без этой проверки на карточке была бы пустота без объяснения
+function imageErrors(src: string, scope: Scope): PlaceholderError[] {
+	const { source, errors } = imageSource(src, scope);
+	if (source.kind !== "qr") return errors;
+	try {
+		qrModules(source.text);
+		return errors;
+	} catch {
+		return [
+			...errors,
+			{
+				message: `qr(): текст слишком длинный для QR-кода (${source.text.length} знаков)`,
+				keys: placeholderKeys(src),
+				static: false,
+			},
+		];
+	}
+}
+
 export function recordProblems(
 	doc: CutlineDocument,
 	scope: Scope,
@@ -71,7 +94,7 @@ export function recordProblems(
 			el.type === "text"
 				? evaluate(el.content, scope).errors
 				: el.type === "image"
-					? imageSource(el.src, scope).errors
+					? imageErrors(el.src, scope)
 					: [];
 		for (const e of found) {
 			if (e.static) continue;

@@ -171,6 +171,41 @@ const raw = async (s: ReturnType<typeof sheets>) =>
 	new TextDecoder("latin1").decode(await buildPdf(s, resolve));
 
 describe("buildPdf", () => {
+	it("QR-код — вектором: путь в SVG, PDF собирается и перечитывается", async () => {
+		const withQr = {
+			...doc,
+			elements: [
+				...doc.elements,
+				{
+					...base,
+					id: "qr",
+					name: "QR",
+					type: "image" as const,
+					x: 10,
+					y: 100,
+					w: 30,
+					h: 30,
+					src: '{{ qr("https://x.example/u/", pad(n(), 3)) }}',
+					fit: "contain" as const,
+				},
+			],
+		};
+		const svg = render(
+			withQr,
+			{ name: "Анна" },
+			{ outlines, bleed: false, n: 7 },
+		);
+		expect(svg).toContain('fill="#000000"');
+		expect(svg).not.toContain("qr(");
+		const bytes = await buildPdf(
+			imposeSheets(pageLayout(card, settings({ bleed: false, marks: false })), [
+				svg,
+			]),
+			resolve,
+		);
+		expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
+	});
+
 	it("одна на странице с метками: страница — обрез + вылет + зона меток, боксы по обрезу и вылету", async () => {
 		const pdf = await pdfOf([{ name: "Тима Фахме" }], settings({}));
 		const [page] = pdf.getPages();

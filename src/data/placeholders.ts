@@ -157,7 +157,7 @@ export interface Scope {
 	n: number;
 }
 
-export interface EvalError {
+export interface PlaceholderError {
 	message: string;
 	// поля из аргументов упавшего вызова — их ячейки подсвечиваются в «Данных»
 	keys: string[];
@@ -168,7 +168,7 @@ export interface EvalError {
 
 export interface Evaluated {
 	text: string;
-	errors: EvalError[];
+	errors: PlaceholderError[];
 }
 
 function keysOf(expr: Expr, out: string[] = []): string[] {
@@ -177,7 +177,11 @@ function keysOf(expr: Expr, out: string[] = []): string[] {
 	return out;
 }
 
-function evalExpr(expr: Expr, scope: Scope, errors: EvalError[]): string {
+function evalExpr(
+	expr: Expr,
+	scope: Scope,
+	errors: PlaceholderError[],
+): string {
 	switch (expr.kind) {
 		case "key":
 			return scope.record[expr.key] ?? "";
@@ -210,7 +214,7 @@ function evalExpr(expr: Expr, scope: Scope, errors: EvalError[]): string {
 }
 
 export function evaluate(template: string, scope: Scope): Evaluated {
-	const errors: EvalError[] = [];
+	const errors: PlaceholderError[] = [];
 	const text = template.replace(PLACEHOLDER_RE, (_match, inner: string) => {
 		const parsed = parsePlaceholder(inner);
 		if (!parsed.expr) {
@@ -236,7 +240,7 @@ export type ImageSource =
 export function imageSource(
 	src: string,
 	scope: Scope,
-): { source: ImageSource; errors: EvalError[] } {
+): { source: ImageSource; errors: PlaceholderError[] } {
 	const found = matches(src);
 	const only = found.length === 1 ? found[0] : null;
 	if (
@@ -245,7 +249,7 @@ export function imageSource(
 		only.parsed.expr?.kind === "call" &&
 		only.parsed.expr.name === "qr"
 	) {
-		const errors: EvalError[] = [];
+		const errors: PlaceholderError[] = [];
 		const text = only.parsed.expr.args
 			.map((a) => evalExpr(a, scope, errors))
 			.join("");

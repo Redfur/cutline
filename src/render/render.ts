@@ -18,6 +18,7 @@ import type {
 } from "../model/document";
 import { firstBaselineY, layoutText } from "./layout";
 import { type OutlineFonts, textPathData } from "./outline";
+import { qrPathData } from "./qr";
 
 export interface RenderOptions {
 	// шрифты для перевода текста в кривые; null — обычный <text> (экран, SVG). Текст
@@ -139,8 +140,32 @@ const IMAGE_FIT_TO_PRESERVE_ASPECT_RATIO: Record<ImageElement["fit"], string> =
 		fill: "none",
 	};
 
+// Модули — чёрным: QR сканируется по контрасту, а цвет документа мог бы быть светлым
+const QR_COLOR = "#000000";
+
+// Квадрат по центру рамки, как «вписать целиком» у картинки
+function renderQr(el: ImageElement, text: string): string {
+	const side = Math.min(el.w, el.h);
+	let d: string;
+	try {
+		d = qrPathData(
+			text,
+			el.x + (el.w - side) / 2,
+			el.y + (el.h - side) / 2,
+			side,
+		);
+	} catch {
+		// текст длиннее, чем влезает в QR, — рисовать нечего; причину скажут проблемы записи
+		return "";
+	}
+	return `<path d="${d}" fill="${QR_COLOR}"/>`;
+}
+
 function renderImage(el: ImageElement, scope: Scope): string {
 	const { source } = imageSource(el.src, scope);
+	if (source.kind === "qr") {
+		return renderQr(el, source.text);
+	}
 	if (source.kind !== "href") {
 		return "";
 	}

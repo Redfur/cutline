@@ -202,7 +202,8 @@ const badge: Template = {
 				y: 108,
 				w: 30,
 				h: 30,
-				src: "",
+				// в макете — пустой слот; у каждого бейджа свой код без отдельной колонки
+				src: '{{ qr("https://tochka-rosta.example/u/", pad(n(), 3)) }}',
 				fit: "contain",
 			},
 			{
