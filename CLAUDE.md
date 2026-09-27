@@ -22,6 +22,8 @@
 - `npm run preview` — локальный просмотр собранного `dist/`
 - `npm test` — Vitest (`vitest run`), среда node без jsdom
 
+CI и деплой — `.github/workflows/ci.yml`: на push/PR — lint, test, build; на push в `main` — публикация `dist/` на GitHub Pages (https://redfur.github.io/cutline/). Сайт живёт в подкаталоге, поэтому `base` передаётся при сборке (`npm run build -- --base=/cutline/`), а в `vite.config.ts` не прописан. Ресурсы подключать через импорт (`?url`, как шрифты в `fonts/bundled.ts`) — абсолютный путь `"/…"` на Pages даст 404. Проверить сборку из подкаталога локально: `npm run build -- --base=/cutline/ && npx vite preview --base=/cutline/`.
+
 Линтер и форматтер — только Biome (`biome.json`), ESLint/Prettier не добавляем. `reference/` из проверки Biome исключён: это замороженный прототип, его не переписываем.
 
 ## Дизайн-система и мокапы
