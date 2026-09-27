@@ -192,6 +192,14 @@ export function TopBar({
 				width={220}
 				trigger={<IconButton icon="ellipsis" label="Меню" />}
 				items={[
+					// те же пункты, что внизу списка документов: в «…» их ищут первым делом
+					{ label: "Новый документ", icon: "plus", onSelect: onNewDocument },
+					{
+						label: "Открыть файл…",
+						icon: "file-text",
+						onSelect: () => fileInput.current?.click(),
+					},
+					{ separator: true },
 					{
 						label: "Переименовать",
 						icon: "type",

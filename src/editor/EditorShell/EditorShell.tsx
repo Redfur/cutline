@@ -61,7 +61,8 @@ export interface EditorShellProps {
 	notice: string | null;
 	// документы — дело Workspace: у каждого свой редактор (key={id}) и своя история
 	onSwitchDocument: (id: string) => void;
-	onNewDocument: () => void;
+	// текущий документ и вид — чтобы со стартового экрана вернуться к нему таким, как есть
+	onNewDocument: (current: { doc: CutlineDocument; view: ViewState }) => void;
 	onOpenDocument: (doc: CutlineDocument) => void;
 	onDuplicateDocument: (doc: CutlineDocument) => void;
 	onDeleteDocument: () => void;
@@ -163,12 +164,11 @@ export function EditorShell({
 
 	// сохраняем зажатый индекс, а не сырой: после удаления записей сырой мог уйти
 	// за конец, и после перезагрузки навигатор показал бы несуществующую запись
-	const save = useAutosave(
-		docId,
-		history.doc,
-		{ mode, recordIndex: currentRecord, borders },
-		{ enabled: storageAvailable, notice },
-	);
+	const view: ViewState = { mode, recordIndex: currentRecord, borders };
+	const save = useAutosave(docId, history.doc, view, {
+		enabled: storageAvailable,
+		notice,
+	});
 
 	// Имя — часть документа: переименование отменяется Ctrl+Z, как любая правка
 	const handleRename = (name: string) => {
@@ -365,7 +365,7 @@ export function EditorShell({
 				onRename={handleRename}
 				onSwitchDocument={onSwitchDocument}
 				onOpenDocument={onOpenDocument}
-				onNewDocument={onNewDocument}
+				onNewDocument={() => onNewDocument({ doc: history.doc, view })}
 				onDuplicate={() => onDuplicateDocument(history.doc)}
 				onDelete={onDeleteDocument}
 				onExport={() => setExporting(true)}
@@ -433,6 +433,7 @@ export function EditorShell({
 						borders={borders}
 					/>
 					<Inspector
+						docName={history.doc.name}
 						canvas={history.doc.canvas}
 						onCanvasChange={(canvas) =>
 							history.set((doc) => ({ ...doc, canvas }))

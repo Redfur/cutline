@@ -23,6 +23,8 @@ import { ShapeInspector } from "./ShapeInspector";
 import { TextInspector } from "./TextInspector";
 
 export interface InspectorProps {
+	// заголовок, когда ничего не выделено: секция ниже уже называется «Холст»
+	docName: string;
 	canvas: CanvasModel;
 	onCanvasChange: (canvas: CanvasModel) => void;
 	selectedElement: CutlineElement | null;
@@ -61,6 +63,7 @@ const TYPE_ICON: Record<ElementType, IconProps["name"]> = {
 };
 
 export function Inspector({
+	docName,
 	canvas,
 	onCanvasChange,
 	selectedElement,
@@ -124,7 +127,7 @@ export function Inspector({
 				</>
 			) : (
 				<>
-					<InspectorHeader title="Холст" kind="Ничего не выделено" />
+					<InspectorHeader title={docName} kind="Ничего не выделено" />
 					{overflowElements[0] && (
 						<OverflowAlert
 							title={`${overflowElements.length} ${plural(

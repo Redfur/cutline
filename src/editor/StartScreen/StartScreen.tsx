@@ -1,17 +1,21 @@
 // Стартовый экран «Новый макет» по StartScreen из проекта cutline: шаблоны и пустой
 // макет. Показывается, когда документов нет, по «Новый документ» и после удаления
 // последнего. Превью — настоящий render() первой записи, как миниатюры в «Данных».
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { blankDocument } from "../../render/fixtures/blank";
 import { render } from "../../render/render";
 import { TEMPLATES, type Template } from "../../templates/templates";
 import { Icon } from "../../ui/core/Icon";
+import { Button } from "../../ui/forms/Button";
 import styles from "./StartScreen.module.css";
 import { TemplateCard } from "./TemplateCard";
 
 export interface StartScreenProps {
 	// null — пустой макет
 	onPick: (template: Template | null) => void;
+	// пришли «Новым документом» из открытого — вернуться к нему, ничего не создав
+	onBack?: () => void;
+	backName?: string;
 }
 
 function mm(value: number): string {
@@ -42,12 +46,33 @@ function TemplatePreview({ template }: { template: Template }) {
 	);
 }
 
-export function StartScreen({ onPick }: StartScreenProps) {
+export function StartScreen({ onPick, onBack, backName }: StartScreenProps) {
 	const { w, h } = blankDocument.canvas;
+
+	// Esc — как «закрыть»: зашёл посмотреть шаблоны и передумал
+	useEffect(() => {
+		if (!onBack) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") onBack();
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [onBack]);
+
 	return (
 		<div className={styles.screen}>
 			<header className={styles.header}>
 				<span className={styles.logo}>Cutline</span>
+				{onBack && (
+					<Button
+						variant="ghost"
+						size="sm"
+						icon="chevron-left"
+						onClick={onBack}
+					>
+						{`Вернуться к «${backName ?? "документу"}»`}
+					</Button>
+				)}
 			</header>
 			<main className={styles.main}>
 				<div className={styles.content}>

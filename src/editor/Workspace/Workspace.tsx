@@ -43,8 +43,14 @@ interface Opened {
 
 type State =
 	| { phase: "loading" }
-	// opened: null — стартовый экран
-	| { phase: "ready"; opened: Opened | null; storageAvailable: boolean };
+	// opened: null — стартовый экран; back — документ, с которого на него пришли
+	// «Новым документом»: к нему можно вернуться, ничего не создав
+	| {
+			phase: "ready";
+			opened: Opened | null;
+			back: Opened | null;
+			storageAvailable: boolean;
+	  };
 
 function fresh(doc: CutlineDocument): Opened {
 	return { id: newDocumentId(), doc, view: DEFAULT_VIEW, notice: null };
@@ -86,12 +92,22 @@ export function Workspace() {
 			.then((last) => openFirstAvailable(last))
 			.then((opened) => {
 				if (!cancelled)
-					setState({ phase: "ready", opened, storageAvailable: true });
+					setState({
+						phase: "ready",
+						opened,
+						back: null,
+						storageAvailable: true,
+					});
 			})
 			.catch(() => {
 				// хранилища нет — начинаем со стартового экрана, документ просто не сохранится
 				if (!cancelled) {
-					setState({ phase: "ready", opened: null, storageAvailable: false });
+					setState({
+						phase: "ready",
+						opened: null,
+						back: null,
+						storageAvailable: false,
+					});
 				}
 			})
 			.finally(() => clearTimeout(timer));
@@ -104,7 +120,7 @@ export function Workspace() {
 	const storageAvailable = state.phase === "ready" && state.storageAvailable;
 	const show = useCallback(
 		(opened: Opened | null) =>
-			setState((s) => (s.phase === "ready" ? { ...s, opened } : s)),
+			setState((s) => (s.phase === "ready" ? { ...s, opened, back: null } : s)),
 		[],
 	);
 
@@ -130,11 +146,13 @@ export function Workspace() {
 	if (state.phase === "loading") {
 		return slow ? <EditorSkeleton /> : null;
 	}
-	const { opened } = state;
+	const { opened, back } = state;
 
 	if (!opened) {
 		return (
 			<StartScreen
+				backName={back?.doc.name}
+				onBack={back ? () => show(back) : undefined}
 				onPick={(template) =>
 					void create(
 						template ? documentFromTemplate(template) : blankDocument,
@@ -168,7 +186,19 @@ export function Workspace() {
 					})
 					.catch(report);
 			}}
-			onNewDocument={() => show(null)}
+			onNewDocument={(current) =>
+				// документ берём из редактора, а не opened.doc: тот — снимок на момент
+				// открытия, без правок; вернёмся — откроется таким, каким его оставили
+				setState((s) =>
+					s.phase === "ready"
+						? {
+								...s,
+								opened: null,
+								back: { ...opened, ...current, notice: null },
+							}
+						: s,
+				)
+			}
 			onOpenDocument={(doc) => void create(doc).catch(report)}
 			onDuplicateDocument={(doc) =>
 				void create({ ...doc, name: `${doc.name} — копия` }).catch(report)
