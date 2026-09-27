@@ -8,6 +8,7 @@ import {
 	lastOpenedId,
 	listDocuments,
 	loadDocument,
+	rememberOpened,
 	type StoredDocument,
 	saveDocument,
 } from "./documents";
@@ -39,13 +40,21 @@ describe("документы", () => {
 		expect(await loadDocument("нет")).toEqual({ status: "missing" });
 	});
 
-	it("сохранили → загрузили то же; в списке имя и время; стал последним", async () => {
+	it("сохранили → загрузили то же; в списке имя и время", async () => {
 		const a = stored("a", "Бейджи", 1);
 		await saveDocument(a);
 		expect(await loadDocument("a")).toEqual({ status: "ok", stored: a });
 		expect(await listDocuments()).toEqual([
 			{ id: "a", name: "Бейджи", savedAt: 1 },
 		]);
+	});
+
+	it("последний открытый — тот, что открыли, а не тот, что сохранили позже", async () => {
+		await saveDocument(stored("a", "Бейджи", 1));
+		await saveDocument(stored("b", "Ценники", 2));
+		// переключились на a без правок, потом дописалось отложенное сохранение b
+		await rememberOpened("a");
+		await saveDocument(stored("b", "Ценники", 3));
 		expect(await lastOpenedId()).toBe("a");
 	});
 
@@ -57,7 +66,6 @@ describe("документы", () => {
 			{ id: "a", name: "Бейджи осень", savedAt: 3 },
 			{ id: "b", name: "Ценники", savedAt: 2 },
 		]);
-		expect(await lastOpenedId()).toBe("a");
 	});
 
 	it("удаление убирает и документ, и строку списка", async () => {

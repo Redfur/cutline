@@ -14,6 +14,7 @@ import {
 	listDocuments,
 	loadDocument,
 	newDocumentId,
+	rememberOpened,
 	saveDocument,
 	type ViewState,
 } from "../../storage/documents";
@@ -91,6 +92,8 @@ export function Workspace() {
 		lastOpenedId()
 			.then((last) => openFirstAvailable(last))
 			.then((opened) => {
+				// открылся не last (его удалили, он не читается) — теперь последний этот
+				if (opened) void rememberOpened(opened.id).catch(() => {});
 				if (!cancelled)
 					setState({
 						phase: "ready",
@@ -119,9 +122,13 @@ export function Workspace() {
 
 	const storageAvailable = state.phase === "ready" && state.storageAvailable;
 	const show = useCallback(
-		(opened: Opened | null) =>
-			setState((s) => (s.phase === "ready" ? { ...s, opened, back: null } : s)),
-		[],
+		(opened: Opened | null) => {
+			// не записался — после F5 откроется прежний документ, работать это не мешает
+			if (opened && storageAvailable)
+				void rememberOpened(opened.id).catch(() => {});
+			setState((s) => (s.phase === "ready" ? { ...s, opened, back: null } : s));
+		},
+		[storageAvailable],
 	);
 
 	// Новый документ записывается сразу, а не с первой правкой: он должен появиться в

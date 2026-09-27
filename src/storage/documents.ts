@@ -7,9 +7,15 @@
 //   doc:<id> — StoredDocument целиком;
 //   index    — [{ id, name, savedAt }]: список для переключателя без чтения тяжёлых
 //              документов, обновляется в той же транзакции, что и документ;
-//   last     — id последнего открытого;
+//   last     — id последнего открытого (пишет Workspace при открытии, rememberOpened);
 //   current  — одиночная сессия до Этапа 5, переносится в doc:<id> при первом чтении.
-import { createStore, get, promisifyRequest, type UseStore } from "idb-keyval";
+import {
+	createStore,
+	get,
+	promisifyRequest,
+	set,
+	type UseStore,
+} from "idb-keyval";
 import type { BorderVisibility } from "../editor/lib/snap";
 import type { CutlineDocument } from "../model/document";
 import { validateDocument } from "../model/file";
@@ -186,8 +192,16 @@ export async function lastOpenedId(): Promise<string | null> {
 	return typeof id === "string" ? id : null;
 }
 
-// Документ, строка индекса и «последний открытый» — одной транзакцией: список не
-// может разойтись с тем, что лежит. commit() явный: без него транзакция коммитится,
+// «Последний открытый» пишет тот, кто открывает (Workspace), а не сохранение: документ,
+// на который переключились без правок, не сохраняется, и после F5 открывался прежний.
+// А отложенное сохранение редактора, закрытого переключением, дописывается позже
+// открытия следующего — если бы оно писало last, то возвращало бы его на закрытый
+export function rememberOpened(id: string): Promise<void> {
+	return set(LAST, id, getStore());
+}
+
+// Документ и строка индекса — одной транзакцией: список не может разойтись с тем,
+// что лежит. commit() явный: без него транзакция коммитится,
 // только когда страница вернётся в цикл событий, а при уходе со страницы её держит
 // модальный вопрос beforeunload, после которого документ выгружается и транзакция
 // прерывается. Проверено: правка за 100 мс до F5 терялась даже с вопросом.
@@ -205,7 +219,6 @@ export function saveDocument(stored: StoredDocument): Promise<void> {
 			};
 			s.put(stored, docKey(stored.id));
 			s.put([summary, ...list.filter((d) => d.id !== stored.id)], INDEX);
-			s.put(stored.id, LAST);
 			s.transaction.commit();
 		};
 		return promisifyRequest(s.transaction);
