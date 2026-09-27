@@ -3,7 +3,7 @@
 // раз, при описании шаблона:
 //   кегль и мин. кегль — pt → мм (как их показывает инспектор, lib/units.ts);
 //   межстрочный — % → множитель; трекинг — % от кегля (letterSpacing: n/100 em) → мм;
-//   вес 400/500 → regular, 600/700 → bold (в модели пока два начертания);
+//   вес — как есть (400–700; у PT Serif 500/600 наберутся Regular/Bold);
 //   valign "bottom" → "baseline" (последняя строка на нижнем крае рамки);
 //   порядок слоёв: в макете первый элемент — верхний, в модели первый рисуется первым.
 import { pctToLineHeight, pctToTracking, ptToMm } from "../editor/lib/units";
@@ -12,6 +12,7 @@ import type {
 	CutlineElement,
 	DataRecord,
 	FieldDef,
+	FontWeight,
 	TextElement,
 } from "../model/document";
 import { CURRENT_VERSION } from "../model/migrate";
@@ -33,7 +34,7 @@ interface TextSpec {
 	h: number;
 	content: string;
 	font?: string;
-	weight?: number;
+	weight?: FontWeight;
 	size: number; // pt
 	lh?: number; // %
 	tracking?: number; // % кегля
@@ -59,7 +60,7 @@ function text(spec: TextSpec): TextElement {
 		visible: true,
 		content: spec.content,
 		font: spec.font ?? "Golos Text",
-		weight: (spec.weight ?? 400) >= 600 ? "bold" : "regular",
+		weight: spec.weight ?? 400,
 		size,
 		minSize: ptToMm(spec.minSize),
 		lineHeight: pctToLineHeight(spec.lh ?? 115),

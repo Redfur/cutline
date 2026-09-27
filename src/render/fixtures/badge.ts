@@ -10,7 +10,7 @@
 // (там MM = 4 условных px на миллиметр) в настоящие миллиметры модели.
 
 import type { CutlineDocument } from "../../model/document";
-import { migrateDocument } from "../../model/migrate";
+import { type AnyVersionDocument, migrateDocument } from "../../model/migrate";
 
 const PAD = 7; // мм, как в прототипе
 const CANVAS_W = 105;
@@ -24,7 +24,7 @@ const BORDER = "#DDDCD6";
 
 // Координаты — как в прототипе, в схеме v1 (y у текстов «по базовой» — сама базовая
 // линия); в текущую схему документ приводит та же миграция, что и старые файлы
-const badgeV1: CutlineDocument = {
+const badgeV1: AnyVersionDocument = {
 	version: 1,
 	name: "",
 	canvas: {

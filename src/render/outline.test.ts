@@ -7,8 +7,9 @@ const golos = loadFont("GolosText-Regular.ttf");
 describe("встроенные шрифты", () => {
 	const files = TEST_FONT_FILES;
 
-	it("все восемь начертаний на месте", () => {
-		expect(files).toHaveLength(8);
+	it("все четырнадцать начертаний на месте", () => {
+		// три семейства по четыре (400–700) и PT Serif — Regular/Bold
+		expect(files).toHaveLength(14);
 	});
 
 	it.each(files)("%s разбирается и рисует кириллицу", (file) => {

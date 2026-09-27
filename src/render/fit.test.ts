@@ -20,7 +20,7 @@ vi.mock("./measure", () => ({
 }));
 
 function ctx(maxWidthMm: number, trackingMm = 0): FitContext {
-	return { fontFamily: "Inter", weight: "regular", trackingMm, maxWidthMm };
+	return { fontFamily: "Inter", weight: 400, trackingMm, maxWidthMm };
 }
 
 describe("shrinkToFit", () => {

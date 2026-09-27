@@ -3,7 +3,7 @@
 // поэтому экран и PDF меряют один шрифт. opentype.js сюда не импортируется: он нужен
 // только при экспорте и грузится вместе с ним.
 import type { CutlineDocument, FontWeight } from "../model/document";
-import { bundledFontUrl } from "./bundled";
+import { bundledFontFile } from "./bundled";
 
 export interface FontUse {
 	family: string;
@@ -29,11 +29,14 @@ const registeredFaces = new Set<string>();
 // Догрузку ловит useFontsVersion по событию loadingdone — отсюда ничего не сообщаем.
 export function ensureFontFaces(doc: CutlineDocument): void {
 	for (const { family, weight } of textFonts(doc)) {
-		const url = bundledFontUrl(family, weight);
-		if (!url || registeredFaces.has(url)) continue;
+		const file = bundledFontFile(family, weight);
+		if (!file || registeredFaces.has(file.url)) continue;
+		const { url } = file;
 		registeredFaces.add(url);
+		// Вес — настоящий вес файла, а не запрошенный: PT Serif SemiBold набирается
+		// файлом Bold, и браузер найдёт его по тому же правилу, что resolveWeight
 		const face = new FontFace(family, `url(${url})`, {
-			weight: weight === "bold" ? "700" : "400",
+			weight: String(file.weight),
 		});
 		document.fonts.add(face);
 		face.load().catch((err: unknown) => {

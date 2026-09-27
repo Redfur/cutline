@@ -21,10 +21,6 @@ function getMeasureContext(): CanvasRenderingContext2D {
 	return measureContext;
 }
 
-function cssWeight(weight: FontWeight): number {
-	return weight === "bold" ? 700 : 400;
-}
-
 // Родовые ключевые слова CSS нельзя брать в кавычки — в кавычках браузер ищет
 // шрифт с таким буквальным именем вместо общего fallback'а, и метрики расходятся
 // с тем, что фактически нарисует <text font-family="…"> в render.ts (там имя идёт
@@ -63,7 +59,7 @@ export function measureText(
 	weight: FontWeight,
 ): TextMetricsMm {
 	const ctx = getMeasureContext();
-	ctx.font = `${cssWeight(weight)} ${sizeMm}px ${cssFontFamily(fontFamily)}`;
+	ctx.font = `${weight} ${sizeMm}px ${cssFontFamily(fontFamily)}`;
 	const metrics = ctx.measureText(text);
 	const trackingWidth = text.length > 1 ? trackingMm * (text.length - 1) : 0;
 	return {

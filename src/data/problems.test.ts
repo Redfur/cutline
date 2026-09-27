@@ -31,7 +31,7 @@ function text(id: string, content: string, visible = true): TextElement {
 		visible,
 		content,
 		font: "Inter",
-		weight: "regular",
+		weight: 400,
 		size: 2,
 		minSize: 2,
 		lineHeight: 1.2,

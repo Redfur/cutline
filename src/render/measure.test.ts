@@ -24,25 +24,23 @@ const { measureText } = await import("./measure");
 
 describe("measureText", () => {
 	it("родовое семейство — без кавычек, конкретное — в кавычках", () => {
-		measureText("a", 4, 0, "sans-serif", "regular");
-		measureText("a", 4, 0, "Inter", "regular");
+		measureText("a", 4, 0, "sans-serif", 400);
+		measureText("a", 4, 0, "Inter", 400);
 		expect(fonts.slice(-2)).toEqual(["400 4px sans-serif", '400 4px "Inter"']);
 	});
 
 	it("bold → 700", () => {
-		measureText("a", 3.5, 0, "Inter", "bold");
+		measureText("a", 3.5, 0, "Inter", 700);
 		expect(fonts.at(-1)).toBe('700 3.5px "Inter"');
 	});
 
 	it("трекинг добавляется между символами, не после последнего", () => {
-		expect(measureText("abcd", 4, 0.5, "Inter", "regular").widthMm).toBe(
-			8 + 3 * 0.5,
-		);
-		expect(measureText("a", 4, 0.5, "Inter", "regular").widthMm).toBe(2);
+		expect(measureText("abcd", 4, 0.5, "Inter", 400).widthMm).toBe(8 + 3 * 0.5);
+		expect(measureText("a", 4, 0.5, "Inter", 400).widthMm).toBe(2);
 	});
 
 	it("отдаёт метрики шрифта", () => {
-		expect(measureText("a", 4, 0, "Inter", "regular")).toMatchObject({
+		expect(measureText("a", 4, 0, "Inter", 400)).toMatchObject({
 			ascentMm: 8,
 			descentMm: 2,
 		});

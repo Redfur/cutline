@@ -2,7 +2,13 @@
 // Содержимое / Положение и размер / Шрифт и кегль / Выравнивание / Цвет / Автоподгонка.
 // Кегль в pt, межстрочный и трекинг в % — только при показе, модель в мм (lib/units.ts).
 import { useRef, useState } from "react";
-import { BUNDLED_FAMILIES, isBundledFont } from "../../../fonts/bundled";
+import {
+	BUNDLED_FAMILIES,
+	familyWeights,
+	isBundledFont,
+	resolveWeight,
+	WEIGHT_LABELS,
+} from "../../../fonts/bundled";
 import type {
 	DataRecord,
 	FieldDef,
@@ -144,6 +150,13 @@ export function TextInspector({
 		FONT_PRESETS.includes(element.font) || !element.font
 			? FONT_PRESETS
 			: [element.font, ...FONT_PRESETS];
+	const weights = familyWeights(element.font);
+	// У PT Serif нет Medium/SemiBold: при смене семейства вес сразу становится тем,
+	// которым текст и наберётся, — одним шагом истории с самим семейством
+	const withFont = (font: string): Partial<TextElement> => ({
+		font,
+		weight: resolveWeight(familyWeights(font), element.weight),
+	});
 
 	// в позицию курсора, а не в конец: «Здравствуйте, {{name}}!» собирают вставкой в середину
 	const insertField = (key: string) => {
@@ -226,24 +239,27 @@ export function TextInspector({
 						]}
 						onChange={(v) => {
 							setShowCustomFontField(v === CUSTOM_FONT);
-							if (v !== CUSTOM_FONT) set({ font: v });
+							if (v !== CUSTOM_FONT) set(withFont(v));
 						}}
 					/>
 					{showCustomFontField && (
 						<TextField
 							value={element.font}
 							placeholder="Название шрифта"
-							onChange={(v) => set({ font: v })}
+							onChange={(v) => set(withFont(v))}
 						/>
 					)}
 					<PropertyRow columns={2}>
 						<Select
-							value={element.weight}
-							onChange={(v) => set({ weight: v as TextElement["weight"] })}
-							options={[
-								{ value: "regular", label: "Regular" },
-								{ value: "bold", label: "Bold" },
-							]}
+							value={String(resolveWeight(weights, element.weight))}
+							onChange={(v) => {
+								const weight = weights.find((w) => String(w) === v);
+								if (weight) set({ weight });
+							}}
+							options={weights.map((w) => ({
+								value: String(w),
+								label: WEIGHT_LABELS[w],
+							}))}
 						/>
 						<TextField
 							prefixIcon="a-large-small"

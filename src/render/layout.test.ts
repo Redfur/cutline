@@ -25,7 +25,7 @@ function text(patch: Partial<TextElement>): TextElement {
 		visible: true,
 		content: "{{name}}",
 		font: "Inter",
-		weight: "regular",
+		weight: 400,
 		size: 2,
 		minSize: 1,
 		lineHeight: 1.25,

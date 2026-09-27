@@ -88,7 +88,7 @@ function renderText(
 			const y = baseY + lineHeightMm * i;
 			return (
 				`<text x="${anchorX}" y="${y}" font-family="${escapeXml(el.font)}"` +
-				` font-weight="${el.weight === "bold" ? 700 : 400}" font-size="${sizeMm}"` +
+				` font-weight="${el.weight}" font-size="${sizeMm}"` +
 				` fill="${el.color}" text-anchor="${anchor}"` +
 				`${el.tracking ? ` letter-spacing="${el.tracking}"` : ""}>${escapeXml(line)}</text>`
 			);

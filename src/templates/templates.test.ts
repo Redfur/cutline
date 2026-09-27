@@ -40,7 +40,7 @@ describe("шаблоны", () => {
 		// точный pt = 25,4/72 мм; в макете округлённое 0,3528 — разница в десятитысячных
 		expect(name.size).toBeCloseTo((24 * 25.4) / 72, 9);
 		expect(name.lineHeight).toBeCloseTo(1.05, 9);
-		expect(name.weight).toBe("bold");
+		expect(name.weight).toBe(700);
 		expect(date.tracking).toBeCloseTo(((9 * 25.4) / 72) * 0.04, 9);
 	});
 

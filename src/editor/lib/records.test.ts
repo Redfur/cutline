@@ -37,7 +37,7 @@ const doc: CutlineDocument = {
 			visible: true,
 			content: "{{name}}, {{city}}",
 			font: "Inter",
-			weight: "regular",
+			weight: 400,
 			size: 3,
 			minSize: 2,
 			lineHeight: 1.2,

@@ -1,9 +1,9 @@
 // Пустой документ A6 — стартовое состояние редактора: холст есть, элементов нет.
 import type { CutlineDocument } from "../../model/document";
-import { UNTITLED } from "../../model/migrate";
+import { CURRENT_VERSION, UNTITLED } from "../../model/migrate";
 
 export const blankDocument: CutlineDocument = {
-	version: 3,
+	version: CURRENT_VERSION,
 	name: UNTITLED,
 	canvas: {
 		w: 105,

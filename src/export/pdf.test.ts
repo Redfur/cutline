@@ -123,7 +123,7 @@ const doc: CutlineDocument = {
 			h: 12,
 			content: "{{name}}",
 			font: "Golos Text",
-			weight: "regular",
+			weight: 400,
 			size: 8,
 			minSize: 4,
 			lineHeight: 1.2,
@@ -138,7 +138,7 @@ const doc: CutlineDocument = {
 };
 
 const outlines: OutlineFonts = (family, weight) =>
-	family === "Golos Text" && weight === "regular" ? golos : undefined;
+	family === "Golos Text" && weight === 400 ? golos : undefined;
 
 const card = { w: 105, h: 148, bleed: 3 };
 

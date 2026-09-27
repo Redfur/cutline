@@ -3,7 +3,7 @@
 import { type Font, parse } from "opentype.js";
 import type { CutlineDocument } from "../model/document";
 import type { OutlineFonts } from "../render/outline";
-import { bundledFontUrl } from "./bundled";
+import { bundledFontUrl, WEIGHT_LABELS } from "./bundled";
 import { textFonts } from "./load";
 
 const parsedFonts = new Map<string, Promise<Font>>();
@@ -38,7 +38,7 @@ export async function loadOutlineFonts(
 				loaded.set(url, await parseFont(url));
 			} catch (err) {
 				throw new Error(
-					`Не удалось загрузить шрифт ${family} (${weight === "bold" ? "Bold" : "Regular"}): ${err instanceof Error ? err.message : String(err)}`,
+					`Не удалось загрузить шрифт ${family} (${WEIGHT_LABELS[weight]}): ${err instanceof Error ? err.message : String(err)}`,
 				);
 			}
 		}),

@@ -17,7 +17,10 @@ interface ElementBase {
 	visible: boolean;
 }
 
-export type FontWeight = "regular" | "bold";
+// Как CSS font-weight: число уходит в ctx.font, FontFace и атрибут <text> без перевода.
+// Не у каждого встроенного семейства есть все четыре — файл подбирается resolveWeight
+// (src/fonts/bundled.ts)
+export type FontWeight = 400 | 500 | 600 | 700;
 export type TextAlign = "left" | "center" | "right";
 export type TextValign = "top" | "middle" | "baseline";
 export type TextFit = "shrink" | "clip" | "wrap" | "none";

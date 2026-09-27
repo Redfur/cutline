@@ -79,7 +79,7 @@ export function createText(at: PointMm): TextElement {
 		content: "Текст",
 		// встроенный (src/fonts/bundled.ts): новый текст сразу попадает в PDF
 		font: "JetBrains Mono",
-		weight: "regular",
+		weight: 400,
 		size: 6,
 		minSize: 3,
 		lineHeight: 1.2,
