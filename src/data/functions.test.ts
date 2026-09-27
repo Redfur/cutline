@@ -43,3 +43,13 @@ describe("встроенные функции", () => {
 		expect(() => call("num", ["дорого"])).toThrow("не число");
 	});
 });
+
+describe("описания для справки", () => {
+	it("у каждой функции есть имя, описание и пример с её вызовом", () => {
+		for (const [name, fn] of Object.entries(FUNCTIONS)) {
+			expect(fn.title, name).not.toBe("");
+			expect(fn.description, name).not.toBe("");
+			expect(fn.example, name).toContain(`${name}(`);
+		}
+	});
+});

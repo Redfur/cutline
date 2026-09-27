@@ -18,6 +18,12 @@ export interface BuiltinFunction {
 	// меню заменяет ключом первого поля документа — чтобы вставка сразу работала
 	snippet: string;
 	hint: string;
+	// для справки (src/help/): имя по-человечески, что делает и пример
+	// «было → стало». Описания живут здесь, а не в тексте справки, — новая функция
+	// попадает в справку сама
+	title: string;
+	description: string;
+	example: string;
 	// где имеет смысл: qr — только источник картинки, остальные — текст
 	target: "text" | "image";
 	// нет — функция не для текста (qr)
@@ -56,7 +62,11 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		minArgs: 1,
 		maxArgs: 10,
 		snippet: '{{ qr("https://", поле) }}',
-		hint: "QR-код",
+		hint: "QR по ссылке",
+		title: "QR-код",
+		description:
+			"Рисует QR-код из склеенных аргументов: адрес и поле записи. Ставится в источник картинки или инструментом «QR-код».",
+		example: 'qr("https://site.ru/u/", id) → код ссылки https://site.ru/u/42',
 		target: "image",
 	},
 	pad: {
@@ -64,6 +74,10 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		maxArgs: 3,
 		snippet: "{{ pad(n(), 3) }}",
 		hint: "Нули: 7 → 007",
+		title: "Нули слева",
+		description:
+			"Дополняет значение до нужной длины нулями или своим символом — для номеров билетов и бейджей.",
+		example: "pad(n(), 3) → 007",
 		target: "text",
 		call: ([value, width, fill = "0"]) => {
 			const w = toInt(width, "pad()");
@@ -80,6 +94,9 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		maxArgs: 0,
 		snippet: "{{ n() }}",
 		hint: "Номер записи",
+		title: "Номер записи",
+		description: "Порядковый номер записи в таблице, с единицы.",
+		example: "n() → 7",
 		target: "text",
 		call: (_args, ctx) => String(ctx.n),
 	},
@@ -88,6 +105,10 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		maxArgs: 2,
 		snippet: '{{ default(поле, "—") }}',
 		hint: "Запасное",
+		title: "Запасное значение",
+		description:
+			"Подставляет запасной текст, если ячейка пустая, — запись не считается проблемной.",
+		example: 'default(Должность, "Гость") → Гость',
 		target: "text",
 		call: ([value, fallback]) => (value.trim() ? value : fallback),
 	},
@@ -96,6 +117,9 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		maxArgs: 1,
 		snippet: "{{ upper(поле) }}",
 		hint: "ПРОПИСНЫЕ",
+		title: "Прописные",
+		description: "Переводит текст в прописные буквы.",
+		example: "upper(Имя) → АННА",
 		target: "text",
 		call: ([value]) => value.toLocaleUpperCase("ru"),
 	},
@@ -104,6 +128,9 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		maxArgs: 1,
 		snippet: "{{ lower(поле) }}",
 		hint: "строчные",
+		title: "Строчные",
+		description: "Переводит текст в строчные буквы.",
+		example: "lower(Имя) → анна",
 		target: "text",
 		call: ([value]) => value.toLocaleLowerCase("ru"),
 	},
@@ -112,6 +139,9 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		maxArgs: 1,
 		snippet: "{{ capitalize(поле) }}",
 		hint: "Заглавная",
+		title: "С заглавной",
+		description: "Делает первую букву заглавной, остальные не трогает.",
+		example: "capitalize(город) → Казань",
 		target: "text",
 		call: ([value]) => value.charAt(0).toLocaleUpperCase("ru") + value.slice(1),
 	},
@@ -120,6 +150,9 @@ export const FUNCTIONS: Record<string, BuiltinFunction> = {
 		maxArgs: 1,
 		snippet: "{{ num(поле) }}",
 		hint: "12 500",
+		title: "Число с разрядами",
+		description: "Разбивает число на разряды и ставит десятичную запятую.",
+		example: "num(12500.5) → 12 500,5",
 		target: "text",
 		call: ([value]) => formatNumber(value),
 	},
