@@ -108,6 +108,7 @@ export function createImage(at: PointMm): ImageElement {
 		// (основной способ) или через загрузку файла (data URI, второстепенный)
 		src: "",
 		fit: "cover",
+		background: null,
 	};
 }
 

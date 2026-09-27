@@ -69,6 +69,8 @@ export interface ImageElement extends ElementBase {
 	type: "image";
 	src: string;
 	fit: ImageFit;
+	// под картинкой или QR-кодом, на всю рамку; null — прозрачный (v5)
+	background: string | null;
 }
 
 export type CutlineElement =

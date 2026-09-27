@@ -25,3 +25,9 @@
 .fileInput {
 	display: none;
 }
+
+.hint {
+	margin: 0;
+	font: var(--type-label);
+	color: var(--fg-3);
+}

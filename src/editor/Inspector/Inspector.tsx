@@ -122,6 +122,7 @@ export function Inspector({
 							onChange={onElementChange}
 							fields={fields}
 							record={record}
+							swatches={swatches}
 						/>
 					)}
 				</>

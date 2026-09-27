@@ -9,17 +9,20 @@ import type {
 	FontWeight,
 } from "./document";
 
-export const CURRENT_VERSION = 4;
+export const CURRENT_VERSION = 5;
 
-// До v4 вес шрифта был строкой. Документ старой версии (файл, IndexedDB, фикстура
-// бейджа в v1) типизируется так, чтобы шаги миграции его принимали без приведений
+// До v4 вес шрифта был строкой, до v5 у картинки не было фона. Документ старой версии
+// (файл, IndexedDB, фикстура бейджа в v1) типизируется так, чтобы шаги миграции его
+// принимали без приведений
 type LegacyWeight = "regular" | "bold";
-type AnyWeight<T> = T extends { weight: FontWeight }
+type AnyVersion<T> = T extends { weight: FontWeight }
 	? Omit<T, "weight"> & { weight: FontWeight | LegacyWeight }
-	: T;
+	: T extends { type: "image" }
+		? Omit<T, "background"> & { background?: string | null }
+		: T;
 export type AnyVersionDocument = Omit<CutlineDocument, "elements" | "fonts"> & {
-	elements: AnyWeight<CutlineElement>[];
-	fonts: AnyWeight<FontRef>[];
+	elements: AnyVersion<CutlineElement>[];
+	fonts: AnyVersion<FontRef>[];
 };
 
 // Имя документа, которого не назвали: новый пустой лист, старые файлы до v3
@@ -54,7 +57,7 @@ function numericWeight(weight: FontWeight | LegacyWeight): FontWeight {
 	return weight === "regular" ? 400 : weight === "bold" ? 700 : weight;
 }
 
-function v3toV4(doc: AnyVersionDocument): CutlineDocument {
+function v3toV4(doc: AnyVersionDocument): AnyVersionDocument {
 	return {
 		...doc,
 		version: 4,
@@ -65,6 +68,22 @@ function v3toV4(doc: AnyVersionDocument): CutlineDocument {
 	};
 }
 
+// v4 → v5: у картинки фон под изображением или QR. Старые — прозрачные, как и были
+function v4toV5(doc: AnyVersionDocument): CutlineDocument {
+	return {
+		...doc,
+		version: 5,
+		fonts: doc.fonts.map((f) => ({ ...f, weight: numericWeight(f.weight) })),
+		elements: doc.elements.map((el) => {
+			if (el.type === "image")
+				return { ...el, background: el.background ?? null };
+			if (el.type === "text")
+				return { ...el, weight: numericWeight(el.weight) };
+			return el;
+		}),
+	};
+}
+
 const STEPS: Record<
 	number,
 	(doc: AnyVersionDocument) => AnyVersionDocument | CutlineDocument
@@ -72,6 +91,7 @@ const STEPS: Record<
 	1: v1toV2,
 	2: v2toV3,
 	3: v3toV4,
+	4: v4toV5,
 };
 
 export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {
@@ -88,6 +108,6 @@ export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {
 		}
 		current = step(current);
 	}
-	// последний шаг — v3toV4, после него веса числовые: документ в текущей схеме
+	// последний шаг — v4toV5, он приводит всё к текущей схеме
 	return current as CutlineDocument;
 }

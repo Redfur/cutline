@@ -75,11 +75,37 @@ describe("migrateDocument", () => {
 			elements: [text("top", "regular"), text("top", "bold")],
 		};
 		const v4 = migrateDocument(v3);
-		expect(v4.version).toBe(4);
+		expect(v4.version).toBe(CURRENT_VERSION);
 		expect(v4.fonts.map((f) => f.weight)).toEqual([400, 700]);
 		expect(
 			v4.elements.map((el) => (el.type === "text" ? el.weight : null)),
 		).toEqual([400, 700]);
+	});
+
+	it("v4 → v5: у картинок появляется прозрачный фон", () => {
+		const v4: AnyVersionDocument = {
+			...blankDocument,
+			version: 4,
+			elements: [
+				{
+					id: "img",
+					name: "Фото",
+					type: "image",
+					x: 0,
+					y: 0,
+					w: 10,
+					h: 10,
+					rotation: 0,
+					locked: false,
+					visible: true,
+					src: "{{photo}}",
+					fit: "cover",
+				},
+			],
+		};
+		const v5 = migrateDocument(v4);
+		expect(v5.version).toBe(5);
+		expect(v5.elements[0]).toMatchObject({ type: "image", background: null });
 	});
 
 	it("текущая версия — без изменений", () => {

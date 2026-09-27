@@ -103,6 +103,7 @@ describe("документы", () => {
 					visible: true,
 					src: photo,
 					fit: "cover",
+					background: null,
 				},
 			],
 		};

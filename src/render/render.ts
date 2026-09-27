@@ -161,7 +161,14 @@ function renderQr(el: ImageElement, text: string): string {
 	return `<path d="${d}" fill="${QR_COLOR}"/>`;
 }
 
-function renderImage(el: ImageElement, scope: Scope): string {
+// Фон — на всю рамку, даже без картинки: цвет задали намеренно, и пустой слот с
+// фоном на печати — это плашка, а не дыра
+function renderImageBackground(el: ImageElement): string {
+	if (!el.background) return "";
+	return `<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" fill="${el.background}"/>`;
+}
+
+function renderImageContent(el: ImageElement, scope: Scope): string {
 	const { source } = imageSource(el.src, scope);
 	if (source.kind === "qr") {
 		return renderQr(el, source.text);
@@ -169,12 +176,15 @@ function renderImage(el: ImageElement, scope: Scope): string {
 	if (source.kind !== "href") {
 		return "";
 	}
-	const src = source.href;
 	const preserveAspectRatio = IMAGE_FIT_TO_PRESERVE_ASPECT_RATIO[el.fit];
 	return (
 		`<image x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}"` +
-		` href="${escapeXml(src)}" preserveAspectRatio="${preserveAspectRatio}"/>`
+		` href="${escapeXml(source.href)}" preserveAspectRatio="${preserveAspectRatio}"/>`
 	);
+}
+
+function renderImage(el: ImageElement, scope: Scope): string {
+	return renderImageBackground(el) + renderImageContent(el, scope);
 }
 
 function renderElement(

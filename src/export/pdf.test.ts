@@ -111,6 +111,7 @@ const doc: CutlineDocument = {
 			h: 40,
 			src: PNG,
 			fit: "cover",
+			background: null,
 		},
 		{
 			...base,
@@ -187,6 +188,7 @@ describe("buildPdf", () => {
 					h: 30,
 					src: '{{ qr("https://x.example/u/", pad(n(), 3)) }}',
 					fit: "contain" as const,
+					background: null,
 				},
 			],
 		};

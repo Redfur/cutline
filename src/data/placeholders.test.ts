@@ -72,6 +72,7 @@ describe("usedFields", () => {
 			visible: true,
 			src: "{{photo}}",
 			fit: "cover",
+			background: null,
 		},
 		{
 			...base,
@@ -90,6 +91,7 @@ describe("usedFields", () => {
 			visible: false,
 			src: "{{hidden}}",
 			fit: "cover",
+			background: null,
 		},
 	];
 	const doc: CutlineDocument = { ...blankDocument, elements };

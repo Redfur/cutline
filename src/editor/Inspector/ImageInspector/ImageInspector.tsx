@@ -13,6 +13,8 @@ import { Icon } from "../../../ui/core/Icon";
 import { PanelSection } from "../../../ui/editor/PanelSection";
 import { PropertyRow } from "../../../ui/editor/PropertyRow";
 import { Button } from "../../../ui/forms/Button";
+import { Checkbox } from "../../../ui/forms/Checkbox";
+import { ColorField } from "../../../ui/forms/ColorField";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
 import { FieldMenu } from "../FieldMenu";
@@ -26,7 +28,12 @@ export interface ImageInspectorProps {
 	onChange: (element: ImageElement) => void;
 	fields: FieldDef[];
 	record: DataRecord;
+	// цвета документа для быстрого выбора фона
+	swatches: string[];
 }
+
+// белый — самый частый фон под QR-кодом и логотипом с прозрачностью
+const DEFAULT_BACKGROUND = "#FFFFFF";
 
 const FIT_OPTIONS: { value: ImageFit; label: string }[] = [
 	{ value: "cover", label: "Заполнить (обрезать)" },
@@ -61,6 +68,7 @@ export function ImageInspector({
 	onChange,
 	fields,
 	record,
+	swatches,
 }: ImageInspectorProps) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -144,6 +152,34 @@ export function ImageInspector({
 							options={FIT_OPTIONS}
 						/>
 					</PropertyRow>
+				</PanelSection>
+
+				<PanelSection
+					title="Фон"
+					actions={
+						<Checkbox
+							checked={element.background !== null}
+							onChange={(checked) =>
+								onChange({
+									...element,
+									background: checked ? DEFAULT_BACKGROUND : null,
+								})
+							}
+						/>
+					}
+				>
+					{element.background !== null ? (
+						<ColorField
+							value={element.background}
+							showOpacity={false}
+							swatches={swatches}
+							onChange={(hex) => onChange({ ...element, background: hex })}
+						/>
+					) : (
+						<p className={styles.hint}>
+							Прозрачный — видно то, что под картинкой
+						</p>
+					)}
 				</PanelSection>
 			</LockedFieldset>
 		</>

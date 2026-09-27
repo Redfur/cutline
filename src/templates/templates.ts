@@ -205,6 +205,7 @@ const badge: Template = {
 				// в макете — пустой слот; у каждого бейджа свой код без отдельной колонки
 				src: '{{ qr("https://tochka-rosta.example/u/", pad(n(), 3)) }}',
 				fit: "contain",
+				background: null,
 			},
 			{
 				...base,
