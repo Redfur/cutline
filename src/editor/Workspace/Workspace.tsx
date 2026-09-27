@@ -1,6 +1,7 @@
-// Верхний уровень приложения: какой документ открыт и что с документами делают
-// (переключить, создать, открыть файл, дублировать, удалить). Сам документ правит
-// EditorShell — у каждого документа свой редактор (key={id}) и своя история undo.
+// Верхний уровень приложения: стартовый экран или открытый документ, и что с
+// документами делают (переключить, создать из шаблона, открыть файл, дублировать,
+// удалить). Сам документ правит EditorShell — у каждого документа свой редактор
+// (key={id}) и своя история undo.
 //
 // Документ читается до монтирования EditorShell: смонтированный с пустым листом
 // редактор успел бы записать его поверх того, что человек делал до перезагрузки.
@@ -16,9 +17,11 @@ import {
 	saveDocument,
 	type ViewState,
 } from "../../storage/documents";
+import { documentFromTemplate } from "../../templates/templates";
 import { EditorShell } from "../EditorShell";
 import { EditorSkeleton } from "../EditorSkeleton";
 import { ALL_BORDERS } from "../lib/snap";
+import { StartScreen } from "../StartScreen";
 
 // IndexedDB обычно отвечает за 10–50 мс: скелетон, мелькнувший на один кадр,
 // выглядит хуже короткой пустоты, поэтому показываем его только если ждём дольше
@@ -40,18 +43,19 @@ interface Opened {
 
 type State =
 	| { phase: "loading" }
-	| { phase: "ready"; opened: Opened; storageAvailable: boolean };
+	// opened: null — стартовый экран
+	| { phase: "ready"; opened: Opened | null; storageAvailable: boolean };
 
 function fresh(doc: CutlineDocument): Opened {
 	return { id: newDocumentId(), doc, view: DEFAULT_VIEW, notice: null };
 }
 
 // Первый открывающийся: сначала preferred (последний открытый), потом свежие сверху;
-// документов нет — новый пустой лист
+// открыть нечего — null, стартовый экран
 async function openFirstAvailable(
 	preferred: string | null,
 	exclude: string | null = null,
-): Promise<Opened> {
+): Promise<Opened | null> {
 	const list = await listDocuments();
 	const order = [
 		...(preferred ? [preferred] : []),
@@ -68,7 +72,7 @@ async function openFirstAvailable(
 			notice = `Сохранённый документ не открылся: ${result.reason}`;
 		}
 	}
-	return { ...fresh(blankDocument), notice };
+	return null;
 }
 
 export function Workspace() {
@@ -85,12 +89,9 @@ export function Workspace() {
 					setState({ phase: "ready", opened, storageAvailable: true });
 			})
 			.catch(() => {
+				// хранилища нет — начинаем со стартового экрана, документ просто не сохранится
 				if (!cancelled) {
-					setState({
-						phase: "ready",
-						opened: fresh(blankDocument),
-						storageAvailable: false,
-					});
+					setState({ phase: "ready", opened: null, storageAvailable: false });
 				}
 			})
 			.finally(() => clearTimeout(timer));
@@ -102,7 +103,7 @@ export function Workspace() {
 
 	const storageAvailable = state.phase === "ready" && state.storageAvailable;
 	const show = useCallback(
-		(opened: Opened) =>
+		(opened: Opened | null) =>
 			setState((s) => (s.phase === "ready" ? { ...s, opened } : s)),
 		[],
 	);
@@ -131,6 +132,18 @@ export function Workspace() {
 	}
 	const { opened } = state;
 
+	if (!opened) {
+		return (
+			<StartScreen
+				onPick={(template) =>
+					void create(
+						template ? documentFromTemplate(template) : blankDocument,
+					).catch(report)
+				}
+			/>
+		);
+	}
+
 	return (
 		<EditorShell
 			key={opened.id}
@@ -155,7 +168,7 @@ export function Workspace() {
 					})
 					.catch(report);
 			}}
-			onNewDocument={() => void create(blankDocument).catch(report)}
+			onNewDocument={() => show(null)}
 			onOpenDocument={(doc) => void create(doc).catch(report)}
 			onDuplicateDocument={(doc) =>
 				void create({ ...doc, name: `${doc.name} — копия` }).catch(report)

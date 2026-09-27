@@ -1,0 +1,68 @@
+.tile {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	padding: 0;
+	border: 1px solid var(--border-1);
+	border-radius: 4px;
+	background: var(--bg-panel);
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	transition: border-color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.tile:hover,
+.tile:focus-visible {
+	border-color: var(--border-2);
+}
+
+.preview {
+	height: 196px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--bg-canvas);
+	transition: background 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.tile:hover .preview {
+	background: var(--gray-200);
+}
+
+.info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 10px 12px 12px;
+	border-top: 1px solid var(--border-1);
+}
+
+.head {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.name {
+	flex: 1;
+	font: var(--type-title);
+}
+
+.size {
+	font: var(--type-label);
+	color: var(--fg-3);
+}
+
+.note {
+	font: var(--type-label);
+	color: var(--fg-2);
+}
+
+.fields {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 6px;
+}
