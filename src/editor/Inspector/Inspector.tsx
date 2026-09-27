@@ -129,6 +129,7 @@ export function Inspector({
 							record={record}
 							recordErrors={elementErrors}
 							swatches={swatches}
+							canvasBackground={canvas.background}
 						/>
 					)}
 				</>

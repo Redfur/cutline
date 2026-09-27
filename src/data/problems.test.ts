@@ -5,6 +5,7 @@ import type {
 	DataRecord,
 	TextElement,
 } from "../model/document";
+import { DEFAULT_QR_STYLE } from "../model/migrate";
 import { blankDocument } from "../render/fixtures/blank";
 import {
 	documentProblems,
@@ -173,6 +174,7 @@ describe("картинки, которые не загрузились", () => {
 		src: "https://x.example/{{note}}.png",
 		fit: "cover",
 		background: null,
+		qr: DEFAULT_QR_STYLE,
 	};
 	const d = { ...doc([img]), records: [{ note: "a" }, { note: "b" }] };
 

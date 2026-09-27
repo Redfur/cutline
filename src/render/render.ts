@@ -153,9 +153,6 @@ const IMAGE_FIT_TO_PRESERVE_ASPECT_RATIO: Record<ImageElement["fit"], string> =
 		fill: "none",
 	};
 
-// Модули — чёрным: QR сканируется по контрасту, а цвет документа мог бы быть светлым
-const QR_COLOR = "#000000";
-
 // Квадрат по центру рамки, как «вписать целиком» у картинки
 function renderQr(el: ImageElement, text: string): string {
 	const side = Math.min(el.w, el.h);
@@ -166,12 +163,13 @@ function renderQr(el: ImageElement, text: string): string {
 			el.x + (el.w - side) / 2,
 			el.y + (el.h - side) / 2,
 			side,
+			el.qr,
 		);
 	} catch {
 		// текст длиннее, чем влезает в QR, — рисовать нечего; причину скажут проблемы записи
 		return "";
 	}
-	return `<path d="${d}" fill="${QR_COLOR}"/>`;
+	return `<path d="${d}" fill="${el.qr.color}"/>`;
 }
 
 // Фон — на всю рамку, даже без картинки: цвет задали намеренно, и пустой слот с

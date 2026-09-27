@@ -104,8 +104,38 @@ describe("migrateDocument", () => {
 			],
 		};
 		const v5 = migrateDocument(v4);
-		expect(v5.version).toBe(5);
+		expect(v5.version).toBe(CURRENT_VERSION);
 		expect(v5.elements[0]).toMatchObject({ type: "image", background: null });
+	});
+
+	it("v5 → v6: у картинок оформление QR — чёрные квадраты, как рисовалось раньше", () => {
+		const v5: AnyVersionDocument = {
+			...blankDocument,
+			version: 5,
+			elements: [
+				{
+					id: "qr",
+					name: "QR",
+					type: "image",
+					x: 0,
+					y: 0,
+					w: 10,
+					h: 10,
+					rotation: 0,
+					locked: false,
+					visible: true,
+					src: "{{ qr(link) }}",
+					fit: "contain",
+					background: "#FFFFFF",
+				},
+			],
+		};
+		const v6 = migrateDocument(v5);
+		expect(v6.version).toBe(6);
+		expect(v6.elements[0]).toMatchObject({
+			background: "#FFFFFF",
+			qr: { color: "#000000", modules: "square", eyes: "square" },
+		});
 	});
 
 	it("текущая версия — без изменений", () => {

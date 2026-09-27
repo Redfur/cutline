@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CutlineDocument, ImageElement } from "../model/document";
+import { DEFAULT_QR_STYLE } from "../model/migrate";
 import { blankDocument } from "./fixtures/blank";
 import { render } from "./render";
 
@@ -18,6 +19,7 @@ function image(patch: Partial<ImageElement>): ImageElement {
 		src: "https://x.example/a.png",
 		fit: "contain",
 		background: null,
+		qr: DEFAULT_QR_STYLE,
 		...patch,
 	};
 }

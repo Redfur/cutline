@@ -10,6 +10,7 @@ import type {
 	RectElement,
 	TextElement,
 } from "../../model/document";
+import { DEFAULT_QR_STYLE } from "../../model/migrate";
 
 interface PointMm {
 	x: number;
@@ -109,6 +110,7 @@ export function createImage(at: PointMm): ImageElement {
 		src: "",
 		fit: "cover",
 		background: null,
+		qr: DEFAULT_QR_STYLE,
 	};
 }
 

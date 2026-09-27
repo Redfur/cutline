@@ -65,12 +65,22 @@ export interface LineElement extends ElementBase {
 
 export type ImageFit = "cover" | "contain" | "fill";
 
+// Оформление QR-кода — свойство элемента, а не аргумент qr(): аргументы склеиваются
+// в текст кода. Действует, когда источник картинки — {{ qr(…) }} (v6)
+export interface QrStyle {
+	color: string;
+	modules: "square" | "rounded" | "dots";
+	// три угловых квадрата («глаза»), по ним сканер находит код
+	eyes: "square" | "rounded" | "circle";
+}
+
 export interface ImageElement extends ElementBase {
 	type: "image";
 	src: string;
 	fit: ImageFit;
 	// под картинкой или QR-кодом, на всю рамку; null — прозрачный (v5)
 	background: string | null;
+	qr: QrStyle;
 }
 
 export type CutlineElement =

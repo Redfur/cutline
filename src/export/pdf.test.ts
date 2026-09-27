@@ -2,6 +2,7 @@ import { PDFDocument } from "pdf-lib";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadTestFont } from "../fonts/testFonts";
 import type { CutlineDocument } from "../model/document";
+import { DEFAULT_QR_STYLE } from "../model/migrate";
 import type { OutlineFonts } from "../render/outline";
 import { type ImposeSettings, pageLayout, SHEETS } from "./imposition";
 import {
@@ -112,6 +113,7 @@ const doc: CutlineDocument = {
 			src: PNG,
 			fit: "cover",
 			background: null,
+			qr: DEFAULT_QR_STYLE,
 		},
 		{
 			...base,
@@ -189,6 +191,7 @@ describe("buildPdf", () => {
 					src: '{{ qr("https://x.example/u/", pad(n(), 3)) }}',
 					fit: "contain" as const,
 					background: null,
+					qr: DEFAULT_QR_STYLE,
 				},
 			],
 		};
@@ -206,6 +209,45 @@ describe("buildPdf", () => {
 			resolve,
 		);
 		expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
+	});
+
+	it("оформленный QR — все формы модулей и углов проходят в PDF", async () => {
+		const svgs = (["square", "rounded", "dots"] as const).flatMap((modules) =>
+			(["square", "rounded", "circle"] as const).map((eyes) =>
+				render(
+					{
+						...doc,
+						elements: [
+							{
+								...base,
+								id: "qr",
+								name: "QR",
+								type: "image" as const,
+								x: 10,
+								y: 10,
+								w: 40,
+								h: 40,
+								src: '{{ qr("https://x.example/u/007") }}',
+								fit: "contain" as const,
+								background: null,
+								qr: { color: "#1D3B34", modules, eyes },
+							},
+						],
+					},
+					{},
+					{ outlines, bleed: false, n: 1, preview: null },
+				),
+			),
+		);
+		expect(svgs[4]).toContain('fill="#1D3B34"');
+		const bytes = await buildPdf(
+			imposeSheets(
+				pageLayout(card, settings({ bleed: false, marks: false })),
+				svgs,
+			),
+			resolve,
+		);
+		expect((await PDFDocument.load(bytes)).getPageCount()).toBe(9);
 	});
 
 	it("одна на странице с метками: страница — обрез + вылет + зона меток, боксы по обрезу и вылету", async () => {

@@ -15,7 +15,7 @@ import type {
 	FontWeight,
 	TextElement,
 } from "../model/document";
-import { CURRENT_VERSION } from "../model/migrate";
+import { CURRENT_VERSION, DEFAULT_QR_STYLE } from "../model/migrate";
 
 export interface Template {
 	id: string;
@@ -206,6 +206,7 @@ const badge: Template = {
 				src: '{{ qr("https://tochka-rosta.example/u/", pad(n(), 3)) }}',
 				fit: "contain",
 				background: null,
+				qr: DEFAULT_QR_STYLE,
 			},
 			{
 				...base,

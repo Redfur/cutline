@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { clear, createStore, get, keys, set } from "idb-keyval";
 import { beforeEach, describe, expect, it } from "vitest";
+import { DEFAULT_QR_STYLE } from "../model/migrate";
 import { blankDocument } from "../render/fixtures/blank";
 import {
 	deleteDocument,
@@ -104,6 +105,7 @@ describe("документы", () => {
 					src: photo,
 					fit: "cover",
 					background: null,
+					qr: DEFAULT_QR_STYLE,
 				},
 			],
 		};

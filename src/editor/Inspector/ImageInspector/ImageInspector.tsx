@@ -3,6 +3,7 @@
 // но раз файл локальный и его пропорции точно известны, заодно подгоняем размер
 // рамки под них.
 import { useRef, useState } from "react";
+import { isQrSource } from "../../../data/placeholders";
 import type {
 	DataRecord,
 	FieldDef,
@@ -23,6 +24,7 @@ import { GeometrySection } from "../GeometrySection";
 import { LockedFieldset } from "../LockedFieldset";
 import { MissingFields } from "../MissingFields";
 import styles from "./ImageInspector.module.css";
+import { QrSection } from "./QrSection";
 
 export interface ImageInspectorProps {
 	element: ImageElement;
@@ -33,6 +35,8 @@ export interface ImageInspectorProps {
 	swatches: string[];
 	// ошибки функций и не загрузившиеся ссылки по записям
 	recordErrors: RecordError[];
+	// фон холста — с ним считается контраст QR, когда у картинки фона нет
+	canvasBackground: string;
 }
 
 // белый — самый частый фон под QR-кодом и логотипом с прозрачностью
@@ -73,7 +77,9 @@ export function ImageInspector({
 	record,
 	swatches,
 	recordErrors,
+	canvasBackground,
 }: ImageInspectorProps) {
+	const qr = isQrSource(element.src);
 	// ссылка, превью которой не загрузилось: вместо значка «битой» картинки браузера —
 	// понятная подпись. По значению src, а не флагом: новая ссылка проверяется заново
 	const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -169,14 +175,26 @@ export function ImageInspector({
 						}}
 					/>
 
-					<PropertyRow label="Вписать">
-						<Select
-							value={element.fit}
-							onChange={(v) => onChange({ ...element, fit: v as ImageFit })}
-							options={FIT_OPTIONS}
-						/>
-					</PropertyRow>
+					{/* QR всегда квадрат по центру рамки — «вписать» ему не нужно */}
+					{!qr && (
+						<PropertyRow label="Вписать">
+							<Select
+								value={element.fit}
+								onChange={(v) => onChange({ ...element, fit: v as ImageFit })}
+								options={FIT_OPTIONS}
+							/>
+						</PropertyRow>
+					)}
 				</PanelSection>
+
+				{qr && (
+					<QrSection
+						style={element.qr}
+						onChange={(style) => onChange({ ...element, qr: style })}
+						background={element.background ?? canvasBackground}
+						swatches={swatches}
+					/>
+				)}
 
 				<PanelSection
 					title="Фон"

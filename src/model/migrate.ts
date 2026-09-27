@@ -7,18 +7,22 @@ import type {
 	CutlineElement,
 	FontRef,
 	FontWeight,
+	QrStyle,
 } from "./document";
 
-export const CURRENT_VERSION = 5;
+export const CURRENT_VERSION = 6;
 
-// До v4 вес шрифта был строкой, до v5 у картинки не было фона. Документ старой версии
+// До v4 вес шрифта был строкой, до v5 у картинки не было фона, до v6 — оформления QR. Документ старой версии
 // (файл, IndexedDB, фикстура бейджа в v1) типизируется так, чтобы шаги миграции его
 // принимали без приведений
 type LegacyWeight = "regular" | "bold";
 type AnyVersion<T> = T extends { weight: FontWeight }
 	? Omit<T, "weight"> & { weight: FontWeight | LegacyWeight }
 	: T extends { type: "image" }
-		? Omit<T, "background"> & { background?: string | null }
+		? Omit<T, "background" | "qr"> & {
+				background?: string | null;
+				qr?: QrStyle;
+			}
 		: T;
 export type AnyVersionDocument = Omit<CutlineDocument, "elements" | "fonts"> & {
 	elements: AnyVersion<CutlineElement>[];
@@ -69,14 +73,39 @@ function v3toV4(doc: AnyVersionDocument): AnyVersionDocument {
 }
 
 // v4 → v5: у картинки фон под изображением или QR. Старые — прозрачные, как и были
-function v4toV5(doc: AnyVersionDocument): CutlineDocument {
+function v4toV5(doc: AnyVersionDocument): AnyVersionDocument {
 	return {
 		...doc,
 		version: 5,
+		elements: doc.elements.map((el) =>
+			el.type === "image" ? { ...el, background: el.background ?? null } : el,
+		),
+	};
+}
+
+// Чёрные квадраты — так QR рисовался до v6
+export const DEFAULT_QR_STYLE: QrStyle = {
+	color: "#000000",
+	modules: "square",
+	eyes: "square",
+};
+
+// v5 → v6: у картинки оформление QR. Старые коды остаются чёрными квадратами.
+// Последний шаг заодно приводит к текущему виду то, что тип старых версий допускает
+// шире (веса строкой, картинку без фона) — дальше документ типизирован текущей схемой
+function v5toV6(doc: AnyVersionDocument): CutlineDocument {
+	return {
+		...doc,
+		version: 6,
 		fonts: doc.fonts.map((f) => ({ ...f, weight: numericWeight(f.weight) })),
 		elements: doc.elements.map((el) => {
-			if (el.type === "image")
-				return { ...el, background: el.background ?? null };
+			if (el.type === "image") {
+				return {
+					...el,
+					background: el.background ?? null,
+					qr: el.qr ?? DEFAULT_QR_STYLE,
+				};
+			}
 			if (el.type === "text")
 				return { ...el, weight: numericWeight(el.weight) };
 			return el;
@@ -92,6 +121,7 @@ const STEPS: Record<
 	2: v2toV3,
 	3: v3toV4,
 	4: v4toV5,
+	5: v5toV6,
 };
 
 export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {
@@ -108,6 +138,6 @@ export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {
 		}
 		current = step(current);
 	}
-	// последний шаг — v4toV5, он приводит всё к текущей схеме
+	// последний шаг — v5toV6, он приводит всё к текущей схеме
 	return current as CutlineDocument;
 }

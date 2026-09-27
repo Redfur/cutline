@@ -235,24 +235,29 @@ export type ImageSource =
 	| { kind: "href"; href: string }
 	| { kind: "qr"; text: string };
 
+// Весь источник — один вызов qr(): тогда картинка — QR-код (и у неё секция
+// оформления в инспекторе). Без записи: ответ от данных не зависит
+function qrCall(src: string): (Expr & { kind: "call" }) | null {
+	const found = matches(src);
+	const only = found.length === 1 ? found[0] : null;
+	const expr = only?.raw === src.trim() ? only.parsed.expr : null;
+	return expr?.kind === "call" && expr.name === "qr" ? expr : null;
+}
+
+export function isQrSource(src: string): boolean {
+	return qrCall(src) !== null;
+}
+
 // Источник картинки: ссылка (возможно, собранная из полей) или QR-код. qr() — только
 // весь src целиком: «https://{{ qr(…) }}» не имеет смысла, и это ошибка, а не пустота
 export function imageSource(
 	src: string,
 	scope: Scope,
 ): { source: ImageSource; errors: PlaceholderError[] } {
-	const found = matches(src);
-	const only = found.length === 1 ? found[0] : null;
-	if (
-		only &&
-		only.raw === src.trim() &&
-		only.parsed.expr?.kind === "call" &&
-		only.parsed.expr.name === "qr"
-	) {
+	const call = qrCall(src);
+	if (call) {
 		const errors: PlaceholderError[] = [];
-		const text = only.parsed.expr.args
-			.map((a) => evalExpr(a, scope, errors))
-			.join("");
+		const text = call.args.map((a) => evalExpr(a, scope, errors)).join("");
 		return {
 			source: text ? { kind: "qr", text } : { kind: "none" },
 			errors,

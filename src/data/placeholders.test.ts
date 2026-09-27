@@ -4,10 +4,12 @@ import type {
 	CutlineElement,
 	DataRecord,
 } from "../model/document";
+import { DEFAULT_QR_STYLE } from "../model/migrate";
 import { blankDocument } from "../render/fixtures/blank";
 import {
 	evaluate,
 	imageSource,
+	isQrSource,
 	normalizeKey,
 	parsePlaceholder,
 	placeholderKeys,
@@ -73,6 +75,7 @@ describe("usedFields", () => {
 			src: "{{photo}}",
 			fit: "cover",
 			background: null,
+			qr: DEFAULT_QR_STYLE,
 		},
 		{
 			...base,
@@ -92,6 +95,7 @@ describe("usedFields", () => {
 			src: "{{hidden}}",
 			fit: "cover",
 			background: null,
+			qr: DEFAULT_QR_STYLE,
 		},
 	];
 	const doc: CutlineDocument = { ...blankDocument, elements };
@@ -213,5 +217,15 @@ describe("выражения в плейсхолдерах", () => {
 		});
 		const mixed = imageSource("a{{ qr(link) }}", scope({ link: "x" }));
 		expect(mixed.errors.map((e) => e.static)).toEqual([true]);
+	});
+});
+
+describe("isQrSource", () => {
+	it("QR — только когда весь источник один вызов qr()", () => {
+		expect(isQrSource('{{ qr("https://x.example/", id) }}')).toBe(true);
+		expect(isQrSource("  {{ qr(link) }}  ")).toBe(true);
+		expect(isQrSource("https://x.example/{{id}}.png")).toBe(false);
+		expect(isQrSource("a{{ qr(link) }}")).toBe(false);
+		expect(isQrSource("{{ upper(qr) }}")).toBe(false);
 	});
 });

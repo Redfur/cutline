@@ -1,0 +1,25 @@
+.warning,
+.hint {
+	margin: 0;
+	font: var(--type-label);
+}
+
+.warning {
+	color: var(--fg-warning);
+}
+
+.hint {
+	color: var(--fg-3);
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+
+.caption {
+	font: var(--type-label);
+	color: var(--fg-2);
+}
