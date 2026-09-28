@@ -17,11 +17,8 @@ import {
 	snapMove,
 	snapResize,
 } from "../lib/snap";
-import { SNAP_THRESHOLD_PX } from "./constants";
+import { DRAG_THRESHOLD_PX, SNAP_THRESHOLD_PX } from "./constants";
 import { swallowNextClick } from "./swallowNextClick";
-
-// Порог в экранных пикселях, не в мм: дрожь руки при клике не зависит от зума
-const DRAG_THRESHOLD_PX = 3;
 
 interface PointMm {
 	x: number;

@@ -11,7 +11,8 @@ export interface LayerRowProps {
 	/** Amber triangle — this text overflows in some records */
 	warning?: boolean;
 	depth?: number;
-	onClick?: () => void;
+	/** Событие — ради модификаторов: Shift/⌘ выделяют несколько слоёв */
+	onClick?: (e: MouseEvent) => void;
 	onToggleLock?: () => void;
 	onToggleVisible?: () => void;
 	/** Двойной клик по имени входит в редактирование; вызывается на Enter/blur, не на Escape */

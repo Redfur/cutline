@@ -22,6 +22,7 @@ import { DataMode } from "../DataMode";
 import { ExportPanel } from "../ExportPanel";
 import { Inspector } from "../Inspector";
 import { type LayerPatch, LayersPanel } from "../LayersPanel";
+import { offsetElements } from "../lib/align";
 import { documentColors } from "../lib/documentColors";
 import { useHelp } from "../lib/help";
 import { useAutosave } from "../lib/useAutosave";
@@ -91,7 +92,9 @@ export function EditorShell({
 	const history = useDocumentHistory(initialDoc);
 	const [tool, setTool] = useState<Tool>("select");
 	const [zoom, setZoom] = useState(1);
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	// выделенные элементы в порядке выделения; один — обычный инспектор типа,
+	// несколько — групповой (выравнивание)
+	const [selectedIds, setSelectedIds] = useState<string[]>([]);
 	const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
 	const [viewportSize, setViewportSize] = useState<ViewportSize | null>(null);
 	// 0-based; общий для обоих режимов — двойной клик по миниатюре в «Данных» открывает
@@ -156,6 +159,8 @@ export function EditorShell({
 		],
 	);
 	const overflowIds = currentProblems?.overflowIds ?? [];
+	// ошибки, переполнение и инспектор типа — только у одиночного выделения
+	const selectedId = selectedIds.length === 1 ? selectedIds[0] : null;
 	// ошибки функций и сломанные картинки выделенного элемента — по записям, для инспектора
 	const selectedErrors = selectedId
 		? problems.flatMap((p, i) =>
@@ -177,15 +182,20 @@ export function EditorShell({
 	const selectedGuide =
 		history.doc.guides.find((g) => g.id === selectedGuideId) ?? null;
 
-	// Выделение элемента и направляющей взаимоисключающее — выбор одного всегда
-	// сбрасывает другое, как и полное снятие выделения (id === null).
-	const handleSelectElement = (id: string | null) => {
-		setSelectedId(id);
+	const selectedElements = history.doc.elements.filter((el) =>
+		selectedIds.includes(el.id),
+	);
+
+	// Выделение элементов и направляющей взаимоисключающее — выбор одного всегда
+	// сбрасывает другое, как и полное снятие выделения (пустой список / null).
+	const handleSelectElements = (ids: string[]) => {
+		setSelectedIds(ids);
 		setSelectedGuideId(null);
 	};
+	const handleSelectElement = (id: string) => handleSelectElements([id]);
 	const handleSelectGuide = (id: string | null) => {
 		setSelectedGuideId(id);
-		setSelectedId(null);
+		setSelectedIds([]);
 	};
 
 	// стабильная ссылка: сетка миниатюр мемоизирована и не должна перерисовываться
@@ -228,7 +238,7 @@ export function EditorShell({
 		history.set((doc) => ({ ...doc, elements: [...doc.elements, element] }), {
 			boundary: true,
 		});
-		handleSelectElement(element.id);
+		handleSelectElements([element.id]);
 		setTool("select");
 	};
 
@@ -248,6 +258,14 @@ export function EditorShell({
 			}),
 			options,
 		);
+	};
+
+	// Групповые правки (драг нескольких, выравнивание) — одним шагом истории
+	const handleElementsChange = (
+		elements: CutlineElement[],
+		options?: { boundary?: boolean },
+	) => {
+		history.set((doc) => ({ ...doc, elements }), options);
 	};
 
 	// Создание/перенос(драгом)/удаление направляющей — дискретные структурные правки
@@ -310,58 +328,89 @@ export function EditorShell({
 			// и Backspace мимо ячейки удалял бы невидимый выделенный элемент
 			if (mode !== "design") return;
 
-			// Ctrl/Cmd+D — дублирование выделенного элемента. Тот же guard на фокус
-			// в поле ввода, что и у Delete ниже: иначе перехватили бы у браузера
-			// его родное Ctrl+D (добавить в закладки) прямо во время правки текста.
-			if (mod && key === "d") {
+			// ⌘A — выделить всё, что можно тронуть мышью: видимое и незаблокированное
+			// (как и рамка). В поле ввода — родное «выделить текст»
+			if (mod && key === "a") {
 				if (isTextEntryTarget(document.activeElement)) return;
-				if (!selectedId) return;
 				e.preventDefault();
-				// id генерируем заранее (не зависит от doc), а поиск исходного элемента —
-				// внутри апдейтера: doc там всегда актуальный аргумент, а не значение
-				// из замыкания на момент последней пересборки эффекта.
-				const newId = crypto.randomUUID();
-				history.set(
-					(doc) => {
-						const original = doc.elements.find((el) => el.id === selectedId);
-						if (!original) return doc;
-						const copy: CutlineElement = {
-							...original,
-							id: newId,
-							x: original.x + DUPLICATE_OFFSET_MM,
-							y: original.y + DUPLICATE_OFFSET_MM,
-						};
-						return { ...doc, elements: [...doc.elements, copy] };
-					},
-					{ boundary: true },
+				setSelectedIds(
+					history.doc.elements
+						.filter((el) => el.visible && !el.locked)
+						.map((el) => el.id),
 				);
-				setSelectedId(newId);
 				setSelectedGuideId(null);
 				return;
 			}
 
-			// Стрелки — сдвиг выделенного элемента. Без boundary: держать стрелку
+			// Esc снимает выделение. Справка и диалоги гасят свой Esc раньше (capture)
+			if (e.key === "Escape") {
+				if (e.defaultPrevented || isTextEntryTarget(document.activeElement))
+					return;
+				setSelectedIds([]);
+				setSelectedGuideId(null);
+				return;
+			}
+
+			// Ctrl/Cmd+D — дублирование выделенных элементов. Тот же guard на фокус
+			// в поле ввода, что и у Delete ниже: иначе перехватили бы у браузера
+			// его родное Ctrl+D (добавить в закладки) прямо во время правки текста.
+			if (mod && key === "d") {
+				if (isTextEntryTarget(document.activeElement)) return;
+				if (selectedIds.length === 0) return;
+				e.preventDefault();
+				// id генерируем заранее (не зависит от doc), а поиск исходных элементов —
+				// внутри апдейтера: doc там всегда актуальный аргумент, а не значение
+				// из замыкания на момент последней пересборки эффекта. Копии ложатся
+				// поверх всех в том же порядке слоёв, что и оригиналы
+				const newIds = new Map(
+					selectedIds.map((id) => [id, crypto.randomUUID()]),
+				);
+				history.set(
+					(doc) => {
+						const copies = doc.elements.flatMap((original) => {
+							const id = newIds.get(original.id);
+							if (!id) return [];
+							return [
+								{
+									...original,
+									id,
+									x: original.x + DUPLICATE_OFFSET_MM,
+									y: original.y + DUPLICATE_OFFSET_MM,
+								},
+							];
+						});
+						return { ...doc, elements: [...doc.elements, ...copies] };
+					},
+					{ boundary: true },
+				);
+				setSelectedIds([...newIds.values()]);
+				setSelectedGuideId(null);
+				return;
+			}
+
+			// Стрелки — сдвиг выделенных элементов. Без boundary: держать стрелку
 			// нажатой должно коалесцироваться в один шаг истории существующим
 			// тайм-аутным механизмом (COALESCE_MS в useDocumentHistory), а не плодить
 			// шаг на каждое повторение keydown при удержании клавиши.
 			const nudge = NUDGE_KEYS[e.key];
 			if (nudge) {
 				if (isTextEntryTarget(document.activeElement)) return;
-				if (!selectedId) return;
+				if (selectedIds.length === 0) return;
 				e.preventDefault();
 				const step = e.shiftKey ? NUDGE_STEP_LARGE_MM : NUDGE_STEP_MM;
 				history.set((doc) => ({
 					...doc,
-					elements: doc.elements.map((el) =>
-						el.id === selectedId
-							? { ...el, x: el.x + nudge.dx * step, y: el.y + nudge.dy * step }
-							: el,
+					elements: offsetElements(
+						doc.elements,
+						selectedIds,
+						nudge.dx * step,
+						nudge.dy * step,
 					),
 				}));
 				return;
 			}
 
-			// Delete/Backspace удаляют выделенный элемент или направляющую — но не когда
+			// Delete/Backspace удаляют выделенные элементы или направляющую — но не когда
 			// фокус в поле инспектора, иначе Backspace при правке текста стирал бы их,
 			// а не символ в поле.
 			if (e.key !== "Delete" && e.key !== "Backspace") return;
@@ -378,24 +427,25 @@ export function EditorShell({
 				setSelectedGuideId(null);
 				return;
 			}
-			if (!selectedId) return;
+			if (selectedIds.length === 0) return;
 			e.preventDefault();
 			history.set(
 				(doc) => ({
 					...doc,
-					elements: doc.elements.filter((el) => el.id !== selectedId),
+					elements: doc.elements.filter((el) => !selectedIds.includes(el.id)),
 				}),
 				{ boundary: true },
 			);
-			setSelectedId(null);
+			setSelectedIds([]);
 		}
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
 	}, [
 		exporting,
 		mode,
-		selectedId,
+		selectedIds,
 		selectedGuideId,
+		history.doc.elements,
 		history.set,
 		history.undo,
 		history.redo,
@@ -443,8 +493,8 @@ export function EditorShell({
 					/>
 					<LayersPanel
 						elements={history.doc.elements}
-						selectedId={selectedId}
-						onSelect={handleSelectElement}
+						selectedIds={selectedIds}
+						onSelect={handleSelectElements}
 						onLayerChange={handleLayerChange}
 						onReorder={handleReorder}
 						guides={history.doc.guides}
@@ -471,10 +521,11 @@ export function EditorShell({
 						}
 						zoom={zoom}
 						tool={tool}
-						selectedId={selectedId}
-						onSelect={handleSelectElement}
+						selectedIds={selectedIds}
+						onSelect={handleSelectElements}
 						onCreate={handleCreate}
 						onElementChange={handleElementChange}
+						onElementsChange={handleElementsChange}
 						onGuidesChange={handleGuidesChange}
 						selectedGuideId={selectedGuideId}
 						onSelectGuide={handleSelectGuide}
@@ -489,6 +540,9 @@ export function EditorShell({
 						}
 						selectedElement={selectedElement}
 						onElementChange={handleElementChange}
+						selectedElements={selectedElements}
+						onElementsChange={handleElementsChange}
+						elements={history.doc.elements}
 						selectedGuide={selectedGuide}
 						onGuideChange={handleGuidePositionChange}
 						fields={fields}

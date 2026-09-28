@@ -134,6 +134,20 @@
 	pointer-events: none;
 }
 
+/* Общая рамка выделенной группы — без маркеров: резайза группы нет */
+.selectionBox {
+	position: absolute;
+	outline: 1px dashed var(--border-focus);
+	pointer-events: none;
+}
+
+.marquee {
+	position: absolute;
+	border: 1px solid var(--selection);
+	background: var(--selection-fill);
+	pointer-events: none;
+}
+
 .snapGuide {
 	position: absolute;
 	background: var(--selection);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CutlineElement, Guide } from "../../model/document";
 import { LayerRow } from "../../ui/editor/LayerRow";
+import { rangeSelection, toggleSelection } from "../lib/selection";
 import { GuideRow } from "./GuideRow";
 import styles from "./LayersPanel.module.css";
 
@@ -12,8 +13,8 @@ export interface LayerPatch {
 
 export interface LayersPanelProps {
 	elements: CutlineElement[];
-	selectedId: string | null;
-	onSelect: (id: string) => void;
+	selectedIds: string[];
+	onSelect: (ids: string[]) => void;
 	onLayerChange: (id: string, patch: LayerPatch) => void;
 	onReorder: (elements: CutlineElement[]) => void;
 	guides: Guide[];
@@ -38,7 +39,7 @@ interface DragState {
 
 export function LayersPanel({
 	elements,
-	selectedId,
+	selectedIds,
 	onSelect,
 	onLayerChange,
 	onReorder,
@@ -72,6 +73,24 @@ export function LayersPanel({
 	onReorderRef.current = onReorder;
 
 	const dragId = drag?.id ?? null;
+
+	// Якорь Shift-диапазона — последняя строка, кликнутая без Shift, как в Finder.
+	// Состояние панели, а не документа и не оболочки: к выделению на холсте оно не относится
+	const anchorRef = useRef<string | null>(null);
+	const handleRowClick = (id: string, e: React.MouseEvent) => {
+		if (e.shiftKey) {
+			onSelect(
+				rangeSelection(
+					displayed.map((el) => el.id),
+					anchorRef.current,
+					id,
+				),
+			);
+			return;
+		}
+		anchorRef.current = id;
+		onSelect(e.metaKey || e.ctrlKey ? toggleSelection(selectedIds, id) : [id]);
+	};
 
 	useEffect(() => {
 		if (!dragId) return;
@@ -123,9 +142,9 @@ export function LayersPanel({
 							name={el.name}
 							locked={el.locked}
 							hidden={!el.visible}
-							selected={el.id === selectedId}
+							selected={selectedIds.includes(el.id)}
 							warning={warningIds.includes(el.id)}
-							onClick={() => onSelect(el.id)}
+							onClick={(e) => handleRowClick(el.id, e)}
 							onToggleLock={() => onLayerChange(el.id, { locked: !el.locked })}
 							onToggleVisible={() =>
 								onLayerChange(el.id, { visible: !el.visible })

@@ -31,6 +31,9 @@ export interface ElementOverlayProps {
 	el: CutlineElement;
 	pxPerMm: number;
 	selected: boolean;
+	// маркеры резайза и концов линии — только у единственного выделенного; в группе
+	// у каждого только рамка
+	handles: boolean;
 	// текст не влез на текущей записи — обводим предупреждающим цветом (ui-spec,
 	// состояние «Текст не влез»)
 	overflow: boolean;
@@ -41,8 +44,8 @@ export interface ElementOverlayProps {
 	// но мышь он пропускает к холсту, чтобы новый элемент можно было начать поверх
 	interactive: boolean;
 	canDrag: boolean;
-	onSelect: () => void;
-	onStartMove: (e: React.MouseEvent) => void;
+	// нажатие на элемент: выделение (с Shift — переключить) и перетаскивание решает Canvas
+	onPress: (e: React.MouseEvent) => void;
 	onStartResize: (handle: HandlePos, e: React.MouseEvent) => void;
 	onStartLineEnd: (end: LineEnd, e: React.MouseEvent) => void;
 }
@@ -51,12 +54,12 @@ export function ElementOverlay({
 	el,
 	pxPerMm,
 	selected,
+	handles,
 	overflow,
 	offCard,
 	interactive,
 	canDrag,
-	onSelect,
-	onStartMove,
+	onPress,
 	onStartResize,
 	onStartLineEnd,
 }: ElementOverlayProps) {
@@ -91,8 +94,9 @@ export function ElementOverlay({
 		: [];
 
 	const handleMouseDown = (e: React.MouseEvent) => {
-		onSelect();
-		if (canDrag) onStartMove(e);
+		// иначе нажатие дошло бы до области холста и начало рамку выделения
+		e.stopPropagation();
+		onPress(e);
 	};
 
 	return (
@@ -134,7 +138,20 @@ export function ElementOverlay({
 					/>
 				</svg>
 			)}
-			{selected && !el.locked && isLine && (
+			{selected && isLine && (!handles || el.locked) && (
+				<svg className={styles.lineOutline} aria-hidden="true">
+					<line
+						x1={lineEnds[0]?.x}
+						y1={lineEnds[0]?.y}
+						x2={lineEnds[1]?.x}
+						y2={lineEnds[1]?.y}
+					/>
+				</svg>
+			)}
+			{selected && !isLine && (!handles || el.locked) && (
+				<div className={styles.outline} />
+			)}
+			{selected && handles && !el.locked && isLine && (
 				<>
 					{/* рамка по коробке у диагональной линии выглядела бы чужой —
 					    выделение рисуем самой линией */}
@@ -165,7 +182,7 @@ export function ElementOverlay({
 					</div>
 				</>
 			)}
-			{selected && !el.locked && !isLine && (
+			{selected && handles && !el.locked && !isLine && (
 				<>
 					<div className={styles.outline} />
 					{HANDLE_POSITIONS.map((handle) => (

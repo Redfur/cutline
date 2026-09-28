@@ -14,6 +14,7 @@ import type {
 import { type ImagePreview, render } from "../../render/render";
 import type { PlaceType } from "../lib/createElement";
 import { boundsOf, isOffCard } from "../lib/geometry";
+import { selectionBounds, toggleSelection } from "../lib/selection";
 import type { BorderVisibility } from "../lib/snap";
 import type { Tool } from "../Toolbar";
 import styles from "./Canvas.module.css";
@@ -24,6 +25,7 @@ import { Ruler } from "./Ruler";
 import { useDrawElement } from "./useDrawElement";
 import { useElementDrag } from "./useElementDrag";
 import { useGuideDrag } from "./useGuideDrag";
+import { useMarquee } from "./useMarquee";
 
 export interface ViewportSize {
 	width: number;
@@ -49,12 +51,17 @@ export interface CanvasProps {
 	bottomBar?: ReactNode;
 	zoom: number;
 	tool: Tool;
-	selectedId: string | null;
-	onSelect: (id: string | null) => void;
+	selectedIds: string[];
+	onSelect: (ids: string[]) => void;
 	// готовый элемент от инструмента (клик или протягивание) — добавить в документ
 	onCreate: (element: CutlineElement) => void;
 	onElementChange: (
 		element: CutlineElement,
+		options?: { boundary?: boolean },
+	) => void;
+	// итог перетаскивания группы — одним шагом истории
+	onElementsChange: (
+		elements: CutlineElement[],
 		options?: { boundary?: boolean },
 	) => void;
 	onGuidesChange: (guides: Guide[], options?: { boundary?: boolean }) => void;
@@ -83,10 +90,11 @@ export function Canvas({
 	bottomBar,
 	zoom,
 	tool,
-	selectedId,
+	selectedIds,
 	onSelect,
 	onCreate,
 	onElementChange,
+	onElementsChange,
 	onGuidesChange,
 	selectedGuideId,
 	onSelectGuide,
@@ -154,13 +162,22 @@ export function Canvas({
 		el.scrollTop = Math.max(0, (contentHeightPx - el.clientHeight) / 2);
 	}, [contentWidthPx, contentHeightPx]);
 
-	const { liveElement, snapGuides, startMove, startResize, startLineEnd } =
+	const { liveElements, snapGuides, startMove, startResize, startLineEnd } =
 		useElementDrag({
 			doc,
 			borders,
 			pxPerMm,
 			onElementChange,
+			onElementsChange,
 		});
+	const { marquee, startMarquee } = useMarquee({
+		elements: doc.elements,
+		pxPerMm,
+		originXPx,
+		originYPx,
+		contentRef,
+		onSelect,
+	});
 	// Пока выбран инструмент размещения, элементы и направляющие не ловят мышь:
 	// иначе нажатие попадало в оверлей элемента под курсором (даже заблокированного —
 	// на бейдже «Рамка карточки» накрывает карточку целиком), и создать поверх нельзя
@@ -191,12 +208,54 @@ export function Canvas({
 			onSelectGuide,
 		});
 
-	// у линии w/h — вектор, подсветке на линейках нужна нормализованная коробка
-	const activeElement = liveElement ?? draft;
-	const liveBounds = activeElement ? boundsOf(activeElement) : null;
-	const elements = liveElement
-		? doc.elements.map((el) => (el.id === liveElement.id ? liveElement : el))
+	const liveById = new Map(liveElements?.map((el) => [el.id, el]));
+	const elements = liveElements
+		? doc.elements.map((el) => liveById.get(el.id) ?? el)
 		: doc.elements;
+	const selected = elements.filter((el) => selectedIds.includes(el.id));
+	// у линии w/h — вектор, подсветке на линейках нужна нормализованная коробка;
+	// у группы — общая рамка
+	const liveBounds = liveElements
+		? selectionBounds(liveElements)
+		: draft
+			? boundsOf(draft)
+			: null;
+	const groupBounds = selected.length > 1 ? selectionBounds(selected) : null;
+
+	// Нажатие на элемент. Shift — переключить его в выделении, без драга. Элемент вне
+	// выделения — выделить только его; внутри — тащить всю группу, а если отпустили не
+	// сдвинув, оставить только его (как в Фигме)
+	const handlePress = (el: CutlineElement, e: React.MouseEvent) => {
+		e.preventDefault();
+		if (e.shiftKey) {
+			onSelect(toggleSelection(selectedIds, el.id));
+			return;
+		}
+		const inSelection = selectedIds.includes(el.id);
+		const ids = inSelection ? selectedIds : [el.id];
+		if (!inSelection) onSelect(ids);
+		if (tool !== "select") return;
+		// Заблокированный — как фон: клик выделяет его (разблокировать в инспекторе), а
+		// протягивание рисует рамку. Иначе на макете, где карточку целиком накрывает
+		// заблокированная подложка, рамку было бы не начать
+		if (el.locked) {
+			startMarquee(
+				{ clientX: e.clientX, clientY: e.clientY, shiftKey: false },
+				[],
+			);
+			return;
+		}
+		const movers = doc.elements.filter(
+			(other) => ids.includes(other.id) && !other.locked,
+		);
+		startMove(
+			movers,
+			e,
+			inSelection && selectedIds.length > 1
+				? () => onSelect([el.id])
+				: undefined,
+		);
+	};
 	// черновик рисуется тем же render(), что и готовый элемент, — поверх остальных,
 	// как и ляжет после создания
 	const renderedElements = draft ? [...elements, draft] : elements;
@@ -285,10 +344,18 @@ export function Canvas({
 					{/* biome-ignore lint/a11y/useKeyWithClickEvents: см. комментарий выше */}
 					<div
 						ref={contentRef}
-						onClick={() => onSelect(null)}
+						onClick={() => onSelect([])}
 						onMouseDown={(e) => {
+							if (e.button !== 0) return;
+							// сюда доходит только нажатие мимо элементов и направляющих —
+							// они гасят всплытие; рамка — с карточки и с серой области
+							if (tool === "select") {
+								e.preventDefault();
+								startMarquee(e, selectedIds);
+								return;
+							}
 							// рисовать можно и на вылете, не только на самой карточке
-							if (!placing || e.button !== 0) return;
+							if (!placing) return;
 							e.preventDefault();
 							startDraw(tool as PlaceType, e);
 						}}
@@ -321,7 +388,7 @@ export function Canvas({
 							onClick={(e) => {
 								// иначе всплыл бы на серую область и снял выделение второй раз
 								e.stopPropagation();
-								onSelect(null);
+								onSelect([]);
 							}}
 							style={{
 								left: originXPx,
@@ -366,21 +433,29 @@ export function Canvas({
 									}
 								/>
 							))}
+							{groupBounds && (
+								<div
+									className={styles.selectionBox}
+									style={{
+										left: groupBounds.x * pxPerMm,
+										top: groupBounds.y * pxPerMm,
+										width: groupBounds.w * pxPerMm,
+										height: groupBounds.h * pxPerMm,
+									}}
+								/>
+							)}
 							{elements.map((el) => (
 								<ElementOverlay
 									key={el.id}
 									el={el}
 									pxPerMm={pxPerMm}
-									selected={el.id === selectedId}
+									selected={selectedIds.includes(el.id)}
+									handles={selectedIds.length === 1}
 									overflow={overflowIds.includes(el.id)}
 									offCard={isOffCard(el, canvas)}
 									interactive={!placing}
 									canDrag={tool === "select" && !el.locked}
-									onSelect={() => onSelect(el.id)}
-									onStartMove={(e) => {
-										e.preventDefault();
-										startMove(el, e);
-									}}
+									onPress={(e) => handlePress(el, e)}
 									onStartResize={(handle, e) => {
 										e.preventDefault();
 										startResize(el, handle, e);
@@ -418,6 +493,17 @@ export function Canvas({
 								}
 							/>
 						))}
+					{marquee && (
+						<div
+							className={styles.marquee}
+							style={{
+								left: originXPx + marquee.x * pxPerMm,
+								top: originYPx + marquee.y * pxPerMm,
+								width: marquee.w * pxPerMm,
+								height: marquee.h * pxPerMm,
+							}}
+						/>
+					)}
 					{guideDrag && liveGuideMm !== null && (
 						<GuideLine
 							axis={guideDrag.axis}

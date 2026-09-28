@@ -1,6 +1,8 @@
 // «Ничего не выделено» → свойства холста. Выделен rect/ellipse/line → ShapeInspector,
-// text → TextInspector, image → ImageInspector, направляющая → GuideInspector. Над
-// ними — шапка с тем, чьи это свойства (раскладка из ui_kits/editor/Inspector.jsx).
+// text → TextInspector, image → ImageInspector, направляющая → GuideInspector,
+// несколько элементов → MultiInspector. Над ними — шапка с тем, чьи это свойства
+// (раскладка из ui_kits/editor/Inspector.jsx), у элементов — ещё выравнивание:
+// у группы сверху, у одного элемента — под его свойствами.
 import type {
 	Canvas as CanvasModel,
 	CutlineElement,
@@ -13,12 +15,14 @@ import type { IconProps } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
 import { plural } from "../lib/plural";
 import type { BorderVisibility } from "../lib/snap";
+import { AlignSection } from "./AlignSection";
 import { CanvasInspector } from "./CanvasInspector";
 import type { RecordError } from "./ElementErrors";
 import { GuideInspector } from "./GuideInspector";
 import { ImageInspector } from "./ImageInspector";
 import styles from "./Inspector.module.css";
 import { InspectorHeader } from "./InspectorHeader";
+import { MultiInspector } from "./MultiInspector";
 import { OverflowAlert } from "./OverflowAlert";
 import { ShapeInspector } from "./ShapeInspector";
 import { TextInspector } from "./TextInspector";
@@ -30,6 +34,14 @@ export interface InspectorProps {
 	onCanvasChange: (canvas: CanvasModel) => void;
 	selectedElement: CutlineElement | null;
 	onElementChange: (element: CutlineElement) => void;
+	// все выделенные; больше одного — групповой инспектор
+	selectedElements: CutlineElement[];
+	// все элементы документа — групповые правки возвращают их целиком
+	elements: CutlineElement[];
+	onElementsChange: (
+		elements: CutlineElement[],
+		options?: { boundary?: boolean },
+	) => void;
 	selectedGuide: Guide | null;
 	onGuideChange: (guide: Guide) => void;
 	fields: FieldDef[];
@@ -71,6 +83,9 @@ export function Inspector({
 	onCanvasChange,
 	selectedElement,
 	onElementChange,
+	selectedElements,
+	elements,
+	onElementsChange,
 	selectedGuide,
 	onGuideChange,
 	fields,
@@ -83,6 +98,16 @@ export function Inspector({
 	overflowElements,
 	onSelectElement,
 }: InspectorProps) {
+	const selectedIds = selectedElements.map((el) => el.id);
+	const align = (
+		<AlignSection
+			elements={elements}
+			ids={selectedIds}
+			card={{ x: 0, y: 0, w: canvas.w, h: canvas.h }}
+			// нажатие кнопки — отдельное действие, не склеивается с набором в поле
+			onChange={(els) => onElementsChange(els, { boundary: true })}
+		/>
+	);
 	return (
 		<aside className={styles.inspector}>
 			{selectedGuide ? (
@@ -92,6 +117,24 @@ export function Inspector({
 						kind={selectedGuide.axis === "x" ? "по X" : "по Y"}
 					/>
 					<GuideInspector guide={selectedGuide} onChange={onGuideChange} />
+				</>
+			) : selectedElements.length > 1 ? (
+				<>
+					<InspectorHeader
+						title={`${selectedElements.length} ${plural(
+							selectedElements.length,
+							"элемент",
+							"элемента",
+							"элементов",
+						)}`}
+						kind="Несколько"
+					/>
+					{align}
+					<MultiInspector
+						elements={elements}
+						ids={selectedIds}
+						onChange={onElementsChange}
+					/>
 				</>
 			) : selectedElement ? (
 				<>
@@ -132,6 +175,8 @@ export function Inspector({
 							canvasBackground={canvas.background}
 						/>
 					)}
+					{/* у одного элемента — внизу: плашки переполнения и свойства типа важнее */}
+					{align}
 				</>
 			) : (
 				<>
