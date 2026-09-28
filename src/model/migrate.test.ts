@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blankDocument } from "../render/fixtures/blank";
-import type { CutlineDocument, TextElement } from "./document";
+import { firstBaselineY } from "../render/layout";
+import type { CutlineDocument } from "./document";
 import { validateDocument } from "./file";
 import {
 	type AnyVersionDocument,
@@ -8,10 +9,11 @@ import {
 	migrateDocument,
 	UNTITLED,
 } from "./migrate";
+import { type LegacyValign, lineBoxesFromLegacy } from "./textBox";
 
 // правила текста v7 — у документов этой версии они уже есть, fit нет
 function text(
-	valign: TextElement["valign"],
+	valign: LegacyValign,
 	weight: "regular" | "bold" = "regular",
 	fit: "shrink" | "clip" | "wrap" | "none" = "none",
 ): Extract<AnyVersionDocument["elements"][number], { type: "text" }> {
@@ -53,7 +55,8 @@ describe("migrateDocument", () => {
 		expect(migrated.version).toBe(CURRENT_VERSION);
 		// дальше v8 ставит строкам высоту в одну строку (6 мм), сохраняя положение текста:
 		// по базовой — нижний край 50, по центру — центр 52.5
-		expect(migrated.elements.map((el) => el.y)).toEqual([44, 50, 49.5]);
+		// v9 — строки-коробки: «по базовой» (Inter — типичные метрики 0.95/0.25) ниже на 1.25
+		expect(migrated.elements.map((el) => el.y)).toEqual([45.25, 50, 49.5]);
 	});
 
 	it("v2 → v3: появляется имя «Без названия», остальное не трогаем", () => {
@@ -192,9 +195,61 @@ describe("migrateDocument", () => {
 			// центр рамки на 30
 			["middle", 27, 6],
 			// нижний край на 55
-			["baseline", 49, 6],
+			// и v9: «по базовой» → «по низу», типичные метрики — ниже на 1.25
+			["baseline", 50.25, 6],
 			["block", 5, 50],
 		]);
+	});
+
+	it("v8 → v9: строки-коробки — первая базовая линия на месте", () => {
+		// Golos Text: ascent 0.98, descent 0.22; кегль 10, межстрочный 15
+		const a = 9.8;
+		const d = 2.2;
+		const L = 15;
+		// старая модель: по верху — ascent от верха, по центру — буквы по центру рамки,
+		// по базовой — базовая последней строки на нижнем крае
+		const legacyBaseline = (
+			valign: LegacyValign,
+			y: number,
+			h: number,
+			n: number,
+		) =>
+			valign === "top"
+				? y + a
+				: valign === "middle"
+					? y + h / 2 - (a + d + L * (n - 1)) / 2 + a
+					: y + h - L * (n - 1);
+		for (const valign of ["top", "middle", "baseline"] as const) {
+			for (const n of [1, 3]) {
+				const el = {
+					y: 20,
+					size: 10,
+					lineHeight: 1.5,
+					font: "Golos Text",
+					valign,
+				};
+				const h = 50;
+				const next = lineBoxesFromLegacy(el);
+				const lines = Array.from({ length: n }, () => "a");
+				expect(
+					firstBaselineY(next.valign, next.y, h, {
+						lines,
+						lineHeightMm: L,
+						ascentMm: a,
+						descentMm: d,
+					}),
+				).toBeCloseTo(legacyBaseline(valign, 20, h, n), 6);
+			}
+		}
+		expect(
+			lineBoxesFromLegacy({
+				y: 20,
+				size: 10,
+				lineHeight: 1.5,
+				font: "Golos Text",
+				valign: "baseline",
+			}).valign,
+		).toBe("bottom");
 	});
 
 	it("текущая версия — без изменений", () => {

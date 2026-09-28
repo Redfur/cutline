@@ -141,37 +141,31 @@ describe("layoutText", () => {
 	});
 });
 
-// кегль 10: ascent 8, descent 2, межстрочный 12
+// кегль 10: ascent 8, descent 2, межстрочный 12 — в строке-коробке по 1 мм сверху и снизу
 const metrics = { lineHeightMm: 12, ascentMm: 8, descentMm: 2 };
 const one = { ...metrics, lines: ["a"] };
 const three = { ...metrics, lines: ["a", "b", "c"] };
 
-describe("firstBaselineY", () => {
-	it("по верху — верх строки на верхнем крае рамки", () => {
-		expect(firstBaselineY("top", 0, 40, one)).toBe(8);
+describe("firstBaselineY — строки-коробки, как в Фигме", () => {
+	it("буквы по центру строки при любом межстрочном", () => {
+		// рамка = строка: верх букв на 1, низ на 11
+		expect(firstBaselineY("top", 0, 12, one)).toBe(9);
+		// межстрочный 20: лишнее 10 мм поровну — верх букв на 5
+		expect(firstBaselineY("top", 0, 20, { ...one, lineHeightMm: 20 })).toBe(13);
+		// межстрочный меньше букв — буквы вылезают поровну
+		expect(firstBaselineY("top", 0, 8, { ...one, lineHeightMm: 8 })).toBe(7);
 	});
 
-	it("по центру — центр строки в центре рамки, а не верх", () => {
-		// строка 10 мм (8+2) в рамке 40: верх на 15, базовая на 23
-		const base = firstBaselineY("middle", 0, 40, one);
-		expect(base).toBe(23);
-		const top = base - metrics.ascentMm;
-		const bottom = base + metrics.descentMm;
-		expect((top + bottom) / 2).toBe(20);
+	it("рамка ровно по строкам — выравнивание ничего не меняет", () => {
+		for (const valign of ["top", "middle", "bottom"] as const) {
+			expect(firstBaselineY(valign, 0, 36, three)).toBe(9);
+		}
 	});
 
-	it("по базовой — базовая последней строки на нижнем крае рамки", () => {
-		expect(firstBaselineY("baseline", 0, 40, one)).toBe(40);
-		// три строки: первая на 40 − 12·2
-		expect(firstBaselineY("baseline", 0, 40, three)).toBe(16);
-	});
-
-	it("по центру, три строки — центрируется весь блок", () => {
-		// блок 8 + 2 + 12·2 = 34 мм: верх на 3, первая базовая на 11
-		const base = firstBaselineY("middle", 0, 40, three);
-		expect(base).toBe(11);
-		const top = base - metrics.ascentMm;
-		const bottom = base + 24 + metrics.descentMm;
-		expect((top + bottom) / 2).toBe(20);
+	it("рамка выше строк — по верху, по центру, по низу", () => {
+		// содержимое 36 в рамке 40
+		expect(firstBaselineY("top", 0, 40, three)).toBe(9);
+		expect(firstBaselineY("middle", 0, 40, three)).toBe(11);
+		expect(firstBaselineY("bottom", 0, 40, three)).toBe(13);
 	});
 });

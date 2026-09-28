@@ -88,12 +88,7 @@ const VALIGN_OPTIONS: {
 }[] = [
 	{ value: "top", icon: "align-start-horizontal", title: "По верху" },
 	{ value: "middle", icon: "align-center-horizontal", title: "По середине" },
-	// базовая линия последней строки на нижнем крае рамки (модель v2)
-	{
-		value: "baseline",
-		icon: "align-end-horizontal",
-		title: "По базовой линии",
-	},
+	{ value: "bottom", icon: "align-end-horizontal", title: "По низу" },
 ];
 
 const MODE_OPTIONS: { value: TextMode; label: string; title: string }[] = [
@@ -156,6 +151,7 @@ export function TextInspector({
 		onChange({ ...element, ...patch });
 	const contentRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 	const over = overflowRecords.length > 0;
+	const manualHeight = element.mode === "block" && element.maxLines === null;
 	// Поле для имени шрифта — только по явному «Свой…». Шрифт не из пресетов (из
 	// открытого файла) стоит в списке отдельным пунктом:
 	// в селекте видно, какой шрифт на самом деле, а не безликое «Свой…».
@@ -332,19 +328,24 @@ export function TextInspector({
 				</PanelSection>
 
 				<PanelSection title="Выравнивание">
-					<PropertyRow columns={2}>
+					{/* По вертикали — только у блока ручной высоты: у строки и у блока с
+					    лимитом рамка ровно по строкам, выравнивать в ней нечего (как в Фигме
+					    у auto width / auto height) */}
+					<PropertyRow columns={manualHeight ? 2 : 1}>
 						<SegmentedControl
 							fullWidth
 							value={element.align}
 							onChange={(v) => set({ align: v as TextAlign })}
 							options={ALIGN_OPTIONS}
 						/>
-						<SegmentedControl
-							fullWidth
-							value={element.valign}
-							onChange={(v) => set({ valign: v as TextValign })}
-							options={VALIGN_OPTIONS}
-						/>
+						{manualHeight && (
+							<SegmentedControl
+								fullWidth
+								value={element.valign}
+								onChange={(v) => set({ valign: v as TextValign })}
+								options={VALIGN_OPTIONS}
+							/>
+						)}
 					</PropertyRow>
 				</PanelSection>
 

@@ -22,7 +22,9 @@ interface ElementBase {
 // (src/fonts/bundled.ts)
 export type FontWeight = 400 | 500 | 600 | 700;
 export type TextAlign = "left" | "center" | "right";
-export type TextValign = "top" | "middle" | "baseline";
+// Где строки-коробки стоят в рамке ручной высоты (v9; раньше вместо bottom был
+// baseline — базовая линия на нижнем крае)
+export type TextValign = "top" | "middle" | "bottom";
 // line — однострочный: не переносит, ручные переносы становятся пробелом; block —
 // перенос по словам и по \n (v7, раньше — один режим fit на всё)
 export type TextMode = "line" | "block";

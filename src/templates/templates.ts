@@ -17,7 +17,11 @@ import type {
 	TextElement,
 } from "../model/document";
 import { CURRENT_VERSION, DEFAULT_QR_STYLE } from "../model/migrate";
-import { lineTextBox } from "../model/textBox";
+import {
+	type LegacyValign,
+	lineBoxesFromLegacy,
+	lineTextBox,
+} from "../model/textBox";
 
 export interface Template {
 	id: string;
@@ -47,13 +51,17 @@ interface TextSpec {
 	minSize: number; // pt
 }
 
-// Рамки в макете — ручной высоты; у строки высота одна строка, текст остаётся на месте
+// Координаты макета — в старой модели текста (рамка ручной высоты, базовая от метрик);
+// в текущую их переводят те же функции, что и миграции v8 и v9, — текст там же, где в макете
 function text(spec: TextSpec): TextElement {
-	const el = textWithBox(spec);
-	return { ...el, ...lineTextBox(el) };
+	const legacy = legacyText(spec);
+	const line = { ...legacy, ...lineTextBox(legacy) };
+	return { ...line, ...lineBoxesFromLegacy(line) };
 }
 
-function textWithBox(spec: TextSpec): TextElement {
+function legacyText(
+	spec: TextSpec,
+): Omit<TextElement, "valign"> & { valign: LegacyValign } {
 	const size = ptToMm(spec.size);
 	return {
 		id: spec.id,

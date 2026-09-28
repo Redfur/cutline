@@ -12,6 +12,7 @@ import type {
 } from "../../model/document";
 import { DEFAULT_QR_STYLE } from "../../model/migrate";
 import { lineBoxHeight } from "../../model/textBox";
+import { cleanGeometry } from "./geometry";
 
 interface PointMm {
 	x: number;
@@ -170,8 +171,9 @@ const FACTORIES: Record<PlaceType, (at: PointMm) => CutlineElement> = {
 	qr: createQr,
 };
 
+// центр в точке клика — x − w/2 даёт хвосты вроде 22.799999999999997
 export function placeElement(type: PlaceType, at: PointMm): CutlineElement {
-	return FACTORIES[type](at);
+	return cleanGeometry(FACTORIES[type](at));
 }
 
 // QR render() всё равно вписывает квадратом — неквадратная рамка вокруг него

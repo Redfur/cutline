@@ -10,9 +10,9 @@ import type {
 	QrStyle,
 	TextElement,
 } from "./document";
-import { lineTextBox } from "./textBox";
+import { type LegacyValign, lineBoxesFromLegacy, lineTextBox } from "./textBox";
 
-export const CURRENT_VERSION = 8;
+export const CURRENT_VERSION = 9;
 
 // До v4 вес шрифта был строкой, до v5 у картинки не было фона, до v6 — оформления QR,
 // до v7 у текста был один режим fit. Документ старой версии (файл, IndexedDB, фикстура
@@ -21,8 +21,9 @@ type LegacyWeight = "regular" | "bold";
 type LegacyFit = "shrink" | "clip" | "wrap" | "none";
 type TextRules = "mode" | "shrink" | "ellipsis" | "maxLines";
 type AnyVersion<T> = T extends { type: "text" }
-	? Omit<T, "weight" | TextRules> & {
+	? Omit<T, "weight" | "valign" | TextRules> & {
 			weight: FontWeight | LegacyWeight;
+			valign: LegacyValign;
 			fit?: LegacyFit;
 		} & Partial<Pick<TextElement, TextRules>>
 	: T extends { weight: FontWeight }
@@ -135,12 +136,12 @@ const FIT_RULES: Record<
 	wrap: { mode: "block", shrink: false, ellipsis: false, maxLines: null },
 };
 
-function v6toV7(doc: AnyVersionDocument): CutlineDocument {
+function v6toV7(doc: AnyVersionDocument): AnyVersionDocument {
 	return {
 		...doc,
 		version: 7,
 		fonts: doc.fonts.map((f) => ({ ...f, weight: numericWeight(f.weight) })),
-		elements: doc.elements.map((el): CutlineElement => {
+		elements: doc.elements.map((el) => {
 			if (el.type === "image") {
 				return {
 					...el,
@@ -175,6 +176,19 @@ function v7toV8(doc: AnyVersionDocument): AnyVersionDocument {
 	};
 }
 
+// v8 → v9: строки текста — коробки высотой в межстрочный с буквами по центру, как в
+// Фигме; «по базовой линии» → «по низу». y сдвигается так, чтобы текст остался на месте
+// (lineBoxesFromLegacy)
+function v8toV9(doc: AnyVersionDocument): AnyVersionDocument {
+	return {
+		...doc,
+		version: 9,
+		elements: doc.elements.map((el) =>
+			el.type === "text" ? { ...el, ...lineBoxesFromLegacy(el) } : el,
+		),
+	};
+}
+
 const STEPS: Record<
 	number,
 	(doc: AnyVersionDocument) => AnyVersionDocument | CutlineDocument
@@ -186,6 +200,7 @@ const STEPS: Record<
 	5: v5toV6,
 	6: v6toV7,
 	7: v7toV8,
+	8: v8toV9,
 };
 
 export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {

@@ -83,11 +83,11 @@ export function layoutText(el: TextElement, scope: Scope): TextLayout | null {
 	};
 }
 
-// Базовая линия первой строки. Высота блока — от верха первой строки (ascent) до низа
-// последней (descent), а не lineHeight·(n−1): с последним у однострочного текста блок
-// выходил нулевым, и «по центру» ставило верх текста на середину рамки — текст сидел в
-// нижней половине. Ascent/descent — метрики шрифта (fontBoundingBox), а не конкретных
-// букв, поэтому строка «ааа» и «ЁЙ» при одном кегле встают одинаково.
+// Базовая линия первой строки. Как в Фигме и CSS: каждая строка — коробка высотой в
+// межстрочный, буквы (ascent + descent — метрики шрифта, не конкретных букв) в ней по
+// центру, лишнее делится поровну сверху и снизу. Содержимое — n строк-коробок, по valign
+// внутри рамки y..y+h. У строки и у блока с лимитом рамка равна содержимому — там valign
+// ничего не меняет; у блока с ручной высотой — по верху, по центру или по низу.
 export function firstBaselineY(
 	valign: TextValign,
 	y: number,
@@ -95,16 +95,12 @@ export function firstBaselineY(
 	layout: Pick<TextLayout, "lines" | "lineHeightMm" | "ascentMm" | "descentMm">,
 ): number {
 	const { lines, lineHeightMm, ascentMm, descentMm } = layout;
-	const blockHeightMm =
-		ascentMm + descentMm + lineHeightMm * (lines.length - 1);
-	switch (valign) {
-		case "top":
-			return y + ascentMm;
-		case "middle":
-			return y + h / 2 - blockHeightMm / 2 + ascentMm;
-		// базовая линия последней строки — на нижнем крае рамки: рамка охватывает текст,
-		// а тексты разных кеглей с одним y + h стоят на одной базовой
-		case "baseline":
-			return y + h - lineHeightMm * (lines.length - 1);
-	}
+	const contentMm = lineHeightMm * lines.length;
+	const top =
+		valign === "top"
+			? y
+			: valign === "middle"
+				? y + (h - contentMm) / 2
+				: y + h - contentMm;
+	return top + (lineHeightMm - ascentMm - descentMm) / 2 + ascentMm;
 }

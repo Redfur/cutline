@@ -6,6 +6,7 @@
 // везде передаём туда те же числа из модели, единицы результата тоже можно читать
 // как миллиметры: важно единообразие, а не физический смысл промежуточного "px".
 
+import { bundledMetrics } from "../fonts/metrics";
 import type { FontWeight } from "../model/document";
 
 let measureContext: CanvasRenderingContext2D | null = null;
@@ -51,6 +52,26 @@ export interface TextMetricsMm {
 	descentMm: number;
 }
 
+// Chromium отдаёт fontBoundingBoxAscent/Descent целыми px. Кегль тут — мм (3–10 «px»),
+// и базовая линия прыгала ступеньками по миллиметру при плавной смене кегля. Системный
+// шрифт меряем на опорном кегле и масштабируем — ошибка округления 1/1000 кегля
+const METRICS_REFERENCE_PX = 1000;
+
+function verticalMetrics(
+	ctx: CanvasRenderingContext2D,
+	fontFamily: string,
+	weight: FontWeight,
+) {
+	const bundled = bundledMetrics(fontFamily);
+	if (bundled) return bundled;
+	ctx.font = `${weight} ${METRICS_REFERENCE_PX}px ${cssFontFamily(fontFamily)}`;
+	const m = ctx.measureText("");
+	return {
+		ascent: m.fontBoundingBoxAscent / METRICS_REFERENCE_PX,
+		descent: m.fontBoundingBoxDescent / METRICS_REFERENCE_PX,
+	};
+}
+
 export function measureText(
 	text: string,
 	sizeMm: number,
@@ -59,12 +80,14 @@ export function measureText(
 	weight: FontWeight,
 ): TextMetricsMm {
 	const ctx = getMeasureContext();
+	// встроенные — из таблицы (точно и одинаково везде), системные — canvas
+	const { ascent, descent } = verticalMetrics(ctx, fontFamily, weight);
 	ctx.font = `${weight} ${sizeMm}px ${cssFontFamily(fontFamily)}`;
 	const metrics = ctx.measureText(text);
 	const trackingWidth = text.length > 1 ? trackingMm * (text.length - 1) : 0;
 	return {
 		widthMm: metrics.width + trackingWidth,
-		ascentMm: metrics.fontBoundingBoxAscent,
-		descentMm: metrics.fontBoundingBoxDescent,
+		ascentMm: ascent * sizeMm,
+		descentMm: descent * sizeMm,
 	};
 }
