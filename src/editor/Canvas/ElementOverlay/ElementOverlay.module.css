@@ -21,6 +21,15 @@
 	pointer-events: none;
 }
 
+/* Элемент целиком за обрезом: сам он виден только полупрозрачным — без обводки
+   белый прямоугольник на сером фоне терялся бы */
+.offCard {
+	position: absolute;
+	inset: 0;
+	outline: 1px dashed var(--fg-3);
+	pointer-events: none;
+}
+
 /* Под рамкой выделения: выделенный переполненный элемент видно и так, и так */
 .overflow {
 	position: absolute;

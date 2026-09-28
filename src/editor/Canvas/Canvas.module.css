@@ -67,11 +67,16 @@
 .card {
 	position: absolute;
 	box-shadow: var(--shadow-card);
-	cursor: default;
 }
 
+/* Курсор задаётся только здесь и наследуется карточкой: свой cursor у .card
+   перебивал его, и на самой карточке с инструментом была обычная стрелка */
 .placing {
 	cursor: crosshair;
+}
+
+.placingText {
+	cursor: text;
 }
 
 .cardArt {
@@ -87,6 +92,19 @@
 	display: block;
 	width: 100%;
 	height: 100%;
+}
+
+.offCardArt {
+	position: absolute;
+	opacity: 0.3;
+	pointer-events: none;
+}
+
+.offCardArt :global(svg) {
+	display: block;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
 }
 
 .trim,

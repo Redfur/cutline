@@ -13,7 +13,7 @@ import type {
 } from "../../model/document";
 import { type ImagePreview, render } from "../../render/render";
 import type { PlaceType } from "../lib/createElement";
-import { boundsOf } from "../lib/geometry";
+import { boundsOf, isOffCard } from "../lib/geometry";
 import type { BorderVisibility } from "../lib/snap";
 import type { Tool } from "../Toolbar";
 import styles from "./Canvas.module.css";
@@ -292,9 +292,25 @@ export function Canvas({
 							e.preventDefault();
 							startDraw(tool as PlaceType, e);
 						}}
-						className={`${styles.content} ${placing ? styles.placing : ""}`}
+						className={`${styles.content} ${placing ? styles.placing : ""} ${tool === "text" ? styles.placingText : ""}`}
 						style={{ width: contentWidthPx, height: contentHeightPx }}
 					>
+						{/* «Призрак»: то, что вылезло за обрез, — той же строкой render(), но без
+						    обрезки по viewBox и полупрозрачно: видно, что элемент там есть, и что
+						    в печать это не попадёт. Саму карточку из него вырезаем (evenodd), иначе
+						    при прозрачном фоне внутри рисунок лёг бы дважды */}
+						<div
+							className={styles.offCardArt}
+							// biome-ignore lint/security/noDangerouslySetInnerHtml: та же доверенная строка render(), что и у карточки ниже
+							dangerouslySetInnerHTML={{ __html: cardSvg }}
+							style={{
+								left: originXPx,
+								top: originYPx,
+								width: cardWidthPx,
+								height: cardHeightPx,
+								clipPath: `path(evenodd, "M${-originXPx} ${-originYPx}h${contentWidthPx}v${contentHeightPx}h${-contentWidthPx}Z M0 0h${cardWidthPx}v${cardHeightPx}h${-cardWidthPx}Z")`,
+							}}
+						/>
 						{/* Клик по карточке мимо элементов снимает выделение — как и по серой
 							    области; размещение инструментом — на mousedown области содержимого
 							    выше. Не семантический контрол, клавиатурного эквивалента нет, как у canvas */}
@@ -357,6 +373,7 @@ export function Canvas({
 									pxPerMm={pxPerMm}
 									selected={el.id === selectedId}
 									overflow={overflowIds.includes(el.id)}
+									offCard={isOffCard(el, canvas)}
 									interactive={!placing}
 									canDrag={tool === "select" && !el.locked}
 									onSelect={() => onSelect(el.id)}

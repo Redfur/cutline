@@ -2,7 +2,7 @@
 // просто x/y/w/h. У линии w/h — вектор от начала к концу и может быть отрицательным
 // (линия «вверх-вправо»), а хитбокс, подсветка на линейках и подпись размера ждут
 // коробку с неотрицательной шириной — нормализуем здесь, в одном месте.
-import type { CutlineElement } from "../../model/document";
+import type { Canvas, CutlineElement } from "../../model/document";
 
 export interface Bounds {
 	x: number;
@@ -20,6 +20,17 @@ export function boundsOf(
 		w: Math.abs(el.w),
 		h: Math.abs(el.h),
 	};
+}
+
+// Элемент целиком за обрезом: на холсте от него остаётся только полупрозрачный
+// «призрак», и его легко потерять — оверлей обводит такой пунктиром. Касание края
+// тоже считаем «за»: от элемента на карточке не остаётся ни миллиметра.
+export function isOffCard(
+	el: Pick<CutlineElement, "x" | "y" | "w" | "h">,
+	canvas: Pick<Canvas, "w" | "h">,
+): boolean {
+	const b = boundsOf(el);
+	return b.x + b.w <= 0 || b.y + b.h <= 0 || b.x >= canvas.w || b.y >= canvas.h;
 }
 
 export function lineLength(el: Pick<CutlineElement, "w" | "h">): number {

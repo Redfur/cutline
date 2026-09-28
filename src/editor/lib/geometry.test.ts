@@ -3,6 +3,7 @@ import {
 	boundsOf,
 	cleanGeometry,
 	cleanMm,
+	isOffCard,
 	lineLength,
 	roundMouseMm,
 } from "./geometry";
@@ -51,5 +52,29 @@ describe("roundMouseMm", () => {
 		expect(roundMouseMm(10.175)).toBe(10.2);
 		expect(roundMouseMm(-3.04)).toBe(-3);
 		expect(roundMouseMm(0.7)).toBe(0.7);
+	});
+});
+
+describe("isOffCard", () => {
+	const canvas = { w: 100, h: 50 };
+
+	it("внутри и частично за краем — на карточке", () => {
+		expect(isOffCard({ x: 10, y: 10, w: 20, h: 20 }, canvas)).toBe(false);
+		expect(isOffCard({ x: -10, y: 10, w: 20, h: 20 }, canvas)).toBe(false);
+		expect(isOffCard({ x: 90, y: 40, w: 20, h: 20 }, canvas)).toBe(false);
+	});
+
+	it("целиком за любым краем — вне карточки, касание края тоже", () => {
+		expect(isOffCard({ x: -30, y: 10, w: 20, h: 20 }, canvas)).toBe(true);
+		expect(isOffCard({ x: -20, y: 10, w: 20, h: 20 }, canvas)).toBe(true);
+		expect(isOffCard({ x: 100, y: 10, w: 20, h: 20 }, canvas)).toBe(true);
+		expect(isOffCard({ x: 10, y: 60, w: 20, h: 20 }, canvas)).toBe(true);
+		expect(isOffCard({ x: 10, y: -25, w: 20, h: 20 }, canvas)).toBe(true);
+	});
+
+	it("линия с отрицательным вектором — по нормализованной коробке", () => {
+		// от (5, 5) влево-вверх до (-15, -5): начало на карточке
+		expect(isOffCard({ x: 5, y: 5, w: -20, h: -10 }, canvas)).toBe(false);
+		expect(isOffCard({ x: -5, y: 5, w: -20, h: -10 }, canvas)).toBe(true);
 	});
 });

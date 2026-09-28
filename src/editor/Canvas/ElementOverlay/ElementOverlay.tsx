@@ -34,6 +34,9 @@ export interface ElementOverlayProps {
 	// текст не влез на текущей записи — обводим предупреждающим цветом (ui-spec,
 	// состояние «Текст не влез»)
 	overflow: boolean;
+	// элемент целиком за обрезом — от него на холсте только полупрозрачный «призрак»,
+	// пунктир показывает, где он
+	offCard: boolean;
 	// false — выбран инструмент размещения: оверлей видно (выделение, переполнение),
 	// но мышь он пропускает к холсту, чтобы новый элемент можно было начать поверх
 	interactive: boolean;
@@ -49,6 +52,7 @@ export function ElementOverlay({
 	pxPerMm,
 	selected,
 	overflow,
+	offCard,
 	interactive,
 	canDrag,
 	onSelect,
@@ -112,6 +116,7 @@ export function ElementOverlay({
 				transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
 			}}
 		>
+			{offCard && <div className={styles.offCard} />}
 			{overflow && <div className={styles.overflow} />}
 			{isLine && (
 				<svg className={styles.lineHitArea} aria-hidden="true">
