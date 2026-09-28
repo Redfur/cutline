@@ -1,6 +1,7 @@
 // Таблица записей по docs/ui-spec.md, «Экран 2»: строки — записи, колонки — поля.
-// Ячейки — обычные <input>, значение берётся из документа на каждом рендере: своего
-// состояния у таблицы нет, кроме того, какой заголовок сейчас правится.
+// Ячейки — <textarea>, значение берётся из документа на каждом рендере: своего
+// состояния у таблицы нет, кроме того, какой заголовок сейчас правится. Textarea, а не
+// input: input выбрасывает переносы при вставке, а блочный текст на карточке их держит.
 import { useEffect, useRef } from "react";
 import type { RecordProblems } from "../../../data/problems";
 import type { DataRecord, FieldDef } from "../../../model/document";
@@ -53,6 +54,17 @@ export function RecordsTable({
 	focusIndex,
 }: RecordsTableProps) {
 	const tableRef = useRef<HTMLTableElement>(null);
+
+	// Enter — в ту же колонку следующей записи, как в таблицах; перенос — Shift+Enter
+	const focusBelow = (index: number, col: number) => {
+		const next = rows[rows.indexOf(index) + 1];
+		if (next === undefined) return;
+		tableRef.current
+			?.querySelector<HTMLTextAreaElement>(
+				`[data-row="${next}"] textarea[data-col="${col}"]`,
+			)
+			?.focus();
+	};
 
 	// выбрали миниатюру — строка подъезжает в видимую часть таблицы; nearest не
 	// дёргает прокрутку, когда строку выбрали кликом в самой таблице
@@ -140,17 +152,36 @@ export function RecordsTable({
 										className={`${styles.td} ${problem ? styles.problem : ""}`}
 										title={problem ? PROBLEM_TITLE[problem] : undefined}
 									>
-										<input
-											className={styles.cell}
-											// biome-ignore lint/a11y/noAutofocus: фокус в первую ячейку только что добавленной записи — продолжение нажатия «Добавить запись»
-											autoFocus={col === 0 && index === focusIndex}
-											aria-label={`${f.label}, запись ${index + 1}`}
-											value={record[f.key] ?? ""}
-											placeholder={problem === "empty" ? "Пусто" : ""}
-											onChange={(e) =>
-												onCellChange(index, f.key, e.target.value)
-											}
-										/>
+										{/* Растёт по тексту без замеров: невидимый двойник с тем же текстом
+										    в той же клетке грида задаёт высоту (::after в CSS) */}
+										<div
+											className={styles.cellWrap}
+											data-value={record[f.key] ?? ""}
+										>
+											<textarea
+												className={styles.cell}
+												rows={1}
+												data-col={col}
+												// biome-ignore lint/a11y/noAutofocus: фокус в первую ячейку только что добавленной записи — продолжение нажатия «Добавить запись»
+												autoFocus={col === 0 && index === focusIndex}
+												aria-label={`${f.label}, запись ${index + 1}`}
+												value={record[f.key] ?? ""}
+												placeholder={problem === "empty" ? "Пусто" : ""}
+												onChange={(e) =>
+													onCellChange(index, f.key, e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (
+														e.key !== "Enter" ||
+														e.shiftKey ||
+														e.nativeEvent.isComposing
+													)
+														return;
+													e.preventDefault();
+													focusBelow(index, col);
+												}}
+											/>
+										</div>
 										{problem && (
 											<span className={styles.problemIcon}>
 												<Icon
