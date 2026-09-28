@@ -20,9 +20,14 @@ function block(patch: Partial<TextElement> = {}): TextElement {
 }
 
 describe("normalizeText", () => {
-	it("строка и блок без лимита — как есть", () => {
+	it("строка — высота в одну строку, y на месте", () => {
 		const line = block({ mode: "line", h: 7 });
-		expect(normalizeText(null, line)).toBe(line);
+		expect(normalizeText(null, line)).toMatchObject({ y: 10, h: 5 });
+		const bigger = normalizeText(line, { ...line, h: 5, size: 8 });
+		expect(bigger).toMatchObject({ y: 10, h: 10 });
+	});
+
+	it("блок без лимита — как есть", () => {
 		const free = block({ maxLines: null, h: 7 });
 		expect(normalizeText(null, free)).toBe(free);
 	});

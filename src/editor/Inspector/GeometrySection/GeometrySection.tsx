@@ -17,9 +17,15 @@ type Geometry = Pick<
 export interface GeometrySectionProps {
 	element: Geometry & { type: CutlineElement["type"] };
 	onChange: (patch: Partial<Geometry>) => void;
+	// высоту считает редактор (текст-строка — одна строка), поле только показывает её
+	autoHeight?: boolean;
 }
 
-export function GeometrySection({ element, onChange }: GeometrySectionProps) {
+export function GeometrySection({
+	element,
+	onChange,
+	autoHeight = false,
+}: GeometrySectionProps) {
 	const num = (v: string | number) => Number(v) || 0;
 	const { locked } = element;
 	return (
@@ -65,6 +71,7 @@ export function GeometrySection({ element, onChange }: GeometrySectionProps) {
 								prefix="В"
 								value={element.h}
 								unit="мм"
+								disabled={autoHeight}
 								onChange={(v) => onChange({ h: num(v) })}
 							/>
 						</PropertyRow>

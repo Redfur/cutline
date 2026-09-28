@@ -10,8 +10,9 @@ import type {
 	QrStyle,
 	TextElement,
 } from "./document";
+import { lineTextBox } from "./textBox";
 
-export const CURRENT_VERSION = 7;
+export const CURRENT_VERSION = 8;
 
 // До v4 вес шрифта был строкой, до v5 у картинки не было фона, до v6 — оформления QR,
 // до v7 у текста был один режим fit. Документ старой версии (файл, IndexedDB, фикстура
@@ -122,7 +123,7 @@ function v5toV6(doc: AnyVersionDocument): AnyVersionDocument {
 // v6 → v7: режим fit текста — на вид (строка/блок) и комбинируемые правила. Вид
 // сохраняется один в один: shrink и раньше после уменьшения обрезал с «…», wrap — блок
 // без лимита строк с ручной высотой. Геометрия не меняется.
-// Последний шаг заодно приводит к текущему виду то, что тип старых версий допускает
+// Этот шаг заодно приводит к текущему виду то, что тип старых версий допускает
 // шире (веса строкой, картинку без фона) — дальше документ типизирован текущей схемой
 const FIT_RULES: Record<
 	LegacyFit,
@@ -160,6 +161,20 @@ function v6toV7(doc: AnyVersionDocument): CutlineDocument {
 	};
 }
 
+// v7 → v8: у текста-строки высота рамки — одна строка, не ручная. y сдвигается так,
+// чтобы текст остался на месте (lineTextBox); блоки не трогаем
+function v7toV8(doc: AnyVersionDocument): AnyVersionDocument {
+	return {
+		...doc,
+		version: 8,
+		elements: doc.elements.map((el) =>
+			el.type === "text" && el.mode === "line"
+				? { ...el, ...lineTextBox(el) }
+				: el,
+		),
+	};
+}
+
 const STEPS: Record<
 	number,
 	(doc: AnyVersionDocument) => AnyVersionDocument | CutlineDocument
@@ -170,6 +185,7 @@ const STEPS: Record<
 	4: v4toV5,
 	5: v5toV6,
 	6: v6toV7,
+	7: v7toV8,
 };
 
 export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {
@@ -186,6 +202,6 @@ export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {
 		}
 		current = step(current);
 	}
-	// последний шаг — v5toV6, он приводит всё к текущей схеме
+	// v6toV7 приводит всё к текущей схеме, дальше шаги её только уточняют
 	return current as CutlineDocument;
 }

@@ -259,7 +259,11 @@ export function TextInspector({
 				</PanelSection>
 			</LockedFieldset>
 
-			<GeometrySection element={element} onChange={set} />
+			<GeometrySection
+				element={element}
+				onChange={set}
+				autoHeight={element.mode === "line"}
+			/>
 
 			<LockedFieldset locked={element.locked}>
 				<PanelSection title="Шрифт и кегль">

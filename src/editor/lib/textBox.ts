@@ -1,8 +1,10 @@
-// Высота блочного текста с лимитом строк — не ручная: рамка ровно на maxLines строк
-// (maxLines · кегль · межстрочный), как «авто-высота» в Фигме. Одна функция на все пути
-// правки: поле инспектора, маркер резайза (и его живое превью), H в «Положении».
-// Потянули высоту сами — меняется число строк, а рамка встаёт ровно на строки.
+// Высота текста не ручная ни у строки (одна строка, model/textBox.ts), ни у блока с
+// лимитом строк: рамка ровно на maxLines строк (maxLines · кегль · межстрочный), как
+// «авто-высота» в Фигме. Одна функция на все пути правки: поле инспектора, маркер
+// резайза (и его живое превью), H в «Положении». Потянули высоту блока сами — меняется
+// число строк, а рамка встаёт ровно на строки.
 import type { CutlineElement, TextElement } from "../../model/document";
+import { lineBoxHeight } from "../../model/textBox";
 import { cleanMm } from "./geometry";
 
 export function lineMm(el: Pick<TextElement, "size" | "lineHeight">): number {
@@ -13,7 +15,12 @@ export function normalizeText(
 	prev: TextElement | null,
 	next: TextElement,
 ): TextElement {
-	if (next.mode !== "block" || next.maxLines === null) return next;
+	// строка — всегда в одну строку высотой; меняли кегль — рамка растёт вниз, как в Фигме
+	if (next.mode === "line") {
+		const h = lineBoxHeight(next);
+		return next.h === h ? next : { ...next, h };
+	}
+	if (next.maxLines === null) return next;
 	const line = lineMm(next);
 	// высоту меняли руками, а не лимит и не кегль — лимит следует за высотой
 	const heightDragged =

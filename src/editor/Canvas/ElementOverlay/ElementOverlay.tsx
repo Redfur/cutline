@@ -67,6 +67,11 @@ export function ElementOverlay({
 		return null;
 	}
 	const isLine = el.type === "line";
+	// у текста-строки высота — одна строка (model/textBox.ts): тянуть можно только вбок
+	const handlePositions =
+		el.type === "text" && el.mode === "line"
+			? HANDLE_POSITIONS.filter((h) => h.y === 0.5)
+			: HANDLE_POSITIONS;
 	// у линии w/h — вектор и может быть отрицательным, коробку берём нормализованную
 	const bounds = boundsOf(el);
 	const naturalWidthPx = bounds.w * pxPerMm;
@@ -185,7 +190,7 @@ export function ElementOverlay({
 			{selected && handles && !el.locked && !isLine && (
 				<>
 					<div className={styles.outline} />
-					{HANDLE_POSITIONS.map((handle) => (
+					{handlePositions.map((handle) => (
 						// Маркер ресайза, тот же случай, что и хит-таргет элемента выше — не контрол,
 						// клавиатурного пути к ресайзу пока нет нигде в редакторе (горячие клавиши — отдельный пункт роадмапа)
 						// biome-ignore lint/a11y/noStaticElementInteractions: см. комментарий выше

@@ -11,7 +11,7 @@ import type {
 	TextElement,
 } from "../../model/document";
 import { DEFAULT_QR_STYLE } from "../../model/migrate";
-import { cleanMm } from "./geometry";
+import { lineBoxHeight } from "../../model/textBox";
 
 interface PointMm {
 	x: number;
@@ -25,7 +25,10 @@ const TEXT_W_MM = 40;
 const TEXT_SIZE_MM = 6;
 const TEXT_LINE_HEIGHT = 1.2;
 // кликом ставится однострочный текст — рамка ровно в одну строку
-const TEXT_H_MM = cleanMm(TEXT_SIZE_MM * TEXT_LINE_HEIGHT);
+const TEXT_H_MM = lineBoxHeight({
+	size: TEXT_SIZE_MM,
+	lineHeight: TEXT_LINE_HEIGHT,
+});
 const IMAGE_SIZE_MM = 40;
 // у бейджа A6 код 25 мм читается с расстояния вытянутой руки и не съедает макет
 const QR_SIZE_MM = 25;

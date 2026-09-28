@@ -9,11 +9,12 @@ import {
 	UNTITLED,
 } from "./migrate";
 
+// правила текста v7 — у документов этой версии они уже есть, fit нет
 function text(
 	valign: TextElement["valign"],
 	weight: "regular" | "bold" = "regular",
 	fit: "shrink" | "clip" | "wrap" | "none" = "none",
-): AnyVersionDocument["elements"][number] {
+): Extract<AnyVersionDocument["elements"][number], { type: "text" }> {
 	return {
 		id: valign,
 		name: valign,
@@ -50,7 +51,9 @@ describe("migrateDocument", () => {
 	it("v1 → v2: у текстов «по базовой» y −= h, остальные не трогаем", () => {
 		const migrated = migrateDocument(v1);
 		expect(migrated.version).toBe(CURRENT_VERSION);
-		expect(migrated.elements.map((el) => el.y)).toEqual([45, 50, 50]);
+		// дальше v8 ставит строкам высоту в одну строку (6 мм), сохраняя положение текста:
+		// по базовой — нижний край 50, по центру — центр 52.5
+		expect(migrated.elements.map((el) => el.y)).toEqual([44, 50, 49.5]);
 	});
 
 	it("v2 → v3: появляется имя «Без названия», остальное не трогаем", () => {
@@ -164,6 +167,34 @@ describe("migrateDocument", () => {
 		]);
 		expect(v7.elements[0]).not.toHaveProperty("fit");
 		expect(v7.elements[3]).toMatchObject({ x: 0, y: 50, w: 40, h: 5 });
+	});
+
+	it("v7 → v8: строка — высота в одну строку, текст на месте; блок не трогаем", () => {
+		const v7: AnyVersionDocument = {
+			...blankDocument,
+			version: 7,
+			// строка 5 · 1.2 = 6 мм в рамке 5..55 высотой 50; у v7 правила вместо fit
+			elements: (["top", "middle", "baseline", "block"] as const).map((id) => ({
+				...text(id === "block" ? "top" : id),
+				id,
+				y: 5,
+				h: 50,
+				fit: undefined,
+				mode: id === "block" ? ("block" as const) : ("line" as const),
+				shrink: false,
+				ellipsis: false,
+				maxLines: null,
+			})),
+		};
+		const boxes = migrateDocument(v7).elements.map((el) => [el.id, el.y, el.h]);
+		expect(boxes).toEqual([
+			["top", 5, 6],
+			// центр рамки на 30
+			["middle", 27, 6],
+			// нижний край на 55
+			["baseline", 49, 6],
+			["block", 5, 50],
+		]);
 	});
 
 	it("текущая версия — без изменений", () => {

@@ -17,6 +17,7 @@ import type {
 	TextElement,
 } from "../model/document";
 import { CURRENT_VERSION, DEFAULT_QR_STYLE } from "../model/migrate";
+import { lineTextBox } from "../model/textBox";
 
 export interface Template {
 	id: string;
@@ -46,7 +47,13 @@ interface TextSpec {
 	minSize: number; // pt
 }
 
+// Рамки в макете — ручной высоты; у строки высота одна строка, текст остаётся на месте
 function text(spec: TextSpec): TextElement {
+	const el = textWithBox(spec);
+	return { ...el, ...lineTextBox(el) };
+}
+
+function textWithBox(spec: TextSpec): TextElement {
 	const size = ptToMm(spec.size);
 	return {
 		id: spec.id,
