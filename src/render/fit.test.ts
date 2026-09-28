@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-	applyFit,
+	type BlockRules,
 	clipToFit,
 	type FitContext,
+	fitBlock,
+	fitLine,
 	shrinkToFit,
 	wrapToFit,
 } from "./fit";
@@ -71,53 +73,148 @@ describe("clipToFit", () => {
 });
 
 describe("wrapToFit", () => {
+	// size 2 → 1 мм на символ
 	it("переносит по словам", () => {
-		// 1мм на символ, ширина 7
 		expect(wrapToFit("aaa bbb ccc dd", 2, ctx(7))).toEqual([
 			"aaa bbb",
 			"ccc dd",
 		]);
 	});
 
-	it("слово длиннее строки остаётся целиком на своей строке", () => {
+	it("слово шире строки режется по символам", () => {
 		expect(wrapToFit("aa bbbbbbbbbb cc", 2, ctx(5))).toEqual([
 			"aa",
-			"bbbbbbbbbb",
+			"bbbbb",
+			"bbbbb",
 			"cc",
 		]);
 	});
 
-	it("пустой текст — одна пустая строка", () => {
+	it("ручные переносы — отдельные абзацы, пустая строка сохраняется", () => {
+		expect(wrapToFit("aa bb\n\ncc", 2, ctx(10))).toEqual(["aa bb", "", "cc"]);
+	});
+
+	it("одни пробелы — одна пустая строка", () => {
 		expect(wrapToFit("   ", 2, ctx(5))).toEqual([""]);
 	});
 });
 
-describe("applyFit", () => {
-	it("shrink: ужимает, а если и на минимуме не влезло — обрезает", () => {
-		expect(applyFit("abcdefgh", "shrink", 4, 2, ctx(4))).toEqual({
+describe("clipToFit", () => {
+	it("хвостовой пробел перед многоточием убирается", () => {
+		// «abc d…» не влезает в 5, «abc …» → «abc…»
+		expect(clipToFit("abc def", 2, ctx(5))).toBe("abc…");
+	});
+});
+
+const noRules = { shrink: false, ellipsis: false, minSizeMm: 1 };
+
+describe("fitLine", () => {
+	it("без правил — как есть, шире рамки — переполнение", () => {
+		expect(fitLine("abcd", 2, noRules, ctx(4))).toEqual({
 			sizeMm: 2,
-			lines: ["abc…"],
+			lines: ["abcd"],
+			overflow: false,
+		});
+		expect(fitLine("abcdefgh", 2, noRules, ctx(4)).overflow).toBe(true);
+	});
+
+	it("уменьшить: влезло на меньшем кегле — не переполнение", () => {
+		const r = fitLine("abcdefgh", 2, { ...noRules, shrink: true }, ctx(4));
+		expect(r.sizeMm).toBe(1);
+		expect(r.overflow).toBe(false);
+	});
+
+	it("многоточие: обрезано — переполнение", () => {
+		expect(
+			fitLine("abcdefgh", 2, { ...noRules, ellipsis: true }, ctx(4)),
+		).toEqual({ sizeMm: 2, lines: ["abc…"], overflow: true });
+	});
+
+	it("вместе: сначала уменьшаем до минимума, потом обрезаем", () => {
+		// на минимуме 1: 0.5 мм на символ, в 2 мм — «abc…»
+		expect(
+			fitLine(
+				"abcdefgh",
+				2,
+				{ shrink: true, ellipsis: true, minSizeMm: 1 },
+				ctx(2),
+			),
+		).toEqual({ sizeMm: 1, lines: ["abc…"], overflow: true });
+	});
+});
+
+function block(patch: Partial<BlockRules>): BlockRules {
+	return {
+		...noRules,
+		maxLines: null,
+		heightMm: 100,
+		lineHeight: 1.25,
+		...patch,
+	};
+}
+
+describe("fitBlock", () => {
+	it("влезло в высоту — строки как есть", () => {
+		expect(fitBlock("aa bb\ncc", 2, block({}), ctx(5))).toEqual({
+			sizeMm: 2,
+			lines: ["aa bb", "cc"],
+			overflow: false,
 		});
 	});
 
-	it("clip: кегль не меняет", () => {
-		expect(applyFit("abcdefgh", "clip", 2, 1, ctx(4))).toEqual({
-			sizeMm: 2,
-			lines: ["abc…"],
-		});
+	it("без лимита строк — лимит по высоте рамки (строка 2.5 мм)", () => {
+		const three = "aa\nbb\ncc";
+		expect(fitBlock(three, 2, block({ heightMm: 7.5 }), ctx(5)).overflow).toBe(
+			false,
+		);
+		expect(fitBlock(three, 2, block({ heightMm: 7 }), ctx(5)).overflow).toBe(
+			true,
+		);
 	});
 
-	it("wrap: строки из wrapToFit", () => {
-		expect(applyFit("aaa bbb", "wrap", 2, 1, ctx(4)).lines).toEqual([
-			"aaa",
-			"bbb",
-		]);
+	it("одна строка в низкой рамке — не переполнение", () => {
+		expect(fitBlock("aa", 2, block({ heightMm: 1 }), ctx(5)).overflow).toBe(
+			false,
+		);
 	});
 
-	it("none: текст как есть", () => {
-		expect(applyFit("abcdefgh", "none", 2, 1, ctx(1))).toEqual({
-			sizeMm: 2,
-			lines: ["abcdefgh"],
-		});
+	it("лимит строк без многоточия — все строки и переполнение", () => {
+		const r = fitBlock("aa bb cc", 2, block({ maxLines: 2 }), ctx(2));
+		expect(r.lines).toEqual(["aa", "bb", "cc"]);
+		expect(r.overflow).toBe(true);
+	});
+
+	it("многоточие — в конце последней разрешённой строки", () => {
+		const r = fitBlock(
+			"aaa bbb ccc",
+			2,
+			block({ maxLines: 2, ellipsis: true }),
+			ctx(4),
+		);
+		expect(r.lines).toEqual(["aaa", "bbb…"]);
+		expect(r.overflow).toBe(true);
+	});
+
+	it("лимит на пустой строке — многоточие у последней непустой", () => {
+		const r = fitBlock(
+			"aaa\n\nbbb",
+			2,
+			block({ maxLines: 2, ellipsis: true }),
+			ctx(10),
+		);
+		expect(r.lines).toEqual(["aaa…"]);
+	});
+
+	it("уменьшить: кегль падает, пока текст не войдёт в лимит строк", () => {
+		// на 2: «aaa bbb» — 7 мм > 4, три строки; на 1: 3.5 мм — строка «aaa bbb», две строки
+		const r = fitBlock(
+			"aaa bbb ccc",
+			2,
+			block({ maxLines: 2, shrink: true, minSizeMm: 0.5 }),
+			ctx(4),
+		);
+		expect(r.lines.length).toBeLessThanOrEqual(2);
+		expect(r.sizeMm).toBeLessThan(2);
+		expect(r.overflow).toBe(false);
 	});
 });

@@ -12,6 +12,7 @@ import {
 function text(
 	valign: TextElement["valign"],
 	weight: "regular" | "bold" = "regular",
+	fit: "shrink" | "clip" | "wrap" | "none" = "none",
 ): AnyVersionDocument["elements"][number] {
 	return {
 		id: valign,
@@ -34,7 +35,7 @@ function text(
 		align: "left",
 		valign,
 		color: "#000",
-		fit: "none",
+		fit,
 		transform: "none",
 	};
 }
@@ -131,11 +132,38 @@ describe("migrateDocument", () => {
 			],
 		};
 		const v6 = migrateDocument(v5);
-		expect(v6.version).toBe(6);
+		expect(v6.version).toBe(CURRENT_VERSION);
 		expect(v6.elements[0]).toMatchObject({
 			background: "#FFFFFF",
 			qr: { color: "#000000", modules: "square", eyes: "square" },
 		});
+	});
+
+	it("v6 → v7: fit текста — вид и правила, вид карточки тот же", () => {
+		const v6: AnyVersionDocument = {
+			...blankDocument,
+			version: 6,
+			elements: [
+				{ ...text("top", "regular", "shrink"), id: "shrink" },
+				{ ...text("top", "regular", "clip"), id: "clip" },
+				{ ...text("top", "regular", "none"), id: "none" },
+				{ ...text("top", "regular", "wrap"), id: "wrap" },
+			],
+		};
+		const v7 = migrateDocument(v6);
+		const rules = v7.elements.map((el) =>
+			el.type === "text"
+				? [el.id, el.mode, el.shrink, el.ellipsis, el.maxLines]
+				: null,
+		);
+		expect(rules).toEqual([
+			["shrink", "line", true, true, null],
+			["clip", "line", false, true, null],
+			["none", "line", false, false, null],
+			["wrap", "block", false, false, null],
+		]);
+		expect(v7.elements[0]).not.toHaveProperty("fit");
+		expect(v7.elements[3]).toMatchObject({ x: 0, y: 50, w: 40, h: 5 });
 	});
 
 	it("текущая версия — без изменений", () => {

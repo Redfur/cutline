@@ -8,22 +8,30 @@ import type {
 	FontRef,
 	FontWeight,
 	QrStyle,
+	TextElement,
 } from "./document";
 
-export const CURRENT_VERSION = 6;
+export const CURRENT_VERSION = 7;
 
-// До v4 вес шрифта был строкой, до v5 у картинки не было фона, до v6 — оформления QR. Документ старой версии
-// (файл, IndexedDB, фикстура бейджа в v1) типизируется так, чтобы шаги миграции его
-// принимали без приведений
+// До v4 вес шрифта был строкой, до v5 у картинки не было фона, до v6 — оформления QR,
+// до v7 у текста был один режим fit. Документ старой версии (файл, IndexedDB, фикстура
+// бейджа в v1) типизируется так, чтобы шаги миграции его принимали без приведений
 type LegacyWeight = "regular" | "bold";
-type AnyVersion<T> = T extends { weight: FontWeight }
-	? Omit<T, "weight"> & { weight: FontWeight | LegacyWeight }
-	: T extends { type: "image" }
-		? Omit<T, "background" | "qr"> & {
-				background?: string | null;
-				qr?: QrStyle;
-			}
-		: T;
+type LegacyFit = "shrink" | "clip" | "wrap" | "none";
+type TextRules = "mode" | "shrink" | "ellipsis" | "maxLines";
+type AnyVersion<T> = T extends { type: "text" }
+	? Omit<T, "weight" | TextRules> & {
+			weight: FontWeight | LegacyWeight;
+			fit?: LegacyFit;
+		} & Partial<Pick<TextElement, TextRules>>
+	: T extends { weight: FontWeight }
+		? Omit<T, "weight"> & { weight: FontWeight | LegacyWeight }
+		: T extends { type: "image" }
+			? Omit<T, "background" | "qr"> & {
+					background?: string | null;
+					qr?: QrStyle;
+				}
+			: T;
 export type AnyVersionDocument = Omit<CutlineDocument, "elements" | "fonts"> & {
 	elements: AnyVersion<CutlineElement>[];
 	fonts: AnyVersion<FontRef>[];
@@ -91,9 +99,7 @@ export const DEFAULT_QR_STYLE: QrStyle = {
 };
 
 // v5 → v6: у картинки оформление QR. Старые коды остаются чёрными квадратами.
-// Последний шаг заодно приводит к текущему виду то, что тип старых версий допускает
-// шире (веса строкой, картинку без фона) — дальше документ типизирован текущей схемой
-function v5toV6(doc: AnyVersionDocument): CutlineDocument {
+function v5toV6(doc: AnyVersionDocument): AnyVersionDocument {
 	return {
 		...doc,
 		version: 6,
@@ -113,6 +119,47 @@ function v5toV6(doc: AnyVersionDocument): CutlineDocument {
 	};
 }
 
+// v6 → v7: режим fit текста — на вид (строка/блок) и комбинируемые правила. Вид
+// сохраняется один в один: shrink и раньше после уменьшения обрезал с «…», wrap — блок
+// без лимита строк с ручной высотой. Геометрия не меняется.
+// Последний шаг заодно приводит к текущему виду то, что тип старых версий допускает
+// шире (веса строкой, картинку без фона) — дальше документ типизирован текущей схемой
+const FIT_RULES: Record<
+	LegacyFit,
+	Pick<TextElement, "mode" | "shrink" | "ellipsis" | "maxLines">
+> = {
+	shrink: { mode: "line", shrink: true, ellipsis: true, maxLines: null },
+	clip: { mode: "line", shrink: false, ellipsis: true, maxLines: null },
+	none: { mode: "line", shrink: false, ellipsis: false, maxLines: null },
+	wrap: { mode: "block", shrink: false, ellipsis: false, maxLines: null },
+};
+
+function v6toV7(doc: AnyVersionDocument): CutlineDocument {
+	return {
+		...doc,
+		version: 7,
+		fonts: doc.fonts.map((f) => ({ ...f, weight: numericWeight(f.weight) })),
+		elements: doc.elements.map((el): CutlineElement => {
+			if (el.type === "image") {
+				return {
+					...el,
+					background: el.background ?? null,
+					qr: el.qr ?? DEFAULT_QR_STYLE,
+				};
+			}
+			if (el.type === "text") {
+				const { fit, ...rest } = el;
+				return {
+					...rest,
+					...FIT_RULES[fit ?? "shrink"],
+					weight: numericWeight(el.weight),
+				};
+			}
+			return el;
+		}),
+	};
+}
+
 const STEPS: Record<
 	number,
 	(doc: AnyVersionDocument) => AnyVersionDocument | CutlineDocument
@@ -122,6 +169,7 @@ const STEPS: Record<
 	3: v3toV4,
 	4: v4toV5,
 	5: v5toV6,
+	6: v6toV7,
 };
 
 export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {

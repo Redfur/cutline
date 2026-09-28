@@ -11,6 +11,7 @@ import type {
 	TextElement,
 } from "../../model/document";
 import { DEFAULT_QR_STYLE } from "../../model/migrate";
+import { cleanMm } from "./geometry";
 
 interface PointMm {
 	x: number;
@@ -21,7 +22,10 @@ const RECT_W_MM = 30;
 const RECT_H_MM = 20;
 const LINE_LENGTH_MM = 30;
 const TEXT_W_MM = 40;
-const TEXT_H_MM = 10;
+const TEXT_SIZE_MM = 6;
+const TEXT_LINE_HEIGHT = 1.2;
+// кликом ставится однострочный текст — рамка ровно в одну строку
+const TEXT_H_MM = cleanMm(TEXT_SIZE_MM * TEXT_LINE_HEIGHT);
 const IMAGE_SIZE_MM = 40;
 // у бейджа A6 код 25 мм читается с расстояния вытянутой руки и не съедает макет
 const QR_SIZE_MM = 25;
@@ -85,14 +89,17 @@ export function createText(at: PointMm): TextElement {
 		// встроенный (src/fonts/bundled.ts): новый текст сразу попадает в PDF
 		font: "JetBrains Mono",
 		weight: 400,
-		size: 6,
+		size: TEXT_SIZE_MM,
 		minSize: 3,
-		lineHeight: 1.2,
+		lineHeight: TEXT_LINE_HEIGHT,
 		tracking: 0,
 		align: "left",
 		valign: "top",
 		color: "#111111",
-		fit: "shrink",
+		mode: "line",
+		shrink: true,
+		ellipsis: true,
+		maxLines: null,
 		transform: "none",
 	};
 }
@@ -215,9 +222,21 @@ export function drawElement(
 	}
 	const w = Math.max(Math.abs(dx), MIN_DRAWN_MM);
 	const h = Math.max(Math.abs(dy), MIN_DRAWN_MM);
+	// Текст протягиванием — блок (как в Фигме: клик — строка, рамка — блок) с ручной
+	// высотой и без правил: не влезло — подсветка, а не молчаливая обрезка
+	const kind =
+		base.type === "text"
+			? {
+					mode: "block" as const,
+					shrink: false,
+					ellipsis: false,
+					maxLines: null,
+				}
+			: {};
 	// тянули влево/вверх — точка нажатия становится правым/нижним краем
 	return {
 		...base,
+		...kind,
 		x: dx < 0 ? from.x - w : from.x,
 		y: dy < 0 ? from.y - h : from.y,
 		w,

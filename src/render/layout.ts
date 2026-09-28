@@ -4,7 +4,7 @@
 // не тем же измерением, что попадает в SVG (CLAUDE.md, «Измерение текста»).
 import { type Scope, substitute } from "../data/placeholders";
 import type { TextElement, TextValign } from "../model/document";
-import { applyFit } from "./fit";
+import { fitBlock, fitLine } from "./fit";
 import { measureText } from "./measure";
 
 export interface TextLayout {
@@ -14,13 +14,9 @@ export interface TextLayout {
 	ascentMm: number;
 	descentMm: number;
 	// true — текст не поместился в рамку так, как задумано: обрезан многоточием,
-	// вылез за ширину или перенос дал больше строк, чем вмещает высота
+	// вылез за ширину или строк больше, чем разрешено (fit.ts)
 	overflow: boolean;
 }
-
-// Допуск на сравнение мм: ширины приходят из canvas во float, а на печати
-// сотая миллиметра не видна — ложная тревога от 1e-12 хуже.
-const EPS_MM = 0.01;
 
 function applyTextTransform(
 	text: string,
@@ -37,19 +33,38 @@ export function layoutText(el: TextElement, scope: Scope): TextLayout | null {
 	if (!substituted) {
 		return null;
 	}
+	// CSV и буфер обмена из Windows приносят \r\n, старые Mac — \r
+	const normalized = substituted.replace(/\r\n?/g, "\n");
 	// transform — до подгонки, не после: прописные буквы шире строчных,
 	// подгонка по ширине строчного текста могла бы дать переполнение после регистра.
-	const content = applyTextTransform(substituted, el.transform);
+	const transformed = applyTextTransform(normalized, el.transform);
 	const ctx = {
 		fontFamily: el.font,
 		weight: el.weight,
 		trackingMm: el.tracking,
 		maxWidthMm: el.w,
 	};
-	const { sizeMm, lines } = applyFit(content, el.fit, el.size, el.minSize, ctx);
-	const lineHeightMm = sizeMm * el.lineHeight;
-	const widthOf = (line: string) =>
-		measureText(line, sizeMm, el.tracking, el.font, el.weight).widthMm;
+	const rules = {
+		shrink: el.shrink,
+		ellipsis: el.ellipsis,
+		minSizeMm: el.minSize,
+	};
+	const { sizeMm, lines, overflow } =
+		el.mode === "block"
+			? fitBlock(
+					transformed,
+					el.size,
+					{
+						...rules,
+						maxLines: el.maxLines,
+						heightMm: el.h,
+						lineHeight: el.lineHeight,
+					},
+					ctx,
+				)
+			: // однострочный: перенос в данных (многострочная ячейка) — просто пробел,
+				// иначе имя с \n разломало бы бейдж
+				fitLine(transformed.replace(/\n/g, " "), el.size, rules, ctx);
 	const { ascentMm, descentMm } = measureText(
 		lines[0] ?? "",
 		sizeMm,
@@ -58,26 +73,14 @@ export function layoutText(el: TextElement, scope: Scope): TextLayout | null {
 		el.weight,
 	);
 
-	let overflow: boolean;
-	switch (el.fit) {
-		case "shrink":
-		case "clip":
-			// clipToFit возвращает исходную строку, только если она влезла целиком
-			overflow = lines[0] !== content;
-			break;
-		case "wrap":
-			// одна строка по высоте не проверяется: у baseline-выравнивания y — это
-			// базовая линия, и h там не описывает высоту текста
-			overflow =
-				lines.some((line) => widthOf(line) > el.w + EPS_MM) ||
-				(lines.length > 1 && lines.length * lineHeightMm > el.h + EPS_MM);
-			break;
-		case "none":
-			overflow = lines.some((line) => widthOf(line) > el.w + EPS_MM);
-			break;
-	}
-
-	return { sizeMm, lines, lineHeightMm, ascentMm, descentMm, overflow };
+	return {
+		sizeMm,
+		lines,
+		lineHeightMm: sizeMm * el.lineHeight,
+		ascentMm,
+		descentMm,
+		overflow,
+	};
 }
 
 // Базовая линия первой строки. Высота блока — от верха первой строки (ascent) до низа

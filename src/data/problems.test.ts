@@ -48,7 +48,10 @@ function text(id: string, content: string, visible = true): TextElement {
 		align: "left",
 		valign: "top",
 		color: "#000",
-		fit: "clip",
+		mode: "line",
+		shrink: false,
+		ellipsis: true,
+		maxLines: null,
 		transform: "none",
 	};
 }

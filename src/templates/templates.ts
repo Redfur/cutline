@@ -5,6 +5,7 @@
 //   межстрочный — % → множитель; трекинг — % от кегля (letterSpacing: n/100 em) → мм;
 //   вес — как есть (400–700; у PT Serif 500/600 наберутся Regular/Bold);
 //   valign "bottom" → "baseline" (последняя строка на нижнем крае рамки);
+//   autofit "shrink" → строка, уменьшать кегль и «…», "none" → строка без правил;
 //   порядок слоёв: в макете первый элемент — верхний, в модели первый рисуется первым.
 import { pctToLineHeight, pctToTracking, ptToMm } from "../editor/lib/units";
 import type {
@@ -68,7 +69,10 @@ function text(spec: TextSpec): TextElement {
 		align: spec.align ?? "left",
 		valign: spec.valign === "bottom" ? "baseline" : (spec.valign ?? "top"),
 		color: spec.color,
-		fit: spec.autofit,
+		mode: "line",
+		shrink: spec.autofit === "shrink",
+		ellipsis: spec.autofit === "shrink",
+		maxLines: null,
 		transform: "none",
 	};
 }

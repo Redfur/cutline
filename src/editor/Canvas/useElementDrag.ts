@@ -19,6 +19,7 @@ import {
 	snapMove,
 	snapResize,
 } from "../lib/snap";
+import { normalizeElement } from "../lib/textBox";
 import { SNAP_THRESHOLD_PX } from "./constants";
 import { swallowNextClick } from "./swallowNextClick";
 
@@ -132,7 +133,10 @@ export function useElementDrag({
 				if (startElement.rotation) {
 					// у повёрнутого элемента края не параллельны осям холста — привязка
 					// краёв к вертикалям/горизонталям тут не имеет смысла
-					const resized = resizeRotated(startElement, handle, dxMm, dyMm);
+					const resized = normalizeElement(
+						startElement,
+						resizeRotated(startElement, handle, dxMm, dyMm),
+					);
 					setLive([resized]);
 					setSnapGuides([]);
 					return;
@@ -147,13 +151,14 @@ export function useElementDrag({
 					thresholdMm,
 					borders,
 				);
-				const updated = {
+				// блок с лимитом строк прыгает по строкам уже во время драга
+				const updated = normalizeElement(startElement, {
 					...resized,
 					x: snapped.x,
 					y: snapped.y,
 					w: snapped.w,
 					h: snapped.h,
-				};
+				});
 				setLive([updated]);
 				setSnapGuides(snapped.guides);
 			}

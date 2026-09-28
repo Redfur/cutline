@@ -35,7 +35,10 @@ function text(patch: Partial<TextElement>): TextElement {
 		align: "left",
 		valign: "top",
 		color: "#000",
-		fit: "none",
+		mode: "line",
+		shrink: false,
+		ellipsis: false,
+		maxLines: null,
 		transform: "none",
 		...patch,
 	};
@@ -57,7 +60,7 @@ describe("layoutText", () => {
 		expect(layout?.overflow).toBe(false);
 	});
 
-	it("none: шире рамки — переполнение", () => {
+	it("без правил: шире рамки — переполнение", () => {
 		expect(layoutText(text({}), at({ name: "a".repeat(10) }))?.overflow).toBe(
 			false,
 		);
@@ -66,10 +69,10 @@ describe("layoutText", () => {
 		);
 	});
 
-	it("shrink: ужалось и влезло — не проблема, не влезло и на минимуме — проблема", () => {
+	it("уменьшать: ужалось и влезло — не проблема, не влезло и на минимуме — проблема", () => {
 		// 15 символов × size × 0.5 ≤ 10 → size ≤ 1.33, минимум 1 — влезает
 		const shrunk = layoutText(
-			text({ fit: "shrink" }),
+			text({ shrink: true, ellipsis: true }),
 			at({
 				name: "a".repeat(15),
 			}),
@@ -78,37 +81,63 @@ describe("layoutText", () => {
 		expect(shrunk?.sizeMm).toBeLessThan(2);
 		// 30 символов на минимуме 1 → 15мм > 10
 		expect(
-			layoutText(text({ fit: "shrink" }), at({ name: "a".repeat(30) }))
-				?.overflow,
+			layoutText(
+				text({ shrink: true, ellipsis: true }),
+				at({ name: "a".repeat(30) }),
+			)?.overflow,
 		).toBe(true);
 	});
 
-	it("clip: обрезано — переполнение", () => {
+	it("многоточие: обрезано — переполнение", () => {
 		const layout = layoutText(
-			text({ fit: "clip" }),
+			text({ ellipsis: true }),
 			at({ name: "a".repeat(12) }),
 		);
 		expect(layout?.lines[0]?.endsWith("…")).toBe(true);
 		expect(layout?.overflow).toBe(true);
 	});
 
-	it("wrap: строк больше, чем вмещает высота", () => {
+	it("блок без лимита: строк больше, чем вмещает высота", () => {
 		// строка 2.5мм; h 10 вмещает 4 строки
 		const four = "aaaa bbbb cccc dddd";
 		expect(
-			layoutText(text({ fit: "wrap", w: 5 }), at({ name: four }))?.overflow,
+			layoutText(text({ mode: "block", w: 5 }), at({ name: four }))?.overflow,
 		).toBe(false);
 		expect(
-			layoutText(text({ fit: "wrap", w: 5 }), at({ name: `${four} eeee` }))
+			layoutText(text({ mode: "block", w: 5 }), at({ name: `${four} eeee` }))
 				?.overflow,
 		).toBe(true);
 	});
 
-	it("wrap: слово шире рамки — переполнение даже в одну строку", () => {
+	it("блок: слово шире рамки режется по символам", () => {
+		const layout = layoutText(
+			text({ mode: "block", w: 5 }),
+			at({ name: "aaaaaaaa" }),
+		);
+		expect(layout?.lines).toEqual(["aaaaa", "aaa"]);
+		expect(layout?.overflow).toBe(false);
+	});
+
+	it("блок: ручные переносы из данных, \\r\\n тоже", () => {
 		expect(
-			layoutText(text({ fit: "wrap", w: 5 }), at({ name: "aaaaaaaa" }))
-				?.overflow,
-		).toBe(true);
+			layoutText(text({ mode: "block" }), at({ name: "Анна\r\nСоколова" }))
+				?.lines,
+		).toEqual(["Анна", "Соколова"]);
+	});
+
+	it("строка: перенос из данных — пробел", () => {
+		expect(layoutText(text({}), at({ name: "Анна\nСоколова" }))?.lines).toEqual(
+			["Анна Соколова"],
+		);
+	});
+
+	it("блок: лимит строк и многоточие", () => {
+		const layout = layoutText(
+			text({ mode: "block", w: 5, maxLines: 2, ellipsis: true }),
+			at({ name: "aaaa bbbb cccc" }),
+		);
+		expect(layout?.lines).toEqual(["aaaa", "bbbb…"]);
+		expect(layout?.overflow).toBe(true);
 	});
 });
 

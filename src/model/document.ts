@@ -23,7 +23,9 @@ interface ElementBase {
 export type FontWeight = 400 | 500 | 600 | 700;
 export type TextAlign = "left" | "center" | "right";
 export type TextValign = "top" | "middle" | "baseline";
-export type TextFit = "shrink" | "clip" | "wrap" | "none";
+// line — однострочный: не переносит, ручные переносы становятся пробелом; block —
+// перенос по словам и по \n (v7, раньше — один режим fit на всё)
+export type TextMode = "line" | "block";
 export type TextTransform = "none" | "upper" | "lower";
 
 export interface TextElement extends ElementBase {
@@ -38,7 +40,14 @@ export interface TextElement extends ElementBase {
 	align: TextAlign;
 	valign: TextValign;
 	color: string;
-	fit: TextFit;
+	mode: TextMode;
+	// уменьшать кегль до minSize, пока не влезет (строка — по ширине, блок — в лимит строк)
+	shrink: boolean;
+	// не влезло — обрезать с «…»: у строки в конце строки, у блока — последней разрешённой
+	ellipsis: boolean;
+	// только у блока: лимит строк, высота рамки считается по нему (editor/lib/textBox.ts);
+	// null — без лимита, высота рамки ручная
+	maxLines: number | null;
 	transform: TextTransform;
 }
 

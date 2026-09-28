@@ -1,5 +1,5 @@
 // Свойства text — секциями, как в макете дизайн-системы (ui_kits/editor/Inspector.jsx):
-// Содержимое / Положение и размер / Шрифт и кегль / Выравнивание / Цвет / Автоподгонка.
+// Содержимое / Положение и размер / Шрифт и кегль / Выравнивание / Цвет / Подгонка.
 // Кегль в pt, межстрочный и трекинг в % — только при показе, модель в мм (lib/units.ts).
 import { useRef, useState } from "react";
 import {
@@ -14,17 +14,20 @@ import type {
 	FieldDef,
 	TextAlign,
 	TextElement,
-	TextFit,
+	TextMode,
 	TextValign,
 } from "../../../model/document";
 import { PanelSection } from "../../../ui/editor/PanelSection";
 import { PropertyRow } from "../../../ui/editor/PropertyRow";
 import { Button } from "../../../ui/forms/Button";
+import { Checkbox } from "../../../ui/forms/Checkbox";
 import { ColorField } from "../../../ui/forms/ColorField";
 import { SegmentedControl } from "../../../ui/forms/SegmentedControl";
 import { Select } from "../../../ui/forms/Select";
 import { TextField } from "../../../ui/forms/TextField";
 import { HelpButton } from "../../HelpButton";
+import { plural } from "../../lib/plural";
+import { lineMm } from "../../lib/textBox";
 import {
 	lineHeightToPct,
 	mmToPt,
@@ -93,24 +96,32 @@ const VALIGN_OPTIONS: {
 	},
 ];
 
-const FIT_OPTIONS: { value: TextFit; label: string }[] = [
-	{ value: "none", label: "Не менять — предупредить" },
-	{ value: "shrink", label: "Уменьшать кегль" },
-	{ value: "clip", label: "Обрезать с многоточием" },
-	{ value: "wrap", label: "Переносить строки" },
+const MODE_OPTIONS: { value: TextMode; label: string; title: string }[] = [
+	{ value: "line", label: "Строка", title: "Одна строка, без переносов" },
+	{ value: "block", label: "Блок", title: "Перенос по словам и по Enter" },
 ];
 
+// Что будет с текстом, который не влез, — одной фразой под правилами
 function fitHint(el: TextElement): string {
-	switch (el.fit) {
-		case "shrink":
-			return `Кегль уменьшится до ${mmToPt(el.minSize)} pt, дальше — многоточие.`;
-		case "clip":
-			return "Лишний текст скроется, в тираже будет «…».";
-		case "wrap":
-			return "Строки переносятся по словам в пределах рамки.";
-		case "none":
-			return "Длинный текст выйдет за рамку и попадёт в список проблем.";
+	const min = `${mmToPt(el.minSize)} pt`;
+	if (el.mode === "line") {
+		if (el.shrink && el.ellipsis)
+			return `Кегль уменьшится до ${min}, дальше — многоточие.`;
+		if (el.shrink)
+			return `Кегль уменьшится до ${min}, дальше текст выйдет за рамку.`;
+		if (el.ellipsis) return "Лишний текст скроется, в тираже будет «…».";
+		return "Длинный текст выйдет за рамку и попадёт в список проблем.";
 	}
+	const limit =
+		el.maxLines === null
+			? "сколько строк входит в рамку"
+			: `${el.maxLines} ${plural(el.maxLines, "строка", "строки", "строк")}`;
+	const rest = el.ellipsis
+		? "лишнее скроется, в конце последней строки — «…»"
+		: "лишнее выйдет за рамку и попадёт в список проблем";
+	return el.shrink
+		? `Не больше: ${limit}. Кегль уменьшится до ${min}, дальше ${rest}.`
+		: `Не больше: ${limit}; ${rest}.`;
 }
 
 // Встроенные — первыми: только они попадают в PDF (src/fonts/bundled.ts). Системные
@@ -181,29 +192,36 @@ export function TextInspector({
 					title="Текст не влезает в рамку"
 					actions={
 						<>
-							{/* при shrink кнопка не нужна — там помогает только меньший мин. кегль или шире рамка */}
-							{element.fit !== "shrink" && (
+							{/* уже уменьшает — помогает только меньший мин. кегль или шире рамка */}
+							{!element.shrink && (
 								<Button
 									size="sm"
 									variant="warning"
 									icon="shrink"
 									disabled={element.locked}
-									onClick={() => set({ fit: "shrink" })}
+									onClick={() => set({ shrink: true })}
 								>
 									Уменьшать кегль
 								</Button>
 							)}
-							{/* по строке за клик: сколько не хватает, зависит от записи */}
-							<Button
-								size="sm"
-								variant="ghost"
-								disabled={element.locked}
-								onClick={() =>
-									set({ h: element.h + element.size * element.lineHeight })
-								}
-							>
-								Увеличить рамку
-							</Button>
+							{/* строке высота не поможет — она не влезает по ширине. Блоку — по
+							    строке за клик: сколько не хватает, зависит от записи */}
+							{element.mode === "block" && (
+								<Button
+									size="sm"
+									variant="ghost"
+									disabled={element.locked}
+									onClick={() =>
+										set(
+											element.maxLines === null
+												? { h: element.h + lineMm(element) }
+												: { maxLines: element.maxLines + 1 },
+										)
+									}
+								>
+									Ещё строка
+								</Button>
+							)}
 						</>
 					}
 				>
@@ -336,17 +354,35 @@ export function TextInspector({
 				</PanelSection>
 
 				<PanelSection
-					title="Автоподгонка"
+					title="Подгонка"
 					warning={over}
 					actions={<HelpButton topic="fit" />}
 				>
-					<Select
-						value={element.fit}
-						warning={over}
-						onChange={(v) => set({ fit: v as TextFit })}
-						options={FIT_OPTIONS}
+					<SegmentedControl
+						fullWidth
+						value={element.mode}
+						onChange={(v) => set({ mode: v as TextMode })}
+						options={MODE_OPTIONS}
 					/>
-					{element.fit === "shrink" && (
+					{element.mode === "block" && (
+						<PropertyRow label="Строк, макс.">
+							<TextField
+								// пусто — без лимита, высота рамки ручная
+								value={element.maxLines ?? ""}
+								placeholder="Без лимита"
+								onChange={(v) => {
+									const n = Math.round(Number(v));
+									set({ maxLines: n > 0 ? n : null });
+								}}
+							/>
+						</PropertyRow>
+					)}
+					<Checkbox
+						checked={element.shrink}
+						label="Уменьшать кегль"
+						onChange={(shrink) => set({ shrink })}
+					/>
+					{element.shrink && (
 						<PropertyRow label="Не меньше">
 							<TextField
 								value={mmToPt(element.minSize)}
@@ -355,6 +391,15 @@ export function TextInspector({
 							/>
 						</PropertyRow>
 					)}
+					<Checkbox
+						checked={element.ellipsis}
+						label={
+							element.mode === "line"
+								? "Многоточие, если не влезло"
+								: "Многоточие в конце последней строки"
+						}
+						onChange={(ellipsis) => set({ ellipsis })}
+					/>
 					<div className={styles.hint}>{fitHint(element)}</div>
 				</PanelSection>
 			</LockedFieldset>

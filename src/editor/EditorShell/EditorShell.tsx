@@ -25,6 +25,7 @@ import { type LayerPatch, LayersPanel } from "../LayersPanel";
 import { offsetElements } from "../lib/align";
 import { documentColors } from "../lib/documentColors";
 import { useHelp } from "../lib/help";
+import { normalizeElement } from "../lib/textBox";
 import { useAutosave } from "../lib/useAutosave";
 import { useBrokenImages } from "../lib/useBrokenImages";
 import { useDocumentHistory } from "../lib/useDocumentHistory";
@@ -253,7 +254,8 @@ export function EditorShell({
 			(doc) => ({
 				...doc,
 				elements: doc.elements.map((el) =>
-					el.id === updated.id ? updated : el,
+					// высота блока с лимитом строк — по строкам (lib/textBox.ts)
+					el.id === updated.id ? normalizeElement(el, updated) : el,
 				),
 			}),
 			options,

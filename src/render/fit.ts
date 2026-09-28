@@ -1,7 +1,10 @@
-// Автоподгонка текста в рамку. Режимы shrink/clip — порт логики из
-// reference/badge-editor-v1.html (fit/clip). wrap там не было — сделан с нуля.
+// Подгонка текста в рамку по правилам элемента (v7). Однострочный: уменьшить кегль
+// и/или обрезать с «…». Блок: перенос по словам и по \n, лимит строк, уменьшение кегля
+// и «…» в конце последней строки. Правила комбинируются: сначала уменьшаем до минимума,
+// что не влезло и там — обрезаем. Уменьшение и обрезка — порт логики из
+// reference/badge-editor-v1.html (fit/clip), перенос сделан с нуля.
 
-import type { FontWeight, TextFit } from "../model/document";
+import type { FontWeight } from "../model/document";
 import { measureText } from "./measure";
 
 export interface FitContext {
@@ -10,6 +13,18 @@ export interface FitContext {
 	trackingMm: number;
 	maxWidthMm: number;
 }
+
+export interface FitResult {
+	sizeMm: number;
+	lines: string[];
+	// не влезло так, как задумано: обрезано многоточием, шире рамки или строк больше лимита
+	overflow: boolean;
+}
+
+// Допуск на сравнение мм: ширины приходят из canvas во float, а на печати
+// сотая миллиметра не видна — ложная тревога от 1e-12 хуже.
+const EPS_MM = 0.01;
+const ELLIPSIS = "…";
 
 function widthOf(text: string, sizeMm: number, ctx: FitContext): number {
 	return measureText(text, sizeMm, ctx.trackingMm, ctx.fontFamily, ctx.weight)
@@ -27,19 +42,28 @@ const SHRINK_STEP_MM = 0.1;
 // Округляем каждый шаг до 1e-6 мм — на порядки точнее, чем что-либо на печати.
 const SIZE_PRECISION = 1e6;
 
+// Уменьшаем кегль шагами, пока fits не скажет «влезло», но не ниже минимума
+function shrinkUntil(
+	sizeMm: number,
+	minSizeMm: number,
+	fits: (sizeMm: number) => boolean,
+): number {
+	let size = sizeMm;
+	while (size > minSizeMm && !fits(size)) {
+		const next =
+			Math.round((size - SHRINK_STEP_MM) * SIZE_PRECISION) / SIZE_PRECISION;
+		size = Math.max(minSizeMm, next);
+	}
+	return size;
+}
+
 export function shrinkToFit(
 	text: string,
 	sizeMm: number,
 	minSizeMm: number,
 	ctx: FitContext,
 ): number {
-	let size = sizeMm;
-	while (size > minSizeMm && !fitsAt(text, size, ctx)) {
-		const next =
-			Math.round((size - SHRINK_STEP_MM) * SIZE_PRECISION) / SIZE_PRECISION;
-		size = Math.max(minSizeMm, next);
-	}
-	return size;
+	return shrinkUntil(sizeMm, minSizeMm, (size) => fitsAt(text, size, ctx));
 }
 
 export function clipToFit(
@@ -50,21 +74,44 @@ export function clipToFit(
 	if (fitsAt(text, sizeMm, ctx)) {
 		return text;
 	}
-	let clipped = text;
-	while (clipped.length > 1 && !fitsAt(`${clipped}…`, sizeMm, ctx)) {
-		clipped = clipped.slice(0, -1);
-	}
-	return `${clipped}…`;
+	return withEllipsis(text, sizeMm, ctx);
 }
 
-// Перенос по словам в пределах ширины. Число строк высотой (h) пока не ограничивает —
-// подсветка переполнения по вертикали появится в редакторе на Этапе 2/3, не здесь.
-export function wrapToFit(
-	text: string,
+// «…» в конец, укорачивая текст, пока строка с ним не влезет. Хвостовые пробелы
+// убираем, чтобы не выходило «Анна …». Минимум — один символ перед «…»
+function withEllipsis(text: string, sizeMm: number, ctx: FitContext): string {
+	let clipped = text.trimEnd();
+	while (clipped.length > 1 && !fitsAt(`${clipped}${ELLIPSIS}`, sizeMm, ctx)) {
+		clipped = clipped.slice(0, -1).trimEnd();
+	}
+	return `${clipped}${ELLIPSIS}`;
+}
+
+// Слово шире строки режется по символам: иначе одно длинное слово (адрес почты,
+// ссылка) вылезало бы за рамку. Кусок — сколько символов влезает, минимум один
+function breakWord(word: string, sizeMm: number, ctx: FitContext): string[] {
+	const chunks: string[] = [];
+	let rest = word;
+	while (rest && !fitsAt(rest, sizeMm, ctx)) {
+		let n = 1;
+		while (n < rest.length && fitsAt(rest.slice(0, n + 1), sizeMm, ctx)) n++;
+		chunks.push(rest.slice(0, n));
+		rest = rest.slice(n);
+	}
+	if (rest) chunks.push(rest);
+	return chunks;
+}
+
+// Абзац — перенос по словам в пределах ширины; слово шире строки — по символам
+function wrapParagraph(
+	paragraph: string,
 	sizeMm: number,
 	ctx: FitContext,
 ): string[] {
-	const words = text.split(/\s+/).filter(Boolean);
+	const words = paragraph
+		.split(/\s+/)
+		.filter(Boolean)
+		.flatMap((word) => breakWord(word, sizeMm, ctx));
 	if (words.length === 0) {
 		return [""];
 	}
@@ -83,29 +130,84 @@ export function wrapToFit(
 	return lines;
 }
 
-export interface FitResult {
-	sizeMm: number;
-	lines: string[];
+// Ручные переносы (\n) — отдельные абзацы, пустой абзац — пустая строка
+export function wrapToFit(
+	text: string,
+	sizeMm: number,
+	ctx: FitContext,
+): string[] {
+	return text
+		.split("\n")
+		.flatMap((paragraph) => wrapParagraph(paragraph, sizeMm, ctx));
 }
 
-// Применяет режим fit из модели документа к тексту (после подстановки плейсхолдеров).
-export function applyFit(
+export interface LineRules {
+	shrink: boolean;
+	ellipsis: boolean;
+	minSizeMm: number;
+}
+
+// Однострочный: переносов нет, ручные переносы уже заменены пробелом (layoutText)
+export function fitLine(
 	text: string,
-	mode: TextFit,
 	sizeMm: number,
-	minSizeMm: number,
+	rules: LineRules,
 	ctx: FitContext,
 ): FitResult {
-	switch (mode) {
-		case "shrink": {
-			const size = shrinkToFit(text, sizeMm, minSizeMm, ctx);
-			return { sizeMm: size, lines: [clipToFit(text, size, ctx)] };
-		}
-		case "clip":
-			return { sizeMm, lines: [clipToFit(text, sizeMm, ctx)] };
-		case "wrap":
-			return { sizeMm, lines: wrapToFit(text, sizeMm, ctx) };
-		case "none":
-			return { sizeMm, lines: [text] };
+	const size = rules.shrink
+		? shrinkToFit(text, sizeMm, rules.minSizeMm, ctx)
+		: sizeMm;
+	const line = rules.ellipsis ? clipToFit(text, size, ctx) : text;
+	const overflow =
+		line !== text || widthOf(line, size, ctx) > ctx.maxWidthMm + EPS_MM;
+	return { sizeMm: size, lines: [line], overflow };
+}
+
+export interface BlockRules extends LineRules {
+	// null — лимит по высоте рамки
+	maxLines: number | null;
+	heightMm: number;
+	// межстрочный — множитель кегля: при уменьшении кегля в ту же высоту входит больше строк
+	lineHeight: number;
+}
+
+// Сколько строк разрешено. Без maxLines — сколько строк по lineHeight входит в высоту
+// рамки (так же считалось переполнение по высоте до v7), минимум одна: у выравнивания
+// по базовой линии высота рамки не описывает высоту одной строки
+export function lineLimit(rules: BlockRules, sizeMm: number): number {
+	if (rules.maxLines !== null) return Math.max(1, rules.maxLines);
+	const lineMm = sizeMm * rules.lineHeight;
+	return Math.max(1, Math.floor((rules.heightMm + EPS_MM) / lineMm));
+}
+
+export function fitBlock(
+	text: string,
+	sizeMm: number,
+	rules: BlockRules,
+	ctx: FitContext,
+): FitResult {
+	const fits = (size: number) =>
+		wrapToFit(text, size, ctx).length <= lineLimit(rules, size);
+	const size = rules.shrink
+		? shrinkUntil(sizeMm, rules.minSizeMm, fits)
+		: sizeMm;
+	const wrapped = wrapToFit(text, size, ctx);
+	const limit = lineLimit(rules, size);
+	// символ шире строки не делится — единственное, что ещё может вылезти по ширине
+	const tooWide = wrapped.some(
+		(line) => widthOf(line, size, ctx) > ctx.maxWidthMm + EPS_MM,
+	);
+	if (wrapped.length <= limit) {
+		return { sizeMm: size, lines: wrapped, overflow: tooWide };
 	}
+	if (!rules.ellipsis) {
+		return { sizeMm: size, lines: wrapped, overflow: true };
+	}
+	const kept = wrapped.slice(0, limit);
+	// лимит пришёлся на пустую строку — «…» одно на строке выглядит как мусор, ставим
+	// его в конец последней непустой
+	while (kept.length > 1 && kept[kept.length - 1] === "") kept.pop();
+	const last = kept.length - 1;
+	kept[last] = withEllipsis(kept[last], size, ctx);
+	return { sizeMm: size, lines: kept, overflow: true };
 }
