@@ -13,15 +13,22 @@ import type {
 } from "../../model/document";
 import type { IconProps } from "../../ui/core/Icon";
 import { Button } from "../../ui/forms/Button";
+import {
+	setCondition,
+	sharedCondition,
+	suggestConditionValue,
+} from "../lib/conditions";
 import { plural } from "../lib/plural";
 import type { BorderVisibility } from "../lib/snap";
 import { AlignSection } from "./AlignSection";
 import { CanvasInspector } from "./CanvasInspector";
+import { ConditionSection } from "./ConditionSection";
 import type { RecordError } from "./ElementErrors";
 import { GuideInspector } from "./GuideInspector";
 import { ImageInspector } from "./ImageInspector";
 import styles from "./Inspector.module.css";
 import { InspectorHeader } from "./InspectorHeader";
+import { LockedFieldset } from "./LockedFieldset";
 import { MultiInspector } from "./MultiInspector";
 import { OverflowAlert } from "./OverflowAlert";
 import { ShapeInspector } from "./ShapeInspector";
@@ -99,6 +106,23 @@ export function Inspector({
 	onSelectElement,
 }: InspectorProps) {
 	const selectedIds = selectedElements.map((el) => el.id);
+	// ошибки условия — под условием, остальные — под содержимым в инспекторе типа
+	const contentErrors = elementErrors.filter((e) => !e.inCondition);
+	const shared = sharedCondition(selectedElements);
+	const condition = (
+		<ConditionSection
+			condition={shared.condition}
+			mixed={shared.mixed}
+			onChange={(next) =>
+				// один history.set на все выделенные — один шаг undo
+				onElementsChange(setCondition(elements, selectedIds, next))
+			}
+			suggestedValue={suggestConditionValue(selectedElements)}
+			fields={fields}
+			record={record}
+			recordErrors={elementErrors.filter((e) => e.inCondition)}
+		/>
+	);
 	const align = (
 		<AlignSection
 			elements={elements}
@@ -135,6 +159,7 @@ export function Inspector({
 						ids={selectedIds}
 						onChange={onElementsChange}
 					/>
+					{condition}
 				</>
 			) : selectedElement ? (
 				<>
@@ -152,7 +177,7 @@ export function Inspector({
 							swatches={swatches}
 							fields={fields}
 							record={record}
-							recordErrors={elementErrors}
+							recordErrors={contentErrors}
 						/>
 					)}
 					{selectedElement.type === "text" && (
@@ -163,7 +188,7 @@ export function Inspector({
 							fields={fields}
 							record={record}
 							overflowRecords={overflowRecords}
-							recordErrors={elementErrors}
+							recordErrors={contentErrors}
 							swatches={swatches}
 						/>
 					)}
@@ -173,11 +198,14 @@ export function Inspector({
 							onChange={onElementChange}
 							fields={fields}
 							record={record}
-							recordErrors={elementErrors}
+							recordErrors={contentErrors}
 							swatches={swatches}
 							canvasBackground={canvas.background}
 						/>
 					)}
+					<LockedFieldset locked={selectedElement.locked}>
+						{condition}
+					</LockedFieldset>
 					{/* у одного элемента — внизу: плашки переполнения и свойства типа важнее */}
 					{align}
 				</>

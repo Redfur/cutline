@@ -10,6 +10,9 @@ export interface LayerRowProps {
 	hidden?: boolean;
 	/** Amber triangle — this text overflows in some records */
 	warning?: boolean;
+	// Расширение порта: в исходнике дизайн-системы показа по данным нет. «shown» —
+	// у слоя есть условие и в текущей записи он виден, «hidden» — скрыт условием
+	condition?: "shown" | "hidden";
 	depth?: number;
 	/** Событие — ради модификаторов: Shift/⌘ выделяют несколько слоёв */
 	onClick?: (e: MouseEvent) => void;
@@ -78,6 +81,7 @@ export function LayerRow({
 	locked,
 	hidden,
 	warning,
+	condition,
 	depth = 0,
 	onClick,
 	onToggleLock,
@@ -195,10 +199,27 @@ export function LayerRow({
 						font: selected
 							? "500 var(--text-sm)/1 var(--font-ui)"
 							: "var(--type-body)",
-						color: hidden ? "var(--fg-3)" : "var(--fg-1)",
+						color:
+							hidden || condition === "hidden" ? "var(--fg-3)" : "var(--fg-1)",
 					}}
 				>
 					{name}
+				</span>
+			)}
+			{condition && (
+				<span
+					title={
+						condition === "hidden"
+							? "Скрыт в этой записи по условию"
+							: "Показан по условию"
+					}
+					style={{
+						color: "var(--fg-3)",
+						display: "flex",
+						opacity: condition === "hidden" ? 0.5 : 1,
+					}}
+				>
+					<Icon name="braces" size={14} />
 				</span>
 			)}
 			{warning && (

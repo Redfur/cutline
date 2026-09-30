@@ -1,7 +1,9 @@
 // Раскладка «Общей оболочки» и обоих режимов из docs/ui-spec.md. Здесь живёт
 // состояние редактора, которое не принадлежит документу: режим, инструмент, зум,
 // выделение и текущая запись предпросмотра.
+
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { conditionResult } from "../../data/conditions";
 import { sampleRecord } from "../../data/placeholders";
 import {
 	documentProblems,
@@ -167,7 +169,11 @@ export function EditorShell({
 		? problems.flatMap((p, i) =>
 				p.errors
 					.filter((e) => e.elementId === selectedId)
-					.map((e) => ({ n: i + 1, message: e.message })),
+					.map((e) => ({
+						n: i + 1,
+						message: e.message,
+						inCondition: e.inCondition,
+					})),
 			)
 		: [];
 	const selectedOverflowRecords = selectedId
@@ -501,6 +507,15 @@ export function EditorShell({
 						onReorder={handleReorder}
 						guides={history.doc.guides}
 						warningIds={overflowIds}
+						conditionHiddenIds={history.doc.elements
+							.filter(
+								(el) =>
+									!conditionResult(el, {
+										record: previewRecord,
+										n: currentRecord + 1,
+									}).shown,
+							)
+							.map((el) => el.id)}
 						selectedGuideId={selectedGuideId}
 						onSelectGuide={handleSelectGuide}
 					/>

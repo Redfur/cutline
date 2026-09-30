@@ -22,6 +22,8 @@ export interface LayersPanelProps {
 	onSelectGuide: (id: string) => void;
 	// слои, не влезшие на текущей записи
 	warningIds: string[];
+	// слои, скрытые условием на текущей записи
+	conditionHiddenIds: string[];
 }
 
 // Строка направляющей в списке слоёв — не переиспользует LayerRow: у направляющих
@@ -47,6 +49,7 @@ export function LayersPanel({
 	selectedGuideId,
 	onSelectGuide,
 	warningIds,
+	conditionHiddenIds,
 }: LayersPanelProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [drag, setDrag] = useState<DragState | null>(null);
@@ -144,6 +147,13 @@ export function LayersPanel({
 							hidden={!el.visible}
 							selected={selectedIds.includes(el.id)}
 							warning={warningIds.includes(el.id)}
+							condition={
+								!el.condition
+									? undefined
+									: conditionHiddenIds.includes(el.id)
+										? "hidden"
+										: "shown"
+							}
 							onClick={(e) => handleRowClick(el.id, e)}
 							onToggleLock={() => onLayerChange(el.id, { locked: !el.locked })}
 							onToggleVisible={() =>

@@ -12,6 +12,7 @@ import type {
 	Guide,
 } from "../../model/document";
 import { type ImagePreview, render } from "../../render/render";
+import { conditionGhostDocument } from "../lib/conditions";
 import type { PlaceType } from "../lib/createElement";
 import { boundsOf, isOffCard } from "../lib/geometry";
 import { selectionBounds, toggleSelection } from "../lib/selection";
@@ -272,6 +273,20 @@ export function Canvas({
 		n: recordNumber,
 		preview,
 	});
+	// скрытые условием в этой записи — полупрозрачно поверх карточки: их видно,
+	// выделяют и двигают, но в печать они не попадают
+	const ghostDoc = conditionGhostDocument(effectiveDoc, {
+		record,
+		n: recordNumber,
+	});
+	const conditionGhostSvg =
+		ghostDoc &&
+		render(ghostDoc, record, {
+			outlines: null,
+			bleed: false,
+			n: recordNumber,
+			preview,
+		});
 
 	return (
 		<div className={styles.root}>
@@ -402,6 +417,13 @@ export function Canvas({
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: render() выдаёт доверенный SVG из собственного документа редактора
 								dangerouslySetInnerHTML={{ __html: cardSvg }}
 							/>
+							{conditionGhostSvg && (
+								<div
+									className={styles.conditionGhost}
+									// biome-ignore lint/security/noDangerouslySetInnerHtml: render() выдаёт доверенный SVG из собственного документа редактора
+									dangerouslySetInnerHTML={{ __html: conditionGhostSvg }}
+								/>
+							)}
 							{borders.trim && <div className={styles.trim} />}
 							{borders.bleed && (
 								<div className={styles.bleed} style={{ inset: -bleedPx }} />

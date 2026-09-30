@@ -145,7 +145,11 @@ describe("функции в плейсхолдерах", () => {
 		const p = recordProblems(d, at({ note: "дорого" }));
 		expect(p.cells).toEqual({ note: "error" });
 		expect(p.errors).toEqual([
-			{ elementId: "price", message: "num(): «дорого» — не число" },
+			{
+				elementId: "price",
+				message: "num(): «дорого» — не число",
+				inCondition: false,
+			},
 		]);
 		expect(hasProblems(p)).toBe(true);
 	});
@@ -231,7 +235,11 @@ describe("заполнение по данным", () => {
 		const p = recordProblems(doc([bar]), at({ note: "много" }));
 		expect(p.cells).toEqual({ note: "error" });
 		expect(p.errors).toEqual([
-			{ elementId: "bar", message: "Заполнение: «много» — не число" },
+			{
+				elementId: "bar",
+				message: "Заполнение: «много» — не число",
+				inCondition: false,
+			},
 		]);
 		expect(hasProblems(recordProblems(doc([bar]), at({ note: "40" })))).toBe(
 			false,
@@ -280,6 +288,8 @@ describe("условие показа", () => {
 		};
 		const p = recordProblems(doc([el]), at({ note: "абв" }));
 		expect(p.cells.note).toBe("error");
-		expect(p.errors).toHaveLength(1);
+		expect(p.errors).toEqual([
+			{ elementId: "a", message: "num(): «абв» — не число", inCondition: true },
+		]);
 	});
 });

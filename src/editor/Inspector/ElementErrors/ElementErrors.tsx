@@ -9,6 +9,8 @@ export interface RecordError {
 	// номер записи с 1
 	n: number;
 	message: string;
+	// ошибка в условии показа — показывается под условием, а не под содержимым
+	inCondition: boolean;
 }
 
 export interface ElementErrorsProps {

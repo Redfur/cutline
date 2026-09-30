@@ -24,6 +24,8 @@ export type CellProblem = "empty" | "overflow" | "error" | "broken";
 export interface ElementError {
 	elementId: string;
 	message: string;
+	// ошибка в условии показа, а не в содержимом — инспектор показывает её под условием
+	inCondition: boolean;
 }
 
 export interface RecordProblems {
@@ -115,10 +117,14 @@ export function recordProblems(
 	const { used, required } = use;
 	const errors: ElementError[] = [];
 	const cells: Record<string, CellProblem> = {};
-	const reportErrors = (elementId: string, found: PlaceholderError[]) => {
+	const reportErrors = (
+		elementId: string,
+		found: PlaceholderError[],
+		inCondition: boolean,
+	) => {
 		for (const e of found) {
 			if (e.static) continue;
-			errors.push({ elementId, message: e.message });
+			errors.push({ elementId, message: e.message, inCondition });
 			for (const key of e.keys) if (!cells[key]) cells[key] = "error";
 		}
 	};
@@ -129,7 +135,7 @@ export function recordProblems(
 	for (const el of doc.elements) {
 		if (!el.visible) continue;
 		const condition = conditionResult(el, scope);
-		reportErrors(el.id, condition.errors);
+		reportErrors(el.id, condition.errors, true);
 		if (condition.shown) shown.add(el.id);
 	}
 
@@ -150,13 +156,14 @@ export function recordProblems(
 					: el.type === "rect" && el.progress
 						? progressFraction(el.progress.value, scope).errors
 						: [];
-		reportErrors(el.id, found);
+		reportErrors(el.id, found, false);
 		if (el.type !== "image" || !broken.size) continue;
 		const { source } = imageSource(el.src, scope);
 		if (source.kind === "href" && broken.has(source.href)) {
 			errors.push({
 				elementId: el.id,
 				message: `Картинка не загрузилась: ${shortHref(source.href)}`,
+				inCondition: false,
 			});
 			for (const key of placeholderKeys(el.src)) {
 				if (!cells[key]) cells[key] = "broken";
