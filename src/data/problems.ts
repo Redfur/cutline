@@ -4,6 +4,7 @@
 import type { CutlineDocument, DataRecord } from "../model/document";
 import { layoutText } from "../render/layout";
 import { qrModules } from "../render/qr";
+import { conditionResult, isShown } from "./conditions";
 import {
 	evaluate,
 	imageSource,
@@ -91,9 +92,12 @@ export function imageHrefs(
 	const hrefs = new Set<string>();
 	const records = doc.records.length ? doc.records : [fallback];
 	for (const el of doc.elements) {
-		if (el.type !== "image" || !el.visible) continue;
+		if (el.type !== "image") continue;
 		records.forEach((record, i) => {
-			const { source } = imageSource(el.src, { record, n: i + 1 });
+			const scope = { record, n: i + 1 };
+			// скрытую в этой записи не проверяем: её ссылка может быть и пустой, и битой
+			if (!isShown(el, scope)) return;
+			const { source } = imageSource(el.src, scope);
 			if (source.kind === "href") hrefs.add(source.href);
 		});
 	}
@@ -109,16 +113,35 @@ export function recordProblems(
 ): RecordProblems {
 	const { record } = scope;
 	const { used, required } = use;
+	const errors: ElementError[] = [];
 	const cells: Record<string, CellProblem> = {};
+	const reportErrors = (elementId: string, found: PlaceholderError[]) => {
+		for (const e of found) {
+			if (e.static) continue;
+			errors.push({ elementId, message: e.message });
+			for (const key of e.keys) if (!cells[key]) cells[key] = "error";
+		}
+	};
+
+	// Всё дальше — только по элементам, показанным в этой записи: у скрытого условием
+	// пустое поле, переполнение и битая ссылка на карточку не попадут
+	const shown = new Set<string>();
+	for (const el of doc.elements) {
+		if (!el.visible) continue;
+		const condition = conditionResult(el, scope);
+		reportErrors(el.id, condition.errors);
+		if (condition.shown) shown.add(el.id);
+	}
+
 	for (const field of doc.fields) {
-		if (required.has(field.key) && !(record[field.key] ?? "").trim()) {
+		const ids = required.get(field.key);
+		if (ids?.some((id) => shown.has(id)) && !(record[field.key] ?? "").trim()) {
 			cells[field.key] = "empty";
 		}
 	}
 
-	const errors: ElementError[] = [];
 	for (const el of doc.elements) {
-		if (!el.visible) continue;
+		if (!shown.has(el.id)) continue;
 		const found =
 			el.type === "text"
 				? evaluate(el.content, scope).errors
@@ -127,11 +150,7 @@ export function recordProblems(
 					: el.type === "rect" && el.progress
 						? progressFraction(el.progress.value, scope).errors
 						: [];
-		for (const e of found) {
-			if (e.static) continue;
-			errors.push({ elementId: el.id, message: e.message });
-			for (const key of e.keys) if (!cells[key]) cells[key] = "error";
-		}
+		reportErrors(el.id, found);
 		if (el.type !== "image" || !broken.size) continue;
 		const { source } = imageSource(el.src, scope);
 		if (source.kind === "href" && broken.has(source.href)) {
@@ -147,7 +166,7 @@ export function recordProblems(
 
 	const overflowIds: string[] = [];
 	for (const el of doc.elements) {
-		if (el.type !== "text" || !el.visible) continue;
+		if (el.type !== "text" || !shown.has(el.id)) continue;
 		if (!layoutText(el, scope)?.overflow) continue;
 		overflowIds.push(el.id);
 		// ячейку помечаем по каждому полю этого элемента: какое из них «виновато»

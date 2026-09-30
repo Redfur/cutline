@@ -78,6 +78,17 @@ function renameInElement(
 	oldKey: string,
 	newKey: string,
 ): CutlineElement {
+	const renamed = renameInContent(el, oldKey, newKey);
+	if (!renamed.condition) return renamed;
+	const value = renamePlaceholder(renamed.condition.value, oldKey, newKey);
+	return { ...renamed, condition: { ...renamed.condition, value } };
+}
+
+function renameInContent(
+	el: CutlineElement,
+	oldKey: string,
+	newKey: string,
+): CutlineElement {
 	if (el.type === "text") {
 		return { ...el, content: renamePlaceholder(el.content, oldKey, newKey) };
 	}

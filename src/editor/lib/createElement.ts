@@ -52,6 +52,7 @@ export function createRect(at: PointMm): RectElement {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		fill: "#CCCCCC",
 		stroke: null,
 		strokeWidth: 0,
@@ -72,6 +73,7 @@ export function createEllipse(at: PointMm): EllipseElement {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		fill: "#CCCCCC",
 		stroke: null,
 		strokeWidth: 0,
@@ -90,6 +92,7 @@ export function createText(at: PointMm): TextElement {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		content: "Текст",
 		// встроенный (src/fonts/bundled.ts): новый текст сразу попадает в PDF
 		font: "JetBrains Mono",
@@ -121,6 +124,7 @@ export function createImage(at: PointMm): ImageElement {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		// хранить файлы негде (нет бэкенда) — src заполняется в инспекторе: ссылкой
 		// (основной способ) или через загрузку файла (data URI, второстепенный)
 		src: "",
@@ -154,6 +158,7 @@ export function createLine(at: PointMm): LineElement {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		stroke: "#111111",
 		strokeWidth: 0.5,
 	};

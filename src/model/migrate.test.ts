@@ -252,7 +252,7 @@ describe("migrateDocument", () => {
 		).toBe("bottom");
 	});
 
-	it("v9 → v10: прямоугольник без заполнения по данным", () => {
+	it("v9 → v10 → v11: прямоугольник без заполнения, элемент без условия", () => {
 		const rect = {
 			id: "r",
 			name: "r",
@@ -274,7 +274,9 @@ describe("migrateDocument", () => {
 			version: 9,
 			elements: [rect],
 		});
-		expect(migrated.elements).toEqual([{ ...rect, progress: null }]);
+		expect(migrated.elements).toEqual([
+			{ ...rect, progress: null, condition: null },
+		]);
 	});
 
 	it("текущая версия — без изменений", () => {

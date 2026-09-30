@@ -35,6 +35,7 @@ const doc: CutlineDocument = {
 			rotation: 0,
 			locked: false,
 			visible: true,
+			condition: null,
 			content: "{{name}}, {{city}}",
 			font: "Inter",
 			weight: 400,
@@ -100,6 +101,21 @@ describe("поля", () => {
 		expect(text?.type === "text" && text.content).toBe("{{fio}}, {{city}}");
 	});
 
+	it("смена ключа переписывает условие показа", () => {
+		const [first] = doc.elements;
+		if (!first) throw new Error("нет элемента");
+		const withCondition: CutlineDocument = {
+			...doc,
+			elements: [{ ...first, condition: { value: "{{name}}", when: "empty" } }],
+		};
+		const next = renameFieldKey(withCondition, "name", "fio");
+		if (typeof next === "string") throw new Error(next);
+		expect(next.elements[0]?.condition).toEqual({
+			value: "{{fio}}",
+			when: "empty",
+		});
+	});
+
 	it("смена ключа переписывает заполнение прямоугольника", () => {
 		const withBar: CutlineDocument = {
 			...doc,
@@ -115,6 +131,7 @@ describe("поля", () => {
 					rotation: 0,
 					locked: false,
 					visible: true,
+					condition: null,
 					fill: "#000",
 					stroke: null,
 					strokeWidth: 0,

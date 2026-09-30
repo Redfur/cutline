@@ -74,6 +74,7 @@ function legacyText(
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		content: spec.content,
 		font: spec.font ?? "Golos Text",
 		weight: spec.weight ?? 400,
@@ -92,7 +93,7 @@ function legacyText(
 	};
 }
 
-const base = { rotation: 0, locked: false, visible: true };
+const base = { rotation: 0, locked: false, visible: true, condition: null };
 
 function fieldsOf(columns: string[], records: DataRecord[]): FieldDef[] {
 	// пример для пустого макета — из первой записи, как её видно на миниатюре шаблона

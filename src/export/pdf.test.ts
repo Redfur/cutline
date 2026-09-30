@@ -50,6 +50,7 @@ const base = {
 	rotation: 0,
 	locked: false,
 	visible: true,
+	condition: null,
 };
 
 const doc: CutlineDocument = {

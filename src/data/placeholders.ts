@@ -358,14 +358,12 @@ export function templateOf(el: CutlineElement): string | null {
 
 function fieldsMap(
 	doc: CutlineDocument,
-	keysOfTemplate: (template: string) => string[],
+	keysOfElement: (el: CutlineElement) => string[],
 ): Map<string, string[]> {
 	const used = new Map<string, string[]>();
 	for (const el of doc.elements) {
 		if (!el.visible) continue;
-		const template = templateOf(el);
-		if (template === null) continue;
-		for (const key of keysOfTemplate(template)) {
+		for (const key of keysOfElement(el)) {
 			const ids = used.get(key) ?? [];
 			if (!ids.includes(el.id)) ids.push(el.id);
 			used.set(key, ids);
@@ -374,15 +372,28 @@ function fieldsMap(
 	return used;
 }
 
-// key → id элементов, где он используется. Скрытые элементы не считаются: на
-// печать они не попадают, и пустое поле в них — не проблема карточки.
-export function usedFields(doc: CutlineDocument): Map<string, string[]> {
-	return fieldsMap(doc, placeholderKeys);
+function contentKeys(
+	el: CutlineElement,
+	keysOfTemplate: (template: string) => string[],
+): string[] {
+	const template = templateOf(el);
+	return template === null ? [] : keysOfTemplate(template);
 }
 
-// То же, но без полей, пустота которых предусмотрена (default)
+// key → id элементов, где он используется, в том числе в условии показа. Скрытые
+// глазом элементы не считаются: на печать они не попадают, и пустое поле в них — не
+// проблема карточки. Скрытые условием — считаются: это решение по записи (problems.ts)
+export function usedFields(doc: CutlineDocument): Map<string, string[]> {
+	return fieldsMap(doc, (el) => [
+		...contentKeys(el, placeholderKeys),
+		...(el.condition ? placeholderKeys(el.condition.value) : []),
+	]);
+}
+
+// То же, но без полей, пустота которых предусмотрена: первый аргумент default() и
+// условие показа — пустое поле в условии и есть смысл условия
 export function requiredFields(doc: CutlineDocument): Map<string, string[]> {
-	return fieldsMap(doc, requiredKeys);
+	return fieldsMap(doc, (el) => contentKeys(el, requiredKeys));
 }
 
 // Запись для предпросмотра, пока настоящих записей нет: макет с {{name}} на пустом

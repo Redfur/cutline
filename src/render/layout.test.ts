@@ -25,6 +25,7 @@ function text(patch: Partial<TextElement>): TextElement {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		content: "{{name}}",
 		font: "Inter",
 		weight: 400,

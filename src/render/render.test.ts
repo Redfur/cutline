@@ -22,6 +22,7 @@ function image(patch: Partial<ImageElement>): ImageElement {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		src: "https://x.example/a.png",
 		fit: "contain",
 		background: null,
@@ -107,6 +108,7 @@ function bar(direction: FillDirection, patch: Partial<RectElement> = {}) {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		fill: "#112233",
 		stroke: null,
 		strokeWidth: 0,
@@ -154,5 +156,17 @@ describe("заполнение прямоугольника по данным", 
 		expect(at(bar("right", { rotation: 30 }), "25")).toContain(
 			"rotate(30 30 24)",
 		);
+	});
+});
+
+describe("условие показа", () => {
+	it("скрытый в записи элемент не рисуется, показанный — рисуется", () => {
+		const el = bar("right", {
+			progress: null,
+			condition: { value: "{{role}}", when: "filled" },
+		});
+		const svg = (role: string) => render(doc(el), { role }, opts);
+		expect(svg("")).not.toContain("#112233");
+		expect(svg("Директор")).toContain("#112233");
 	});
 });

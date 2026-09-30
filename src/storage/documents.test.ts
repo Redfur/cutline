@@ -102,6 +102,7 @@ describe("документы", () => {
 					rotation: 0,
 					locked: false,
 					visible: true,
+					condition: null,
 					src: photo,
 					fit: "cover",
 					background: null,

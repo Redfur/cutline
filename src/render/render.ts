@@ -3,6 +3,7 @@
 // запись данных и опции на входе, строка SVG на выходе. На ней держатся превью, сетка
 // миниатюр и все виды экспорта.
 
+import { isShown } from "../data/conditions";
 import { imageSource, type Scope } from "../data/placeholders";
 import { progressFraction } from "../data/progress";
 import type {
@@ -266,7 +267,7 @@ function renderElement(
 	scope: Scope,
 	opts: RenderOptions,
 ): string {
-	if (!el.visible) {
+	if (!isShown(el, scope)) {
 		return "";
 	}
 	const inner = (() => {

@@ -9,15 +9,17 @@ import type {
 	FontWeight,
 	QrStyle,
 	RectProgress,
+	ShowCondition,
 	TextElement,
 } from "./document";
 import { type LegacyValign, lineBoxesFromLegacy, lineTextBox } from "./textBox";
 
-export const CURRENT_VERSION = 10;
+export const CURRENT_VERSION = 11;
 
 // До v4 вес шрифта был строкой, до v5 у картинки не было фона, до v6 — оформления QR,
-// до v7 у текста был один режим fit, до v10 у прямоугольника — заполнения по данным.
-// Документ старой версии (файл, IndexedDB, фикстура бейджа в v1) типизируется так, чтобы шаги миграции его принимали без приведений
+// до v7 у текста был один режим fit, до v10 у прямоугольника — заполнения по данным,
+// до v11 у элементов — условия показа. Документ старой версии (файл, IndexedDB,
+// фикстура бейджа в v1) типизируется так, чтобы шаги миграции его принимали без приведений
 type LegacyWeight = "regular" | "bold";
 type LegacyFit = "shrink" | "clip" | "wrap" | "none";
 type TextRules = "mode" | "shrink" | "ellipsis" | "maxLines";
@@ -37,8 +39,12 @@ type AnyVersion<T> = T extends { type: "text" }
 			: T extends { type: "rect" }
 				? Omit<T, "progress"> & { progress?: RectProgress | null }
 				: T;
+// условие показа — у любого типа, поэтому отдельной обёрткой, по каждому члену union
+type AnyVersionElement<T> = T extends unknown
+	? Omit<T, "condition"> & { condition?: ShowCondition | null }
+	: never;
 export type AnyVersionDocument = Omit<CutlineDocument, "elements" | "fonts"> & {
-	elements: AnyVersion<CutlineElement>[];
+	elements: AnyVersionElement<AnyVersion<CutlineElement>>[];
 	fonts: AnyVersion<FontRef>[];
 };
 
@@ -203,6 +209,18 @@ function v9toV10(doc: AnyVersionDocument): AnyVersionDocument {
 	};
 }
 
+// v10 → v11: условие показа по данным. Старые элементы показываются всегда
+function v10toV11(doc: AnyVersionDocument): AnyVersionDocument {
+	return {
+		...doc,
+		version: 11,
+		elements: doc.elements.map((el) => ({
+			...el,
+			condition: el.condition ?? null,
+		})),
+	};
+}
+
 const STEPS: Record<
 	number,
 	(doc: AnyVersionDocument) => AnyVersionDocument | CutlineDocument
@@ -216,6 +234,7 @@ const STEPS: Record<
 	7: v7toV8,
 	8: v8toV9,
 	9: v9toV10,
+	10: v10toV11,
 };
 
 export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {

@@ -4,6 +4,16 @@
 
 export type ElementType = "text" | "rect" | "ellipse" | "line" | "image";
 
+// Показ элемента по данным (v11): плашка под {{Должность}} пропадает вместе с пустым
+// полем. У каждого элемента своё условие, а не ссылка на соседа: ссылки ломались бы
+// при удалении и дублировании, а групп нет
+export interface ShowCondition {
+	// шаблон, как content у текста: «{{Должность}}»
+	value: string;
+	// показывать, если после подстановки непусто (без пробелов по краям) / пусто
+	when: "filled" | "empty";
+}
+
 interface ElementBase {
 	id: string;
 	name: string;
@@ -15,6 +25,8 @@ interface ElementBase {
 	rotation: number;
 	locked: boolean;
 	visible: boolean;
+	// null — показывать всегда; visible: false скрывает независимо от условия
+	condition: ShowCondition | null;
 }
 
 // Как CSS font-weight: число уходит в ctx.font, FontFace и атрибут <text> без перевода.

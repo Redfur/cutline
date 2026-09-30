@@ -39,6 +39,7 @@ function text(id: string, content: string, visible = true): TextElement {
 		rotation: 0,
 		locked: false,
 		visible,
+		condition: null,
 		content,
 		font: "Inter",
 		weight: 400,
@@ -175,6 +176,7 @@ describe("картинки, которые не загрузились", () => {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		src: "https://x.example/{{note}}.png",
 		fit: "cover",
 		background: null,
@@ -214,6 +216,7 @@ describe("заполнение по данным", () => {
 		rotation: 0,
 		locked: false,
 		visible: true,
+		condition: null,
 		fill: "#000",
 		stroke: null,
 		strokeWidth: 0,
@@ -233,5 +236,50 @@ describe("заполнение по данным", () => {
 		expect(hasProblems(recordProblems(doc([bar]), at({ note: "40" })))).toBe(
 			false,
 		);
+	});
+});
+
+describe("условие показа", () => {
+	const onlyIfCity = (el: TextElement): TextElement => ({
+		...el,
+		condition: { value: "{{city}}", when: "filled" },
+	});
+
+	it("скрытый условием: пустое поле, переполнение и ошибки не проверяются", () => {
+		const d = doc([
+			onlyIfCity(text("a", "{{city}}")),
+			onlyIfCity(text("b", "очень длинный текст {{ num(note) }}")),
+		]);
+		const p = recordProblems(d, at({ city: "", note: "абв" }));
+		expect(p).toEqual({ cells: {}, overflowIds: [], errors: [] });
+	});
+
+	it("показанный — проверяется как обычно", () => {
+		const d = doc([onlyIfCity(text("b", "{{name}} очень длинный текст"))]);
+		const p = recordProblems(d, at({ city: "Казань", name: "" }));
+		expect(p.cells.name).toBe("empty");
+		expect(p.overflowIds).toEqual(["b"]);
+	});
+
+	it("поле только в условии не обязательное", () => {
+		const d = doc([onlyIfCity(text("a", "Гость"))]);
+		expect(hasProblems(recordProblems(d, at({ city: "" })))).toBe(false);
+	});
+
+	it("пустота нужна и другому, показанному элементу — проблема", () => {
+		const d = doc([onlyIfCity(text("a", "{{name}}")), text("b", "{{name}}")]);
+		expect(recordProblems(d, at({ city: "", name: "" })).cells.name).toBe(
+			"empty",
+		);
+	});
+
+	it("ошибка функции в условии — проблема записи", () => {
+		const el: TextElement = {
+			...text("a", "Гость"),
+			condition: { value: "{{ num(note) }}", when: "filled" },
+		};
+		const p = recordProblems(doc([el]), at({ note: "абв" }));
+		expect(p.cells.note).toBe("error");
+		expect(p.errors).toHaveLength(1);
 	});
 });
