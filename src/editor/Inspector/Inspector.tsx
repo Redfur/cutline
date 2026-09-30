@@ -150,6 +150,9 @@ export function Inspector({
 							element={selectedElement}
 							onChange={onElementChange}
 							swatches={swatches}
+							fields={fields}
+							record={record}
+							recordErrors={elementErrors}
 						/>
 					)}
 					{selectedElement.type === "text" && (

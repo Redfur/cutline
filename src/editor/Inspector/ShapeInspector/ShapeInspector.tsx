@@ -2,7 +2,9 @@
 // (кроме линии), обводка, у прямоугольника ещё скругление. Заливку и обводку
 // включает галочка в шапке секции: «нет заливки» — тоже значение, а не пустой цвет.
 import type {
+	DataRecord,
 	EllipseElement,
+	FieldDef,
 	LineElement,
 	RectElement,
 } from "../../../model/document";
@@ -11,8 +13,10 @@ import { PropertyRow } from "../../../ui/editor/PropertyRow";
 import { Checkbox } from "../../../ui/forms/Checkbox";
 import { ColorField } from "../../../ui/forms/ColorField";
 import { TextField } from "../../../ui/forms/TextField";
+import type { RecordError } from "../ElementErrors";
 import { GeometrySection } from "../GeometrySection";
 import { LockedFieldset } from "../LockedFieldset";
+import { ProgressSection } from "./ProgressSection";
 
 type ShapeElement = RectElement | EllipseElement | LineElement;
 
@@ -20,6 +24,10 @@ export interface ShapeInspectorProps {
 	element: ShapeElement;
 	onChange: (element: ShapeElement) => void;
 	swatches: string[];
+	// для заполнения прямоугольника по данным
+	fields: FieldDef[];
+	record: DataRecord;
+	recordErrors: RecordError[];
 }
 
 const DEFAULT_FILL = "#CCCCCC";
@@ -30,6 +38,9 @@ export function ShapeInspector({
 	element,
 	onChange,
 	swatches,
+	fields,
+	record,
+	recordErrors,
 }: ShapeInspectorProps) {
 	const num = (v: string | number) => Number(v) || 0;
 
@@ -112,6 +123,16 @@ export function ShapeInspector({
 							/>
 						</PropertyRow>
 					</PanelSection>
+				)}
+
+				{element.type === "rect" && (
+					<ProgressSection
+						progress={element.progress}
+						onChange={(progress) => onChange({ ...element, progress })}
+						fields={fields}
+						record={record}
+						recordErrors={recordErrors}
+					/>
 				)}
 			</LockedFieldset>
 		</>
