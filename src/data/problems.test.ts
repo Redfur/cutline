@@ -3,6 +3,7 @@ import type {
 	CutlineDocument,
 	CutlineElement,
 	DataRecord,
+	RectElement,
 	TextElement,
 } from "../model/document";
 import { DEFAULT_QR_STYLE } from "../model/migrate";
@@ -197,6 +198,40 @@ describe("картинки, которые не загрузились", () => {
 		expect(b.cells).toEqual({ note: "broken" });
 		expect(b.errors[0].message).toBe(
 			"Картинка не загрузилась: https://x.example/b.png",
+		);
+	});
+});
+
+describe("заполнение по данным", () => {
+	const bar: RectElement = {
+		id: "bar",
+		name: "bar",
+		type: "rect",
+		x: 0,
+		y: 0,
+		w: 10,
+		h: 2,
+		rotation: 0,
+		locked: false,
+		visible: true,
+		fill: "#000",
+		stroke: null,
+		strokeWidth: 0,
+		radius: 0,
+		progress: { value: "{{note}}", direction: "right" },
+	};
+
+	it("пустое значение — «пусто», не число — ошибка ячейки", () => {
+		expect(recordProblems(doc([bar]), at({ note: "" })).cells).toEqual({
+			note: "empty",
+		});
+		const p = recordProblems(doc([bar]), at({ note: "много" }));
+		expect(p.cells).toEqual({ note: "error" });
+		expect(p.errors).toEqual([
+			{ elementId: "bar", message: "Заполнение: «много» — не число" },
+		]);
+		expect(hasProblems(recordProblems(doc([bar]), at({ note: "40" })))).toBe(
+			false,
 		);
 	});
 });

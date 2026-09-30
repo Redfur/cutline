@@ -86,6 +86,7 @@ describe("usedFields", () => {
 			stroke: null,
 			strokeWidth: 0,
 			radius: 0,
+			progress: null,
 		},
 		{
 			...base,

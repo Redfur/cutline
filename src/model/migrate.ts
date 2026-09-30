@@ -8,15 +8,16 @@ import type {
 	FontRef,
 	FontWeight,
 	QrStyle,
+	RectProgress,
 	TextElement,
 } from "./document";
 import { type LegacyValign, lineBoxesFromLegacy, lineTextBox } from "./textBox";
 
-export const CURRENT_VERSION = 9;
+export const CURRENT_VERSION = 10;
 
 // До v4 вес шрифта был строкой, до v5 у картинки не было фона, до v6 — оформления QR,
-// до v7 у текста был один режим fit. Документ старой версии (файл, IndexedDB, фикстура
-// бейджа в v1) типизируется так, чтобы шаги миграции его принимали без приведений
+// до v7 у текста был один режим fit, до v10 у прямоугольника — заполнения по данным.
+// Документ старой версии (файл, IndexedDB, фикстура бейджа в v1) типизируется так, чтобы шаги миграции его принимали без приведений
 type LegacyWeight = "regular" | "bold";
 type LegacyFit = "shrink" | "clip" | "wrap" | "none";
 type TextRules = "mode" | "shrink" | "ellipsis" | "maxLines";
@@ -33,7 +34,9 @@ type AnyVersion<T> = T extends { type: "text" }
 					background?: string | null;
 					qr?: QrStyle;
 				}
-			: T;
+			: T extends { type: "rect" }
+				? Omit<T, "progress"> & { progress?: RectProgress | null }
+				: T;
 export type AnyVersionDocument = Omit<CutlineDocument, "elements" | "fonts"> & {
 	elements: AnyVersion<CutlineElement>[];
 	fonts: AnyVersion<FontRef>[];
@@ -189,6 +192,17 @@ function v8toV9(doc: AnyVersionDocument): AnyVersionDocument {
 	};
 }
 
+// v9 → v10: у прямоугольника заполнение по данным. Старые рисуются во всю рамку
+function v9toV10(doc: AnyVersionDocument): AnyVersionDocument {
+	return {
+		...doc,
+		version: 10,
+		elements: doc.elements.map((el) =>
+			el.type === "rect" ? { ...el, progress: el.progress ?? null } : el,
+		),
+	};
+}
+
 const STEPS: Record<
 	number,
 	(doc: AnyVersionDocument) => AnyVersionDocument | CutlineDocument
@@ -201,6 +215,7 @@ const STEPS: Record<
 	6: v6toV7,
 	7: v7toV8,
 	8: v8toV9,
+	9: v9toV10,
 };
 
 export function migrateDocument(doc: AnyVersionDocument): CutlineDocument {

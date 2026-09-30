@@ -13,6 +13,7 @@ import {
 	type Scope,
 	usedFields,
 } from "./placeholders";
+import { progressFraction } from "./progress";
 
 // error — функция в плейсхолдере не смогла посчитать значение этой записи
 // (num() от «абв»): ячейка аргумента подсвечивается, как пустая;
@@ -123,7 +124,9 @@ export function recordProblems(
 				? evaluate(el.content, scope).errors
 				: el.type === "image"
 					? imageErrors(el.src, scope)
-					: [];
+					: el.type === "rect" && el.progress
+						? progressFraction(el.progress.value, scope).errors
+						: [];
 		for (const e of found) {
 			if (e.static) continue;
 			errors.push({ elementId: el.id, message: e.message });

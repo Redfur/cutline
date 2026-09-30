@@ -4,6 +4,7 @@
 // миниатюр и все виды экспорта.
 
 import { imageSource, type Scope } from "../data/placeholders";
+import { progressFraction } from "../data/progress";
 import type {
 	Canvas,
 	CutlineDocument,
@@ -113,11 +114,38 @@ function renderText(
 		.join("");
 }
 
-function renderRect(el: RectElement): string {
+// Заполненная часть рамки: доля от якорного края. Рамка — 100%, поэтому поворот
+// (вокруг центра полной рамки, renderElement) держит полоску внутри дорожки
+function filledBox(
+	el: RectElement,
+	scope: Scope,
+): { x: number; y: number; w: number; h: number } {
+	const { x, y, w, h, progress } = el;
+	if (!progress) return { x, y, w, h };
+	const f = progressFraction(progress.value, scope).fraction;
+	switch (progress.direction) {
+		case "right":
+			return { x, y, w: w * f, h };
+		case "left":
+			return { x: x + w * (1 - f), y, w: w * f, h };
+		case "down":
+			return { x, y, w, h: h * f };
+		case "up":
+			return { x, y: y + h * (1 - f), w, h: h * f };
+	}
+}
+
+function renderRect(el: RectElement, scope: Scope): string {
+	const box = filledBox(el, scope);
+	if (box.w <= 0 || box.h <= 0) return "";
 	const parts = [
-		`<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}"`,
+		`<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"`,
 	];
-	if (el.radius) parts.push(` rx="${el.radius}"`);
+	// ry не пишем, а SVG зажимает rx и ry порознь — у короткой полоски углы стали бы
+	// эллипсами, а PDF (rectSegments) зажимает по кругу. Один радиус не больше половины
+	// меньшей стороны — экран и печать совпадают
+	const radius = Math.min(el.radius, box.w / 2, box.h / 2);
+	if (radius) parts.push(` rx="${radius}"`);
 	parts.push(` fill="${el.fill ?? "none"}"`);
 	if (el.stroke)
 		parts.push(` stroke="${el.stroke}" stroke-width="${el.strokeWidth}"`);
@@ -246,7 +274,7 @@ function renderElement(
 			case "text":
 				return renderText(el, scope, opts);
 			case "rect":
-				return renderRect(el);
+				return renderRect(el, scope);
 			case "ellipse":
 				return renderEllipse(el);
 			case "line":

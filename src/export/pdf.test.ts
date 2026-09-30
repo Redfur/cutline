@@ -74,6 +74,7 @@ const doc: CutlineDocument = {
 			stroke: "#DDDCD6",
 			strokeWidth: 0.3,
 			radius: 4,
+			progress: null,
 		},
 		{
 			...base,

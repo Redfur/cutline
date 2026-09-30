@@ -100,6 +100,38 @@ describe("поля", () => {
 		expect(text?.type === "text" && text.content).toBe("{{fio}}, {{city}}");
 	});
 
+	it("смена ключа переписывает заполнение прямоугольника", () => {
+		const withBar: CutlineDocument = {
+			...doc,
+			elements: [
+				{
+					id: "bar",
+					name: "bar",
+					type: "rect",
+					x: 0,
+					y: 0,
+					w: 10,
+					h: 2,
+					rotation: 0,
+					locked: false,
+					visible: true,
+					fill: "#000",
+					stroke: null,
+					strokeWidth: 0,
+					radius: 0,
+					progress: { value: "{{ default(name, 0) }}", direction: "up" },
+				},
+			],
+		};
+		const next = renameFieldKey(withBar, "name", "fio");
+		if (typeof next === "string") throw new Error(next);
+		const bar = next.elements[0];
+		expect(bar?.type === "rect" && bar.progress).toEqual({
+			value: "{{ default(fio, 0) }}",
+			direction: "up",
+		});
+	});
+
 	it("пустой и занятый ключ отклоняются", () => {
 		expect(renameFieldKey(doc, "name", " {} ")).toBe("empty");
 		expect(renameFieldKey(doc, "name", "city")).toBe("duplicate");

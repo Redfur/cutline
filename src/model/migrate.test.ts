@@ -252,6 +252,31 @@ describe("migrateDocument", () => {
 		).toBe("bottom");
 	});
 
+	it("v9 → v10: прямоугольник без заполнения по данным", () => {
+		const rect = {
+			id: "r",
+			name: "r",
+			type: "rect" as const,
+			x: 0,
+			y: 0,
+			w: 10,
+			h: 5,
+			rotation: 0,
+			locked: false,
+			visible: true,
+			fill: "#000",
+			stroke: null,
+			strokeWidth: 0,
+			radius: 0,
+		};
+		const migrated = migrateDocument({
+			...blankDocument,
+			version: 9,
+			elements: [rect],
+		});
+		expect(migrated.elements).toEqual([{ ...rect, progress: null }]);
+	});
+
 	it("текущая версия — без изменений", () => {
 		expect(migrateDocument(blankDocument)).toBe(blankDocument);
 		expect(blankDocument.version).toBe(CURRENT_VERSION);

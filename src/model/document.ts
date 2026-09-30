@@ -53,12 +53,26 @@ export interface TextElement extends ElementBase {
 	transform: TextTransform;
 }
 
+// Куда растёт заполнение от якорного края: right — от левого края вправо и т.д.
+export type FillDirection = "right" | "left" | "up" | "down";
+
+// Заполнение по данным (v10): рамка элемента — 100%, рисуется доля из value.
+// Групп нет, поэтому база — своя рамка, а не соседний элемент: дорожка под полоской —
+// отдельный прямоугольник того же размера
+export interface RectProgress {
+	// шаблон с плейсхолдерами, как content у текста: «{{ Прогресс }}» → 0–100
+	value: string;
+	direction: FillDirection;
+}
+
 export interface RectElement extends ElementBase {
 	type: "rect";
 	fill: string | null;
 	stroke: string | null;
 	strokeWidth: number;
 	radius: number;
+	// null — обычный прямоугольник во всю рамку
+	progress: RectProgress | null;
 }
 
 export interface EllipseElement extends ElementBase {

@@ -84,6 +84,10 @@ function renameInElement(
 	if (el.type === "image") {
 		return { ...el, src: renamePlaceholder(el.src, oldKey, newKey) };
 	}
+	if (el.type === "rect" && el.progress) {
+		const value = renamePlaceholder(el.progress.value, oldKey, newKey);
+		return { ...el, progress: { ...el.progress, value } };
+	}
 	return el;
 }
 

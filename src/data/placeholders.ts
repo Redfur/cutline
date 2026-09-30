@@ -347,10 +347,12 @@ export function renamePlaceholder(
 	});
 }
 
-// Строка элемента, в которую подставляются данные: у текста content, у картинки src.
+// Строка элемента, в которую подставляются данные: у текста content, у картинки src,
+// у прямоугольника — значение заполнения.
 export function templateOf(el: CutlineElement): string | null {
 	if (el.type === "text") return el.content;
 	if (el.type === "image") return el.src;
+	if (el.type === "rect") return el.progress?.value ?? null;
 	return null;
 }
 

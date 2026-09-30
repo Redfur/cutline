@@ -56,6 +56,7 @@ export function createRect(at: PointMm): RectElement {
 		stroke: null,
 		strokeWidth: 0,
 		radius: 0,
+		progress: null,
 	};
 }
 
